@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
-import '../../../core/error/failures.dart';
-import '../../../core/state/view_state.dart';
+import '../../../common/core/error/failures.dart';
+import '../../../common/presentation/state/view_state.dart';
 
 /// State holder for the Auth flow. Depends on use cases only.
 class AuthProvider extends ChangeNotifier {

@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import 'AskRide/presentation/providers/ask_ride_provider.dart';
-import 'Auth/presentation/providers/auth_provider.dart';
-import 'core/constants/app_constants.dart';
-import 'core/di/injection_container.dart';
-import 'presentation/providers/app_version_provider.dart';
-import 'presentation/screens/splash_screen.dart';
+import 'common/core/constants/app_constants.dart';
+import 'common/core/di/injection_container.dart';
+import 'common/core/router/app_router.dart';
+import 'common/core/router/app_routes.dart';
+import 'common/presentation/theme/app_theme.dart';
+import 'onboarding/presentation/providers/app_version_provider.dart';
+import 'ride_tracking/presentation/widgets/ride_alerts_host.dart';
+
+/// Lets the ride alerts banner (above the Navigator) open screens.
+final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,19 +23,20 @@ class KidsPoolApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(
-          create: (_) => sl<AppVersionProvider>()..fetchAppVersion(),
-        ),
-        ChangeNotifierProvider(create: (_) => sl<AuthProvider>()),
-        ChangeNotifierProvider(create: (_) => sl<AskRideProvider>()),
-      ],
+    // App-wide providers only. Feature providers are created per screen from
+    // `sl` so their state is scoped to the flow that uses it.
+    return ChangeNotifierProvider(
+      create: (_) => sl<AppVersionProvider>(),
       child: MaterialApp(
         title: AppConstants.appName,
         debugShowCheckedModeBanner: false,
-        theme: ThemeData(colorSchemeSeed: Colors.deepPurple),
-        home: const SplashScreen(),
+        theme: AppTheme.light,
+        navigatorKey: rootNavigatorKey,
+        initialRoute: AppRoutes.splash,
+        onGenerateRoute: AppRouter.onGenerateRoute,
+        // S19 / S20: "Ride started" / "Arrived" banners over every screen.
+        builder: (context, child) =>
+            RideAlertsHost(navigatorKey: rootNavigatorKey, child: child!),
       ),
     );
   }
