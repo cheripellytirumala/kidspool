@@ -29,12 +29,16 @@ class RideAlertsProvider extends ChangeNotifier {
   bool _running = false;
   bool _disposed = false;
 
+  /// Set when the server has no `get_my_notifications` (PostgREST 404):
+  /// polling stops for this app session instead of failing every interval.
+  bool _unavailable = false;
+
   /// The alert on screen, if any.
   RideAlert? get current => _queue.isEmpty ? null : _queue.first;
 
   /// Starts (or resumes) polling: checks now, then every [pollInterval].
   void start() {
-    if (_running || _disposed) return;
+    if (_running || _disposed || _unavailable) return;
     _running = true;
     unawaited(check());
     _poll = Timer.periodic(pollInterval, (_) => check());
@@ -48,11 +52,19 @@ class RideAlertsProvider extends ChangeNotifier {
   }
 
   Future<void> check() async {
-    if (_inFlight || _disposed || !_getRideAlerts.canFetch) return;
+    if (_inFlight || _disposed || _unavailable || !_getRideAlerts.canFetch) {
+      return;
+    }
     _inFlight = true;
     final result = await _getRideAlerts(const NoParams());
     _inFlight = false;
     if (_disposed) return;
+    if (result.getLeft().toNullable()?.statusCode == 404) {
+      // The RPC isn't deployed on this backend yet.
+      _unavailable = true;
+      stop();
+      return;
+    }
     final alerts = result.getRight().toNullable();
     if (alerts == null) return;
     final freshSince = _clock().subtract(

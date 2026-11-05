@@ -16,7 +16,7 @@ class RouteCard extends StatelessWidget {
     required this.pickupSubtitle,
     required this.onPickupTap,
     required this.onDropOffTap,
-    required this.onSwap,
+    this.onSwap,
   });
 
   final SavedPlace? pickup;
@@ -26,7 +26,9 @@ class RouteCard extends StatelessWidget {
   final String pickupSubtitle;
   final VoidCallback onPickupTap;
   final VoidCallback onDropOffTap;
-  final VoidCallback onSwap;
+
+  /// `null` hides "Swap" (rides only go from an address to school).
+  final VoidCallback? onSwap;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +63,7 @@ class RouteCard extends StatelessWidget {
                     ),
                   ),
                   const Spacer(),
-                  _SwapButton(onTap: onSwap),
+                  if (onSwap != null) _SwapButton(onTap: onSwap!),
                 ],
               ),
             ),

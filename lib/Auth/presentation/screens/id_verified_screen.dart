@@ -139,10 +139,14 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
                 child: AppButton(
                   label: uploaded ? 'Yes, this is my license' : 'Continue',
                   isLoading: flow.isSubmittingId,
+                  // Only once the license was read, isn't expired, and the
+                  // first or last name typed on About you is on it.
                   onPressed:
                       flow.hasIdPhotos &&
                           !flow.isReadingLicense &&
-                          !(flow.license?.isExpired ?? false)
+                          flow.licenseChecked &&
+                          !(flow.license?.isExpired ?? false) &&
+                          flow.licenseNameCheck == LicenseNameCheck.matches
                       ? () => _confirm(context)
                       : null,
                 ),
@@ -166,11 +170,18 @@ class _LicenseNotice extends StatelessWidget {
   Widget build(BuildContext context) {
     final license = flow.license;
 
-    if (license == null) {
-      return const _Notice(
+    if (license == null ||
+        flow.licenseNameCheck == LicenseNameCheck.unreadable) {
+      return _Notice(
+        error: true,
         text:
-            'We couldn’t read your license automatically. That’s okay — '
-            'just make sure the photos are sharp, with no glare.',
+            'We couldn’t read the name on your license. Please retake a '
+            'sharp photo of the front, with no glare.',
+        action: 'Retake photos',
+        onAction: () {
+          flow.clearIdPhotos();
+          Navigator.of(context).pop();
+        },
       );
     }
     if (license.isExpired) {
@@ -188,8 +199,10 @@ class _LicenseNotice extends StatelessWidget {
     }
     if (flow.licenseNameMismatch) {
       return _Notice(
+        error: true,
         text:
-            'Your license says “${license.fullName}”. The name you send '
+            'Your license says “${license.fullName}”, which doesn’t match '
+            '“${flow.firstName} ${flow.lastName}”. Your first or last name '
             'must match your license.',
         action: 'Use name from license',
         onAction: flow.useLicenseName,

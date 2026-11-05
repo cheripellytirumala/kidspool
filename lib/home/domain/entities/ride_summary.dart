@@ -2,14 +2,16 @@
 class RideSummary {
   const RideSummary({
     required this.childName,
-    required this.childAvatarAsset,
+    this.childPhoto,
     required this.from,
     required this.to,
     required this.schedule,
   });
 
   final String childName;
-  final String childAvatarAsset;
+
+  /// Bundled asset path or signed photo URL; `null` shows initials.
+  final String? childPhoto;
   final String from;
   final String to;
 
@@ -18,4 +20,7 @@ class RideSummary {
 
   /// "Emma · Home → Lincoln"
   String get title => '$childName · $from → $to';
+
+  String get childInitial =>
+      childName.isEmpty ? '?' : childName[0].toUpperCase();
 }

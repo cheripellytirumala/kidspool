@@ -243,13 +243,13 @@ class _Header extends StatelessWidget {
         return ('Pick up $kids', 'at ${RideFormat.clock(t.pickupAt)}');
       }
       if (!t.pickedUp) return ('Heading to', '${t.pickup.label}…');
-      return ('Driving $kids', 'to ${t.school.label}…');
+      return ('Driving $kids', 'to ${t.destination.label}…');
     }
     if (!t.started) {
       return ('$driver picks up $kids', 'at ${RideFormat.clock(t.pickupAt)}');
     }
     if (!t.pickedUp) return ('$driver is on the way', 'to pick up $kids…');
-    return ('$kids $verb heading', 'to ${t.school.label}…');
+    return ('$kids $verb heading', 'to ${t.destination.label}…');
   }
 
   String get _pill {

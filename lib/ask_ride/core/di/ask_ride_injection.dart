@@ -6,6 +6,8 @@ import '../../data/repositories/ask_ride_repository_impl.dart';
 import '../../domain/repositories/ask_ride_repository.dart';
 import '../../domain/usecases/add_saved_place.dart';
 import '../../domain/usecases/get_ride_options.dart';
+import '../../domain/usecases/search_drop_off_places.dart';
+import '../../presentation/providers/drop_off_search_provider.dart';
 import '../../presentation/providers/ask_ride_provider.dart';
 
 /// Registers everything owned by the AskRide feature group.
@@ -30,6 +32,13 @@ void registerAskRideDependencies(GetIt sl) {
     // Use cases
     ..registerLazySingleton<GetRideOptions>(() => GetRideOptions(sl()))
     ..registerLazySingleton<AddSavedPlace>(() => AddSavedPlace(sl()))
+    ..registerLazySingleton<SearchDropOffPlaces>(
+      () => SearchDropOffPlaces(sl()),
+    )
+    // One per "Drop off at" sheet.
+    ..registerFactory<DropOffSearchProvider>(
+      () => DropOffSearchProvider(searchPlaces: sl()),
+    )
     // Provider: lazy singleton so the ride request draft survives the
     // families screen (F19) and the "Message sent" screen (F20). Screens
     // expose it with `ChangeNotifierProvider.value(value: sl<AskRideProvider>())`.

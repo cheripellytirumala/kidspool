@@ -14,9 +14,6 @@ abstract final class AppRoutes {
   static const String addChild = '/kids/add';
   static const String yourKids = '/kids';
   static const String whereKidsGo = '/kids/places';
-  static const String findSchool = '/kids/find-school';
-  static const String whoGoesWhen = '/kids/schedule';
-  static const String childPlaces = '/kids/child-places';
   static const String allSet = '/kids/all-set';
 
   // Home
@@ -30,6 +27,13 @@ abstract final class AppRoutes {
   // Profile
   static const String profile = '/profile';
 
+  // Messages (F24 / F24a). Chat + group info take [RideChatArgs]; the
+  // request detail (A7a) takes `RideRequestArgs` from lib/messages.
+  static const String messages = '/messages';
+  static const String rideRequestDetail = '/messages/request';
+  static const String rideChat = '/messages/chat';
+  static const String rideGroupInfo = '/messages/group';
+
   // Ride day (arguments: [RideArgs])
   static const String liveTracking = '/ride/live';
   static const String rideCompleted = '/ride/completed';
@@ -41,4 +45,29 @@ class RideArgs {
 
   /// `ride_requests.id` of the booked ride.
   final String requestId;
+}
+
+/// Route arguments for a ride chat (F19) and its group info (GC6). A chat is
+/// the pair (ride request, Ride Partner).
+class RideChatArgs {
+  const RideChatArgs({
+    required this.requestId,
+    required this.driverId,
+    required this.iAmDriver,
+    this.otherName,
+    this.otherInitials,
+  });
+
+  /// `ride_requests.id`.
+  final String requestId;
+
+  /// `profiles.id` of the Ride Partner in this chat.
+  final String driverId;
+
+  /// The signed-in user is the Ride Partner (else the requesting parent).
+  final bool iAmDriver;
+
+  /// The other parent's first name / initials, shown before the ride loads.
+  final String? otherName;
+  final String? otherInitials;
 }

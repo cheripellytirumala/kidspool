@@ -26,6 +26,10 @@ class ApprovalGate extends StatefulWidget {
 
   static void reset() => _approved = false;
 
+  /// Debug previews (tool/*.dart): skip the server check.
+  @visibleForTesting
+  static void debugAssumeApproved() => _approved = true;
+
   @override
   State<ApprovalGate> createState() => _ApprovalGateState();
 }

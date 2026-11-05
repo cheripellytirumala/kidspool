@@ -41,6 +41,7 @@ class UpcomingRide extends Equatable {
     required this.schoolName,
     required this.pickupAt,
     required this.pickupLabel,
+    this.dropoffLabel,
     this.isDrive = false,
   });
 
@@ -54,6 +55,12 @@ class UpcomingRide extends Equatable {
 
   /// e.g. "Home".
   final String pickupLabel;
+
+  /// Custom drop-off (`dropoff.label`); `null` → the ride goes to school.
+  final String? dropoffLabel;
+
+  /// Where the kids are dropped off: [dropoffLabel], else [schoolName].
+  String get destinationName => dropoffLabel ?? schoolName;
 
   /// True when the user is the Ride Partner driving another family's kids.
   final bool isDrive;
@@ -69,9 +76,9 @@ class UpcomingRide extends Equatable {
       ? kidNames.join(' & ')
       : '${kidNames.first} +${kidNames.length - 1}';
 
-  /// "Emma & Noah · Home → Lincoln Elementary"
+  /// "Emma & Noah · Home → Lincoln Elementary" (or the custom drop-off).
   String get title {
-    return '$kidsLabel · $pickupLabel → $schoolName';
+    return '$kidsLabel · $pickupLabel → $destinationName';
   }
 
   @override
@@ -82,6 +89,7 @@ class UpcomingRide extends Equatable {
     schoolName,
     pickupAt,
     pickupLabel,
+    dropoffLabel,
     isDrive,
   ];
 }

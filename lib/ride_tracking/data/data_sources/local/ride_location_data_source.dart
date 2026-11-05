@@ -19,23 +19,31 @@ abstract interface class RideLocationDataSource {
 class RideLocationDataSourceImpl implements RideLocationDataSource {
   const RideLocationDataSourceImpl();
 
+  static const Duration _maxFixAge = Duration(minutes: 2);
+  static const Duration _fixTimeout = Duration(seconds: 3);
+
   @override
   Future<RideFix?> currentFix() async {
     try {
       if (!await _ensurePermission()) return null;
-      Position? position;
+      // Ride actions (Start ride, Picked up, …) must not wait long for GPS:
+      // a recent last-known fix is good enough, otherwise try briefly.
+      final last = await Geolocator.getLastKnownPosition();
+      if (last != null &&
+          DateTime.now().difference(last.timestamp) < _maxFixAge) {
+        return _toFix(last);
+      }
       try {
-        position = await Geolocator.getCurrentPosition(
+        final position = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
             accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 8),
+            timeLimit: _fixTimeout,
           ),
         );
+        return _toFix(position);
       } catch (_) {
-        position = await Geolocator.getLastKnownPosition();
+        return last == null ? null : _toFix(last);
       }
-      if (position == null) return null;
-      return _toFix(position);
     } catch (_) {
       return null;
     }

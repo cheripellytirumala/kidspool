@@ -2,6 +2,8 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/error_handler.dart';
 import '../../../common/core/error/failures.dart';
+import '../../core/constants/home_api_constants.dart';
+import '../../domain/entities/family.dart';
 import '../../domain/entities/ride_activity.dart';
 import '../../domain/entities/upcoming_ride.dart';
 import '../../domain/repositories/home_repository.dart';
@@ -22,6 +24,10 @@ class HomeRepositoryImpl implements HomeRepository {
 
   /// Newest notification time from the last [hasUnseenNotifications].
   DateTime? _latestNotificationAt;
+
+  /// Set once `get_families_near_me` answered "not deployed": later calls
+  /// fail at once instead of hitting the server again.
+  Failure? _familiesMissing;
 
   @override
   Future<Either<Failure, List<UpcomingRide>>> getUpcomingRides() =>
@@ -55,4 +61,36 @@ class HomeRepositoryImpl implements HomeRepository {
         if (latest != null) await _local.setNotificationsSeenAt(latest);
         return unit;
       }, tag: 'Home.notificationsSeen');
+
+  @override
+  Future<Either<Failure, FamiliesNearMe>> getFamiliesNearMe({
+    String? schoolId,
+    double? radiusMiles,
+  }) async {
+    final missing = _familiesMissing;
+    if (missing != null) return Left(missing);
+    final result = await ErrorHandler.guard(() async {
+      final families = await _remote.getFamiliesNearMe(
+        schoolId: schoolId,
+        radiusMiles: radiusMiles ?? HomeApiConstants.familiesRadiusMiles,
+      );
+      // An empty list is either "no families yet" or "no kid has a school";
+      // only then is it worth asking which.
+      var hasSchool = true;
+      if (families.isEmpty) {
+        try {
+          hasSchool = await _remote.hasKidWithSchool();
+        } on Object catch (_) {
+          // Unknown: show the plain "no families" state.
+        }
+      }
+      return FamiliesNearMe(families: families, hasSchool: hasSchool);
+    }, tag: 'Home.families');
+    result.match((f) {
+      if (f.code == HomeApiConstants.familiesNearMeMissing) {
+        _familiesMissing = f;
+      }
+    }, (_) {});
+    return result;
+  }
 }

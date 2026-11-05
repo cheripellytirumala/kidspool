@@ -8,6 +8,17 @@ abstract final class KidsColors {
   static const Color charcoal = Color(0xFF2E2E2E); // brand/charcoal
   static const Color inverseRaised = Color(0xFF1C1C1C); // bg/inverse-raised
   static const Color scrim = Color(0x8C0A0A0A); // rgba(10,10,10,0.55)
+
+  /// Easy-flow text/secondary (#808080); the a11y token is
+  /// [AppColors.textSecondary] (#666666).
+  static const Color textSecondary = Color(0xFF808080);
+
+  /// Easy-flow text/on-dark-muted (#9A9A9A); the a11y token is
+  /// [AppColors.textOnDarkMuted] (#B3B3B3).
+  static const Color textOnDarkMuted = Color(0xFF9A9A9A);
+
+  /// Easy-flow border/subtle (#E6E6E6) — F06 dashed "Add another child".
+  static const Color borderSubtle = Color(0xFFE6E6E6);
 }
 
 /// Figma text styles used by the Kids flow, derived from [AppTextStyles].
@@ -44,18 +55,23 @@ abstract final class KidsTextStyles {
     letterSpacing: -0.075,
   );
 
-  /// Body/M — 15/22 Regular, secondary.
-  static final TextStyle bodyM = AppTextStyles.body.copyWith(fontSize: 15);
-
-  /// Caption/M — 14/16 Medium, secondary.
-  static final TextStyle captionM = AppTextStyles.caption.copyWith(
-    fontSize: 14,
+  /// Body/M — 15/22 Regular, Easy-flow secondary (#808080).
+  static final TextStyle bodyM = AppTextStyles.body.copyWith(
+    fontSize: 15,
+    color: KidsColors.textSecondary,
   );
 
-  /// 14/18 Regular, primary (tip copy).
+  /// Label/S — 12/16 Medium, Easy-flow secondary (#808080). Field labels,
+  /// captions, place details, tips (recolored where Figma uses primary).
+  static final TextStyle captionM = AppTextStyles.caption.copyWith(
+    fontSize: 12,
+    color: KidsColors.textSecondary,
+  );
+
+  /// Body/S — 13/18 Regular, primary (F09 tip copy).
   static final TextStyle bodyS = AppTextStyles.body.copyWith(
-    fontSize: 14,
-    height: 18 / 14,
+    fontSize: 13,
+    height: 18 / 13,
     color: AppColors.textPrimary,
   );
 }

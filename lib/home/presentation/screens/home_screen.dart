@@ -56,20 +56,26 @@ class _HomeView extends StatelessWidget {
         AppRoutes.askRide,
       ).then((_) => provider.load());
 
-  Widget _families(BuildContext context, HomeProvider provider) => Row(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      for (final (i, family) in provider.previewFamilies.indexed) ...[
-        if (i > 0) const SizedBox(width: 8),
-        Expanded(
-          child: FamilyPreviewCard(
-            family: family,
-            onTap: () => _openFamilies(context),
+  /// Up to three tiles; fewer families keep the tile width of three.
+  Widget _families(BuildContext context, HomeProvider provider) {
+    final families = provider.previewFamilies;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (var i = 0; i < 3; i++) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(
+            child: i < families.length
+                ? FamilyPreviewCard(
+                    family: families[i],
+                    onTap: () => _openFamilies(context),
+                  )
+                : const SizedBox.shrink(),
           ),
-        ),
+        ],
       ],
-    ],
-  );
+    );
+  }
 
   /// H1e / H3e.
   List<Widget> _emptyLayout(BuildContext context, HomeProvider provider) => [
@@ -84,10 +90,12 @@ class _HomeView extends StatelessWidget {
     ),
     const SizedBox(height: AppDimens.sectionGap),
     AskRideActionCard(onTap: () => _askRide(context, provider)),
-    const SizedBox(height: AppDimens.sectionGap),
-    _FamiliesHeader(onSeeAll: () => _openFamilies(context)),
-    const SizedBox(height: AppDimens.sectionGap),
-    _families(context, provider),
+    if (provider.previewFamilies.isNotEmpty) ...[
+      const SizedBox(height: AppDimens.sectionGap),
+      _FamiliesHeader(onSeeAll: () => _openFamilies(context)),
+      const SizedBox(height: AppDimens.sectionGap),
+      _families(context, provider),
+    ],
   ];
 
   /// H3 · Home · Both (get & give).
@@ -142,13 +150,15 @@ class _HomeView extends StatelessWidget {
         // No group chat screen yet: the row is informational only.
         RideGroupCard(title: groupTitle, subtitle: provider.rideGroupSubtitle),
       ],
-      const SizedBox(height: AppDimens.sectionGap),
-      _FamiliesHeader(
-        onSeeAll: () => _openFamilies(context),
-        style: HomeTextStyles.captionS,
-      ),
-      const SizedBox(height: AppDimens.sectionGap),
-      _families(context, provider),
+      if (provider.previewFamilies.isNotEmpty) ...[
+        const SizedBox(height: AppDimens.sectionGap),
+        _FamiliesHeader(
+          onSeeAll: () => _openFamilies(context),
+          style: HomeTextStyles.captionS,
+        ),
+        const SizedBox(height: AppDimens.sectionGap),
+        _families(context, provider),
+      ],
     ];
   }
 

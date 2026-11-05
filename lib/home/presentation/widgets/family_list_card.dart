@@ -7,7 +7,7 @@ import '../../domain/entities/family.dart';
 import 'person_avatar.dart';
 import 'select_box.dart';
 
-/// F14 family row: photo, parent name and "child · place · distance".
+/// F14 family row: initials avatar, parent name and "child · place · distance".
 /// In select mode a [SelectBox] leads the row.
 class FamilyListCard extends StatelessWidget {
   const FamilyListCard({
@@ -43,7 +43,7 @@ class FamilyListCard extends StatelessWidget {
                   SelectBox(checked: selected),
                   const SizedBox(width: 8),
                 ],
-                PersonAvatar(family.avatarAsset, size: 52),
+                PersonAvatar.initials(family.initials, size: 52),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

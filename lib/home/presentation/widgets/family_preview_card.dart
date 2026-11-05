@@ -30,7 +30,7 @@ class FamilyPreviewCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
           child: Column(
             children: [
-              PersonAvatar(family.avatarAsset),
+              PersonAvatar.initials(family.initials),
               const SizedBox(height: 6),
               Text(
                 family.parentName,

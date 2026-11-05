@@ -4,6 +4,7 @@ import '../../core/error/error_handler.dart';
 import '../../core/error/failures.dart';
 import '../../core/services/location_service.dart';
 import '../../domain/entities/picked_address.dart';
+import '../../domain/entities/place_search_result.dart';
 import '../../domain/entities/place_suggestion.dart';
 import '../../domain/repositories/places_repository.dart';
 import '../data_sources/remote/places_remote_data_source.dart';
@@ -65,6 +66,35 @@ class PlacesRepositoryImpl implements PlacesRepository {
         return _toPicked(await _location.currentAddress());
       },
     );
+  }
+
+  @override
+  Future<Either<Failure, List<PlaceSearchResult>>> searchText(
+    String query, {
+    String? includedType,
+    double? nearLatitude,
+    double? nearLongitude,
+    double radiusMeters = 5000,
+  }) {
+    return ErrorHandler.guard(
+      tag: 'PlacesRepository.searchText',
+      () => _remote.searchText(
+        query,
+        includedType: includedType,
+        nearLatitude: nearLatitude,
+        nearLongitude: nearLongitude,
+        radiusMeters: radiusMeters,
+      ),
+    );
+  }
+
+  @override
+  Future<bool> isSearchConfigured() async {
+    try {
+      return await _remote.isConfigured();
+    } catch (_) {
+      return false;
+    }
   }
 
   PickedAddress _toPicked(ResolvedAddress a) => PickedAddress(

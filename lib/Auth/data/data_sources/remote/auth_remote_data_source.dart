@@ -105,7 +105,8 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       'firstName': submission.firstName.trim(),
       'lastName': submission.lastName.trim(),
       'idType': submission.idType,
-      'selfie': await MultipartFile.fromFile(submission.selfiePath),
+      if (submission.selfiePath != null)
+        'selfie': await MultipartFile.fromFile(submission.selfiePath!),
       'idFront': await MultipartFile.fromFile(submission.idFrontPath),
       if (submission.idBackPath != null)
         'idBack': await MultipartFile.fromFile(submission.idBackPath!),

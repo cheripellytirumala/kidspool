@@ -64,7 +64,7 @@ class TripSummaryCard extends StatelessWidget {
           const SizedBox(height: 12),
           _Row(
             icon: RideTrackingAssets.school,
-            label: 'Dropped off at ${t.school.label}',
+            label: 'Dropped off at ${t.destination.label}',
             value: t.completedAt == null
                 ? '—'
                 : RideFormat.clock(t.completedAt!),

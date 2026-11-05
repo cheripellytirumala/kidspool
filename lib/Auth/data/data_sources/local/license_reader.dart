@@ -159,10 +159,14 @@ class MlKitLicenseReader implements LicenseReader {
     }
 
     // "DL D1234567", "LIC# 12345678", "DLN: A123-456-789". The number must
-    // contain a digit, so the "DRIVER LICENSE" header never matches.
-    final number = RegExp(
-      r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
-    ).firstMatch(upper)?.group(1);
+    // contain a digit, so the "DRIVER LICENSE" header never matches. When the
+    // label is misread (e.g. "DL" → "UN"), fall back to the common
+    // letter + 7–8 digits format (CA, FL, IL, …).
+    final number =
+        RegExp(
+          r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
+        ).firstMatch(upper)?.group(1) ??
+        RegExp(r'\b([A-Z]\d{7,8})\b').firstMatch(upper)?.group(1);
 
     // Longest names first: "WEST VIRGINIA" before "VIRGINIA",
     // "ARKANSAS" before "KANSAS".
@@ -178,8 +182,12 @@ class MlKitLicenseReader implements LicenseReader {
 
     return LicenseDetails(
       source: LicenseReadSource.text,
-      lastName: _name(valueAfter(RegExp(r'^(1\s+)?LN\b[\s:]*'))),
-      firstName: _name(valueAfter(RegExp(r'^(2\s+)?FN\b[\s:]*'))),
+      lastName: _name(
+        nameIn(valueAfter(RegExp(r'(?:^|\s)(?:1\s+)?LN\b[\s:.]*'))),
+      ),
+      firstName: _name(
+        nameIn(valueAfter(RegExp(r'(?:^|\s)(?:2\s+)?FN\b[\s:.]*'))),
+      ),
       licenseNumber: (number != null && RegExp(r'\d').hasMatch(number))
           ? number.replaceAll(RegExp(r'[^A-Z0-9]'), '')
           : null,
@@ -187,6 +195,57 @@ class MlKitLicenseReader implements LicenseReader {
       birthDate: dateAfter(const ['DOB', 'BIRTH']),
       state: state,
     );
+  }
+
+  /// Words printed next to the name on US licenses. OCR often joins the
+  /// name with the next column ("FN: DRIVER EXPIRY DATE 01/15/2030"), so the
+  /// name stops at the first of these or at any number.
+  static const Set<String> _labelWords = {
+    'LN',
+    'FN',
+    'DL',
+    'DLN',
+    'LIC',
+    'LICENSE',
+    'DRIVER\'S',
+    'CLASS',
+    'EXP',
+    'EXPIRES',
+    'EXPIRY',
+    'DATE',
+    'ISS',
+    'ISSUED',
+    'DOB',
+    'SEX',
+    'HGT',
+    'HT',
+    'WGT',
+    'WT',
+    'EYES',
+    'HAIR',
+    'RSTR',
+    'REST',
+    'END',
+    'DD',
+    'DONOR',
+    'VETERAN',
+    'SAMPLE\'S',
+    'USA',
+    'ADDRESS',
+  };
+
+  /// The leading name part of a label value, or `null` if there is none.
+  static String? nameIn(String? value) {
+    if (value == null) return null;
+    final words = <String>[];
+    for (final raw in value.split(RegExp(r'\s+'))) {
+      final word = raw.replaceAll(RegExp(r'[,;:]+$'), '');
+      if (word.isEmpty) continue;
+      if (_labelWords.contains(word) || RegExp(r'\d').hasMatch(word)) break;
+      if (!RegExp(r"^[A-Z][A-Z'.-]*$").hasMatch(word)) break;
+      words.add(word);
+    }
+    return words.isEmpty ? null : words.join(' ');
   }
 
   // ── Helpers ──────────────────────────────────────────────────────────────

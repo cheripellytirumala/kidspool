@@ -62,8 +62,8 @@ class KidTab extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: KidsTextStyles.captionM.copyWith(
                           color: selected
-                              ? AppColors.textOnDarkMuted
-                              : AppColors.textSecondary,
+                              ? KidsColors.textOnDarkMuted
+                              : KidsColors.textSecondary,
                         ),
                       ),
                     ],

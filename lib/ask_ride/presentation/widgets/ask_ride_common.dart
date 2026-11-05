@@ -66,7 +66,7 @@ class AskRideBackButton extends StatelessWidget {
 }
 
 /// Place glyph in a 40px disc: home = ink + lime house, school = lime tint
-/// + graduation cap.
+/// + graduation cap, custom drop-off = lime tint + map pin.
 class PlaceIcon extends StatelessWidget {
   const PlaceIcon({super.key, required this.kind});
 
@@ -90,6 +90,16 @@ class PlaceIcon extends StatelessWidget {
         color: AppColors.limeTint,
         child: SvgPicture.asset(AskRideAssets.school, width: 25, height: 25),
       ),
+      PlaceKind.custom => IconDisc(
+        size: 40,
+        color: AppColors.limeTint,
+        child: SvgPicture.asset(
+          AskRideAssets.locationPin,
+          width: 20,
+          height: 20,
+          colorFilter: const ColorFilter.mode(AppColors.ink, BlendMode.srcIn),
+        ),
+      ),
     };
   }
 }
@@ -103,9 +113,11 @@ class PlaceGlyph extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SvgPicture.asset(
-      kind == PlaceKind.school
-          ? AskRideAssets.schoolSmall
-          : AskRideAssets.homeOutlineSmall,
+      switch (kind) {
+        PlaceKind.school => AskRideAssets.schoolSmall,
+        PlaceKind.custom => AskRideAssets.locationPinSmall,
+        PlaceKind.home => AskRideAssets.homeOutlineSmall,
+      },
       width: 16,
       height: 16,
     );

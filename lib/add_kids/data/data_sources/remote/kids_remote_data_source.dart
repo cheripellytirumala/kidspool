@@ -6,6 +6,7 @@ import '../../../../common/core/network/api_client.dart';
 import '../../../../common/core/utils/json_parser.dart';
 import '../../../core/constants/kids_api_constants.dart';
 import '../../../domain/entities/child.dart';
+import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/place.dart';
 
 /// Throws only `AppException` subtypes; never returns raw JSON.
@@ -24,8 +25,17 @@ abstract interface class KidsRemoteDataSource {
 
   Future<void> deleteKid(String kidId);
 
-  Future<List<Place>> getSchools(String search);
+  /// `school_from_place`: the `schools.id` for a Google [place]. Throws a
+  /// [ServerException] with code [schoolFromPlaceMissing] when the RPC
+  /// isn't on the server yet.
+  Future<String> schoolFromPlace(Place place);
+
+  /// Default saved address (`get_my_addresses`), or `null`.
+  Future<GeoPoint?> getHomeLocation();
 }
+
+/// [ServerException.code] when `school_from_place` isn't deployed.
+const String schoolFromPlaceMissing = 'school_from_place_missing';
 
 class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
   const KidsRemoteDataSourceImpl(this._apiClient);
@@ -63,17 +73,12 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
 
   @override
   Future<String> addKid(ChildDraft draft) async {
+    // School and school ID card are optional here: the school is chosen
+    // later on "Where do your kids go?" (F08/F09) and saved with update-kid.
     final card = draft.newSchoolIdCardPath;
-    if (card == null) {
-      throw const ServerException(
-        'Please add a photo of the school ID card.',
-        400,
-        'missing_field',
-      );
-    }
     final form = FormData.fromMap({
       ..._fields(draft),
-      'schoolIdCard': await MultipartFile.fromFile(card),
+      if (card != null) 'schoolIdCard': await MultipartFile.fromFile(card),
       if (draft.newPhotoPath != null)
         'photo': await MultipartFile.fromFile(draft.newPhotoPath!),
     });
@@ -126,12 +131,66 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
   }
 
   @override
-  Future<List<Place>> getSchools(String search) {
+  Future<String> schoolFromPlace(Place place) async {
+    try {
+      return await _apiClient.rpc(
+        KidsApiConstants.schoolFromPlace,
+        params: schoolFromPlaceParams(place),
+        parser: (json) {
+          final id = json is Map ? json['id'] : null;
+          if (id is! String || id.isEmpty) throw const ParsingException();
+          return id;
+        },
+      );
+    } on ServerException catch (e) {
+      final notDeployed =
+          e.data['code'] == KidsApiConstants.functionNotFound ||
+          (e.statusCode == 404 && e.code == null);
+      if (!notDeployed) rethrow;
+      throw ServerException(
+        'School search from Google isn’t set up on the server yet.',
+        e.statusCode,
+        schoolFromPlaceMissing,
+        e.data,
+      );
+    }
+  }
+
+  /// Params of `school_from_place`; names match the SQL arguments.
+  static Map<String, dynamic> schoolFromPlaceParams(Place place) {
+    String? text(String v) => v.trim().isEmpty ? null : v.trim();
+    return {
+      'placeId': place.googlePlaceId ?? place.id,
+      'name': place.name.trim(),
+      'addressLine': text(place.addressLine),
+      'city': text(place.city),
+      'state': text(place.state),
+      'zip': text(place.zip),
+      'latitude': place.latitude,
+      'longitude': place.longitude,
+    };
+  }
+
+  @override
+  Future<GeoPoint?> getHomeLocation() {
     return _apiClient.rpc(
-      KidsApiConstants.getSchools,
-      params: {'search': search.trim().isEmpty ? null : search.trim()},
-      parser: (json) => _asList(json).map(_school).toList(growable: false),
+      KidsApiConstants.getMyAddresses,
+      parser: (json) => homeFromAddresses(_asList(json)),
     );
+  }
+
+  /// The default address's coordinates (else the first with coordinates).
+  static GeoPoint? homeFromAddresses(List<Map<String, dynamic>> rows) {
+    GeoPoint? first;
+    for (final row in rows) {
+      final lat = row.readDouble('latitude');
+      final lng = row.readDouble('longitude');
+      if (lat == null || lng == null) continue;
+      final point = GeoPoint(lat, lng);
+      if (row.readBool('isDefault') ?? false) return point;
+      first ??= point;
+    }
+    return first;
   }
 
   /// Text fields shared by add/update. Empty optional values clear them.
@@ -140,7 +199,8 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
     'lastName': d.lastName.trim(),
     'dateOfBirth': _date(d.dateOfBirth),
     'grade': d.grade ?? '',
-    'schoolId': d.schoolId,
+    // Omitted when not chosen yet (update-kid would reject an empty id).
+    if (d.schoolId != null) 'schoolId': d.schoolId,
     'healthNotes': d.medicalNotes.trim(),
     'needsBooster': d.needsBooster.toString(),
   };
@@ -149,21 +209,6 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
       '${d.year.toString().padLeft(4, '0')}-'
       '${d.month.toString().padLeft(2, '0')}-'
       '${d.day.toString().padLeft(2, '0')}';
-
-  static Place _school(Map<String, dynamic> json) {
-    final details = [
-      json.readString('addressLine'),
-      json.readString('city'),
-      json.readString('zip'),
-    ].whereType<String>().where((p) => p.trim().isNotEmpty).join(' · ');
-    return Place(
-      id: json.readString('id') ?? '',
-      name: json.readString('name') ?? '',
-      category: PlaceCategory.school,
-      details: details,
-      keywords: json.readString('state') ?? '',
-    );
-  }
 
   static List<Map<String, dynamic>> _asList(dynamic json) {
     if (json is! List) throw const ParsingException();

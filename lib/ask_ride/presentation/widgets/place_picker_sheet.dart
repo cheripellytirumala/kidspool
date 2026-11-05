@@ -23,6 +23,15 @@ final class PlacePicked extends PlacePickerResult {
   final SavedPlace place;
 }
 
+/// Picked a place from Google search as the drop-off
+/// ([SavedPlace.kind] is [PlaceKind.custom], with coordinates and address
+/// parts).
+final class CustomPlacePicked extends PlacePickerResult {
+  const CustomPlacePicked(this.place);
+
+  final SavedPlace place;
+}
+
 /// Wants to search a new address on the map.
 final class AddNewPlace extends PlacePickerResult {
   const AddNewPlace();
@@ -36,11 +45,19 @@ class PlacePickerSheet extends StatelessWidget {
     required this.title,
     required this.places,
     required this.selected,
+    this.allowAddNew = true,
+    this.emptyMessage,
   });
 
   final String title;
   final List<SavedPlace> places;
   final SavedPlace? selected;
+
+  /// Shows "Add a new address" (Google map search) — pick-up only.
+  final bool allowAddNew;
+
+  /// Shown when [places] is empty.
+  final String? emptyMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -51,19 +68,42 @@ class PlacePickerSheet extends StatelessWidget {
           AppSelectCard(
             title: place.name,
             subtitle: [place.address, ?place.detail].join(' · '),
-            icon: place.kind == PlaceKind.home
-                ? SvgPicture.asset(AppAssets.iconHome, width: 19, height: 18.2)
-                : SvgPicture.asset(AskRideAssets.school, width: 25, height: 25),
+            icon: savedPlaceIcon(place.kind),
             selected: place == selected,
             onTap: () => Navigator.of(context).pop(PlacePicked(place)),
           ),
-        _AddNewAddressTile(
-          onTap: () => Navigator.of(context).pop(const AddNewPlace()),
-        ),
+        if (places.isEmpty && emptyMessage != null)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(emptyMessage!, style: AppTextStyles.bodyL),
+          ),
+        if (allowAddNew)
+          _AddNewAddressTile(
+            onTap: () => Navigator.of(context).pop(const AddNewPlace()),
+          ),
       ],
     );
   }
 }
+
+/// Icon inside the [AppSelectCard] disc for a place of [kind].
+Widget savedPlaceIcon(PlaceKind kind) => switch (kind) {
+  PlaceKind.home => SvgPicture.asset(
+    AppAssets.iconHome,
+    width: 19,
+    height: 18.2,
+  ),
+  PlaceKind.school => SvgPicture.asset(
+    AskRideAssets.school,
+    width: 25,
+    height: 25,
+  ),
+  PlaceKind.custom => const AppIcon(
+    AskRideAssets.locationPin,
+    size: 22,
+    color: AppColors.ink,
+  ),
+};
 
 class _AddNewAddressTile extends StatelessWidget {
   const _AddNewAddressTile({required this.onTap});

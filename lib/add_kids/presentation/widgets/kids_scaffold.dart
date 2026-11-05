@@ -126,11 +126,11 @@ class KidsScaffold extends StatelessWidget {
             SizedBox(height: titleGap),
             Text(
               subtitle!,
-              style: KidsTextStyles.bodyM.copyWith(
-                color: _isDark
-                    ? AppColors.textOnDarkMuted
-                    : AppColors.textSecondary,
-              ),
+              style: _isDark
+                  ? KidsTextStyles.bodyM.copyWith(
+                      color: AppColors.textOnDarkMuted,
+                    )
+                  : KidsTextStyles.bodyM,
             ),
           ],
         ],

@@ -113,8 +113,13 @@ class AskRideProvider extends ChangeNotifier {
 
   bool _draftStillValid() =>
       _draft.kidIds.every((id) => _kids.any((k) => k.id == id)) &&
-      (_draft.pickup == null || _places.contains(_draft.pickup)) &&
-      (_draft.dropOff == null || _places.contains(_draft.dropOff));
+      (_draft.pickup == null ||
+          (_places.contains(_draft.pickup) &&
+              _draft.pickup!.kind == PlaceKind.home)) &&
+      (_draft.dropOff == null ||
+          _draft.dropOff!.isCustom ||
+          (_places.contains(_draft.dropOff) &&
+              _draft.dropOff!.kind == PlaceKind.school));
 
   SavedPlace? _schoolPlace(String? schoolId) => schoolId == null
       ? null
@@ -131,8 +136,9 @@ class AskRideProvider extends ChangeNotifier {
 
   bool isKidSelected(String id) => _draft.kidIds.contains(id);
 
-  /// Selecting kids also points the drop-off at their school and turns on
-  /// the booster seat when one of them needs it.
+  /// Selecting kids also points the drop-off at their school (unless a
+  /// custom drop-off was picked) and turns on the booster seat when one of
+  /// them needs it.
   void toggleKid(String id) {
     final ids = [..._draft.kidIds];
     ids.contains(id) ? ids.remove(id) : ids.add(id);
@@ -142,10 +148,11 @@ class AskRideProvider extends ChangeNotifier {
     ];
     final schoolIds = {for (final k in selected) k.schoolId};
     final school = schoolIds.length == 1 ? _schoolPlace(schoolIds.first) : null;
+    final keepCustom = _draft.dropOff?.isCustom ?? false;
     _update(
       _draft.copyWith(
         kidIds: ids,
-        dropOff: school == null ? null : () => school,
+        dropOff: school == null || keepCustom ? null : () => school,
         boosterSeat: selected.any((k) => k.needsBooster),
       ),
     );
@@ -156,8 +163,27 @@ class AskRideProvider extends ChangeNotifier {
   void setPickup(SavedPlace place) =>
       _update(_draft.copyWith(pickup: () => place));
 
+  /// Where drop-off searches are biased: the pick-up, else any saved
+  /// address with coordinates.
+  SavedPlace? get searchNear {
+    final pickup = _draft.pickup;
+    if (pickup != null && pickup.hasCoordinates) return pickup;
+    return _places
+        .where((p) => p.kind == PlaceKind.home && p.hasCoordinates)
+        .firstOrNull;
+  }
+
+  /// A kid's school, or a custom place picked from Google search.
   void setDropOff(SavedPlace place) =>
       _update(_draft.copyWith(dropOff: () => place));
+
+  /// Same saved place, or closer than
+  /// [AskRideApiConstants.samePlaceMeters] when both have coordinates.
+  static bool isSamePlace(SavedPlace a, SavedPlace b) {
+    if (a == b || (a.kind == b.kind && a.id == b.id)) return true;
+    final meters = a.metersTo(b);
+    return meters != null && meters < AskRideApiConstants.samePlaceMeters;
+  }
 
   /// Saves an address picked on the map and selects it as the pick-up
   /// ([pickup]) or drop-off. Returns an error message, or `null` on success.
@@ -193,10 +219,6 @@ class AskRideProvider extends ChangeNotifier {
       },
     );
   }
-
-  void swapPlaces() => _update(
-    _draft.copyWith(pickup: () => _draft.dropOff, dropOff: () => _draft.pickup),
-  );
 
   // ── Schedule ────────────────────────────────────────────────────────────
 
@@ -265,18 +287,24 @@ class AskRideProvider extends ChangeNotifier {
     final d = _draft;
     if (d.kidIds.isEmpty) return 'Choose which kid needs the ride.';
     if (d.pickup == null) return 'Choose where to pick up.';
-    if (d.dropOff == null) return 'Choose where to drop off.';
-    if (d.pickup == d.dropOff) {
-      return 'Pick-up and drop-off can’t be the same place.';
+    if (d.dropOff == null ||
+        (d.dropOff!.isCustom && !d.dropOff!.hasCoordinates)) {
+      return 'Choose where to drop off.';
     }
-    if (d.pickup!.kind != PlaceKind.home ||
-        d.dropOff!.kind != PlaceKind.school) {
-      return 'Rides go from one of your addresses to school.';
+    if (isSamePlace(d.pickup!, d.dropOff!)) {
+      return AskRideApiConstants.samePlaceMessage;
     }
-    final schoolIds = {for (final k in _selectedKids) k.schoolId};
-    if (schoolIds.length > 1) return 'Pick kids who go to the same school.';
-    if (schoolIds.first != d.dropOff!.id) {
-      return 'Drop-off must be ${_selectedKids.first.name}’s school.';
+    if (d.pickup!.kind != PlaceKind.home || d.dropOff!.kind == PlaceKind.home) {
+      return 'Rides go from one of your addresses to school or a place you '
+          'pick.';
+    }
+    // A custom drop-off doesn't need the kids' school.
+    if (d.dropOff!.kind == PlaceKind.school) {
+      final schoolIds = {for (final k in _selectedKids) k.schoolId};
+      if (schoolIds.length > 1) return 'Pick kids who go to the same school.';
+      if (schoolIds.first != d.dropOff!.id) {
+        return 'Drop-off must be ${_selectedKids.first.name}’s school.';
+      }
     }
     if (d.kidIds.length > 4) return 'A ride can take up to 4 kids.';
     final schedule = d.schedule;
@@ -335,6 +363,7 @@ class AskRideProvider extends ChangeNotifier {
             timeZone: timeZone,
             pickupAddressId: d.pickup!.id,
             note: _noteForDriver(d),
+            dropoff: dropOffAddress(d.dropOff!),
           ),
         );
         final failure = result.getLeft().toNullable();
@@ -364,7 +393,22 @@ class AskRideProvider extends ChangeNotifier {
     }
   }
 
-  /// The backend only stores the trip to school; the return trip and an
+  /// `dropoffAddress` for a custom drop-off; `null` for a school (the
+  /// request then looks exactly like before).
+  static DropOffAddress? dropOffAddress(SavedPlace place) {
+    if (!place.isCustom || !place.hasCoordinates) return null;
+    return DropOffAddress(
+      label: place.name,
+      addressLine1: place.addressLine1,
+      city: place.city,
+      state: place.state,
+      zip: place.zip,
+      latitude: place.latitude!,
+      longitude: place.longitude!,
+    );
+  }
+
+  /// The backend only stores the one-way trip; the return trip and an
   /// extra booster request travel in the note for the driver.
   String _noteForDriver(RideRequest d) {
     final kidsNeedBooster = _selectedKids.any((k) => k.needsBooster);

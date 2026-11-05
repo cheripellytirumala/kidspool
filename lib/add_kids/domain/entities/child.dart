@@ -73,7 +73,7 @@ class ChildDraft {
     required this.lastName,
     required this.dateOfBirth,
     required this.grade,
-    required this.schoolId,
+    this.schoolId,
     required this.medicalNotes,
     required this.needsBooster,
     this.newPhotoPath,
@@ -86,7 +86,9 @@ class ChildDraft {
   final String lastName;
   final DateTime dateOfBirth;
   final String? grade;
-  final String schoolId;
+
+  /// Chosen later on F08/F09 (`update-kid`); `null` keeps the current one.
+  final String? schoolId;
   final String medicalNotes;
   final bool needsBooster;
 

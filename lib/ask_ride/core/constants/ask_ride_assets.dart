@@ -17,6 +17,10 @@ abstract final class AskRideAssets {
   // Form
   static const String school = '$_icons/ask_ride_school.svg';
   static const String schoolSmall = '$_icons/ask_ride_school_small.svg';
+
+  /// Map pin of a custom drop-off (shared with ride tracking).
+  static const String locationPin = '$_icons/ride_location_pin_18.svg';
+  static const String locationPinSmall = '$_icons/ride_location_pin.svg';
   static const String homeOutlineSmall =
       '$_icons/ask_ride_home_outline_small.svg';
   static const String dashedLine = '$_icons/ask_ride_dashed_line.svg';

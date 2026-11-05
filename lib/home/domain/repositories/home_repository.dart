@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/failures.dart';
+import '../entities/family.dart';
 import '../entities/ride_activity.dart';
 import '../entities/upcoming_ride.dart';
 
@@ -20,4 +21,13 @@ abstract interface class HomeRepository {
 
   /// Marks every current notification as seen.
   Future<Either<Failure, Unit>> markNotificationsSeen();
+
+  /// Families whose kids share a school with the user's kids, nearest
+  /// first (`get_families_near_me`). Fails with code
+  /// `HomeApiConstants.familiesNearMeMissing` when the RPC isn't on the
+  /// server; once seen, that failure is returned without another request.
+  Future<Either<Failure, FamiliesNearMe>> getFamiliesNearMe({
+    String? schoolId,
+    double? radiusMiles,
+  });
 }

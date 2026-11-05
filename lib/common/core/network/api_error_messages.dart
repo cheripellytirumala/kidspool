@@ -21,6 +21,8 @@ abstract final class ApiErrorMessages {
     'role_required': 'Tell us what you want to do on KidPool first.',
     'not_a_parent': 'Only parent accounts can do this.',
     'not_approved': 'Your ID is still being reviewed. We’ll let you know soon.',
+    'school_required':
+        'Add your child’s school first (Where do your kids go?).',
     // Identity
     'already_submitted': 'Your ID is already being reviewed.',
     'already_approved': 'Your ID is already verified.',

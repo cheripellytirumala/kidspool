@@ -88,7 +88,8 @@ class LiveTrackingSheet extends StatelessWidget {
         DriverRideAction.start => 'Start ride',
         DriverRideAction.pickedUp =>
           'Picked up ${RideFormat.names(t.kidNames, fallback: 'the kids')}',
-        DriverRideAction.complete => 'Dropped off at school',
+        DriverRideAction.complete =>
+          t.hasCustomDropoff ? 'Dropped off' : 'Dropped off at school',
       };
 }
 
@@ -163,7 +164,7 @@ class _Route extends StatelessWidget {
                 children: [
                   _stop(tracking.pickup.label),
                   const SizedBox(height: 14),
-                  _stop(tracking.school.label),
+                  _stop(tracking.destination.label),
                 ],
               ),
             ),

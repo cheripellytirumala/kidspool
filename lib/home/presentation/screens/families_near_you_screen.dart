@@ -7,7 +7,9 @@ import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
+import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
+import '../../../common/presentation/widgets/app_loader.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 import '../../domain/entities/kid_place.dart';
@@ -25,6 +27,9 @@ import '../widgets/send_message_sheet.dart';
 ///   starts selecting with that family checked.
 /// * Select (1018:9238 / 1018:9436): ride summary, filters, "Select All",
 ///   checkable rows, Cancel / Say Hi → "Send Message" sheet → message sent.
+///
+/// Families come from `get_families_near_me`; the place switch has one chip
+/// per school in the results. Pull to refresh.
 ///
 /// Push with `arguments: FamiliesNearYouScreen.selectArgument` (or `true`)
 /// to open straight in select mode from the ask-for-a-ride flow.
@@ -46,6 +51,7 @@ class FamiliesNearYouScreen extends StatelessWidget {
       create: (_) {
         final provider = sl<FamiliesNearYouProvider>();
         if (select) provider.startInSelectMode();
+        Future.microtask(provider.load);
         return provider;
       },
       child: const _FamiliesView(),
@@ -71,70 +77,99 @@ class _FamiliesView extends StatelessWidget {
         value: SystemUiOverlayStyle.dark,
         child: Scaffold(
           backgroundColor: AppColors.screen,
-          body: SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                  child: CircleIconButton(
-                    asset: HomeAssets.iconArrowLeft,
-                    tooltip: 'Back',
-                    onPressed: () => Navigator.of(context).maybePop(),
-                  ),
-                ),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                    children: [
-                      Text('Families near you', style: AppTextStyles.displayL),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Going to the same places as your kids',
-                        style: HomeTextStyles.bodyM,
-                      ),
-                      const SizedBox(height: 12),
-                      if (selecting) ...[
-                        RideSummaryCard(
-                          ride: provider.ride,
-                          onEdit: () => _editRide(context, provider),
-                        ),
-                        const SizedBox(height: 12),
-                        const _FilterRow(),
-                        const SizedBox(height: 12),
-                        _SelectAllRow(
-                          checked: provider.allVisibleSelected,
-                          onTap: provider.toggleAllVisible,
-                        ),
-                      ] else
-                        const _PlaceSwitch(),
-                      for (final family in provider.visibleFamilies) ...[
-                        const SizedBox(height: 12),
-                        FamilyListCard(
-                          family: family,
-                          selectable: selecting,
-                          selected: provider.isSelected(family),
-                          onTap: () => selecting
-                              ? provider.toggle(family)
-                              : provider.beginSelection(family),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                if (selecting)
-                  _SelectActions(
-                    canSayHi: provider.hasSelection,
-                    onCancel: () => provider.startedInSelectMode
-                        ? Navigator.of(context).maybePop()
-                        : provider.cancelSelection(),
-                    onSayHi: () => SendMessageSheet.show(
-                      context,
-                      provider: provider,
-                      onSend: () => _send(context, provider.selectedCount),
+          body: AppLoadingOverlay(
+            isLoading: provider.isLoading,
+            child: SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+                    child: CircleIconButton(
+                      asset: HomeAssets.iconArrowLeft,
+                      tooltip: 'Back',
+                      onPressed: () => Navigator.of(context).maybePop(),
                     ),
                   ),
-              ],
+                  Expanded(
+                    child: RefreshIndicator(
+                      onRefresh: provider.load,
+                      color: AppColors.ink,
+                      child: ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                        children: [
+                          Text(
+                            'Families near you',
+                            style: AppTextStyles.displayL,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Going to the same places as your kids',
+                            style: HomeTextStyles.bodyM,
+                          ),
+                          const SizedBox(height: 12),
+                          if (selecting) ...[
+                            if (provider.ride case final ride?)
+                              RideSummaryCard(
+                                ride: ride,
+                                onEdit: () => _editRide(context, provider),
+                              ),
+                            if (provider.families.isNotEmpty) ...[
+                              const SizedBox(height: 12),
+                              const _FilterRow(),
+                              const SizedBox(height: 12),
+                              _SelectAllRow(
+                                checked: provider.allVisibleSelected,
+                                onTap: provider.toggleAllVisible,
+                              ),
+                            ],
+                          ] else if (provider.families.isNotEmpty)
+                            const _PlaceSwitch(),
+                          if (provider.emptyMessage case final message?) ...[
+                            const SizedBox(height: 12),
+                            _EmptyCard(
+                              message: message,
+                              actionLabel:
+                                  provider.emptyState ==
+                                      FamiliesEmptyState.noSchool
+                                  ? 'Add your kids’ school'
+                                  : null,
+                              onAction: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.whereKidsGo,
+                              ).then((_) => provider.load()),
+                            ),
+                          ],
+                          for (final family in provider.visibleFamilies) ...[
+                            const SizedBox(height: 12),
+                            FamilyListCard(
+                              family: family,
+                              selectable: selecting,
+                              selected: provider.isSelected(family),
+                              onTap: () => selecting
+                                  ? provider.toggle(family)
+                                  : provider.beginSelection(family),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (selecting)
+                    _SelectActions(
+                      canSayHi: provider.hasSelection,
+                      onCancel: () => provider.startedInSelectMode
+                          ? Navigator.of(context).maybePop()
+                          : provider.cancelSelection(),
+                      onSayHi: () => SendMessageSheet.show(
+                        context,
+                        provider: provider,
+                        onSend: () => _send(context, provider.selectedCount),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         ),
@@ -182,6 +217,42 @@ class _PlaceSwitch extends StatelessWidget {
             onTap: () => provider.selectPlace(place.id),
           ),
       ],
+    );
+  }
+}
+
+/// Empty / error state: a surface card with the reason and, when the user
+/// can fix it, a button.
+class _EmptyCard extends StatelessWidget {
+  const _EmptyCard({
+    required this.message,
+    required this.onAction,
+    this.actionLabel,
+  });
+
+  final String message;
+  final String? actionLabel;
+  final VoidCallback onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = actionLabel;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDimens.radiusRow),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(message, style: HomeTextStyles.bodyM),
+          if (label != null) ...[
+            const SizedBox(height: 12),
+            AppButton(label: label, onPressed: onAction),
+          ],
+        ],
+      ),
     );
   }
 }

@@ -9,9 +9,18 @@ abstract final class KidsApiConstants {
   /// photoPath, schoolIdCardPath}]`.
   static const String getMyKids = 'get_my_kids';
 
-  /// `get_schools(search)` → `[{id, name, addressLine, city, state, zip,
-  /// latitude, longitude}]` (max 50).
-  static const String getSchools = 'get_schools';
+  /// `school_from_place(placeId, name, addressLine, city, state, zip,
+  /// latitude, longitude)` → `{id, name, addressLine, city, state, zip}`.
+  /// Finds or creates the `schools` row for a Google place.
+  static const String schoolFromPlace = 'school_from_place';
+
+  /// `get_my_addresses()` → `[{id, label, addressLine1, ..., latitude,
+  /// longitude, isDefault}]`; used to search "near home".
+  static const String getMyAddresses = 'get_my_addresses';
+
+  /// PostgREST code when an RPC isn't deployed (or the schema cache is
+  /// stale).
+  static const String functionNotFound = 'PGRST202';
 
   // Edge Functions
   /// multipart: firstName, dateOfBirth, schoolId, schoolIdCard (required);

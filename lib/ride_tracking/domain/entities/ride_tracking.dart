@@ -59,7 +59,7 @@ class RideLocation extends Equatable {
   List<Object?> get props => [point, heading, speed, at];
 }
 
-/// A named stop on the route: the pickup or the school.
+/// A named stop on the route: the pickup, the school or a custom drop-off.
 class RideStop extends Equatable {
   const RideStop({required this.label, this.point});
 
@@ -137,6 +137,7 @@ class RideTracking extends Equatable {
     this.completedAt,
     required this.pickup,
     required this.school,
+    this.dropoff,
     this.location,
     this.distanceMiles,
     this.plannedTripMiles,
@@ -161,6 +162,9 @@ class RideTracking extends Equatable {
   final DateTime? completedAt;
   final RideStop pickup;
   final RideStop school;
+
+  /// Custom drop-off (`dropoff`); `null` → the ride goes to [school].
+  final RideStop? dropoff;
   final RideLocation? location;
 
   /// Driven since pickup (or the planned trip when GPS was missing).
@@ -188,8 +192,14 @@ class RideTracking extends Equatable {
       status == RideTrackingStatus.expired ||
       status == RideTrackingStatus.missed;
 
-  /// Where the car is heading next: the pickup, then the school.
-  RideStop get nextStop => pickedUp ? school : pickup;
+  /// Where the kids are dropped off: the custom drop-off, else the school.
+  RideStop get destination => dropoff ?? school;
+
+  /// The ride goes to a place picked on the map, not the school.
+  bool get hasCustomDropoff => dropoff != null;
+
+  /// Where the car is heading next: the pickup, then [destination].
+  RideStop get nextStop => pickedUp ? destination : pickup;
 
   List<String> get kidNames => [for (final k in kids) k.firstName];
 
@@ -201,10 +211,10 @@ class RideTracking extends Equatable {
     return from.metersTo(to);
   }
 
-  /// The car is inside the school geofence.
+  /// The car is inside the [destination] geofence.
   bool get inSchoolZone {
     final from = location?.point;
-    final to = school.point;
+    final to = destination.point;
     if (from == null || to == null) return false;
     return from.metersTo(to) <= RideTrackingApiConstants.schoolZoneMeters * 5;
   }
@@ -244,6 +254,7 @@ class RideTracking extends Equatable {
     completedAt: completedAt,
     pickup: pickup,
     school: school,
+    dropoff: dropoff,
     location: location,
     distanceMiles: distanceMiles,
     plannedTripMiles: plannedTripMiles,
@@ -268,6 +279,7 @@ class RideTracking extends Equatable {
     completedAt,
     pickup,
     school,
+    dropoff,
     location,
     distanceMiles,
     plannedTripMiles,

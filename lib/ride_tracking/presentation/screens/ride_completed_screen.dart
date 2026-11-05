@@ -285,7 +285,7 @@ class _ParentHero extends StatelessWidget {
           Semantics(
             header: true,
             child: Text(
-              '$kids arrived at ${t.school.label}',
+              '$kids arrived at ${t.destination.label}',
               textAlign: TextAlign.center,
               style: RideTextStyles.completedTitle,
             ),
@@ -345,7 +345,7 @@ class _DriverHero extends StatelessWidget {
           icon: RideTrackingAssets.locationPin18,
           iconSize: 18,
           text: [
-            t.school.label,
+            t.destination.label,
             if (at != null) RideFormat.clock(at),
           ].join(' · '),
           style: RideTextStyles.body17,
@@ -400,7 +400,10 @@ class _ParentToldCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 1),
                 Text(
-                  'They got “$kids arrived at school”',
+                  tracking.hasCustomDropoff
+                      ? 'They got “$kids arrived at '
+                            '${tracking.destination.label}”'
+                      : 'They got “$kids arrived at school”',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: RideTextStyles.body14,

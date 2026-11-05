@@ -1,7 +1,8 @@
 import '../../../domain/entities/place.dart';
 
-/// Local list of after-school activities. Schools come from the
-/// `get_schools` RPC; the backend has no activities table yet.
+/// Built-in sample activities, still resolvable by id. F09 searches
+/// Google Places for both schools and activities; the backend has no
+/// activities table yet, so picked activities stay on the device.
 class PlaceCatalog {
   const PlaceCatalog();
 

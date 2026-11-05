@@ -121,7 +121,7 @@ class AuthFlowProvider extends ChangeNotifier {
   bool get isGuardian => _isGuardian;
   bool get agreedToTerms => _agreedToTerms;
 
-  /// Profile photo, sent as the selfie the reviewer compares with the ID.
+  /// Optional profile photo, sent as the selfie when the parent adds one.
   String? get selfiePath => _selfiePath;
   bool get isLocating => _isLocating;
   bool get isSaving => _isSaving;
@@ -138,7 +138,6 @@ class AuthFlowProvider extends ChangeNotifier {
               _zip.trim().isNotEmpty &&
               _city.trim().isNotEmpty &&
               _stateCode.trim().isNotEmpty)) &&
-      _selfiePath != null &&
       _role != null &&
       _isGuardian &&
       _agreedToTerms;
@@ -303,7 +302,6 @@ class AuthFlowProvider extends ChangeNotifier {
     if (front == null || _idBackPath == null) {
       return 'Take a photo of both sides of your license.';
     }
-    if (selfie == null) return 'Add a profile photo on the previous step.';
     if (_firstName.trim().isEmpty || _lastName.trim().isEmpty) {
       return 'Add your first and last name on the previous step.';
     }
@@ -370,13 +368,33 @@ class AuthFlowProvider extends ChangeNotifier {
     });
   }
 
+  /// Whether the name typed on About you matches the license photo.
+  LicenseNameCheck get licenseNameCheck =>
+      checkLicenseName(_license, firstName: _firstName, lastName: _lastName);
+
   /// True when the license name clearly differs from the typed name.
-  bool get licenseNameMismatch {
-    final l = _license;
-    if (l == null || l.firstName == null || l.lastName == null) return false;
-    String norm(String v) => v.toLowerCase().replaceAll(RegExp(r'[^a-z]'), '');
-    return norm(l.lastName!) != norm(_lastName) ||
-        !norm(l.firstName!).startsWith(norm(_firstName.split(' ').first));
+  bool get licenseNameMismatch => licenseNameCheck == LicenseNameCheck.mismatch;
+
+  /// The identity can be sent once the first **or** last name typed on
+  /// About you appears on the license.
+  static LicenseNameCheck checkLicenseName(
+    LicenseDetails? license, {
+    required String firstName,
+    required String lastName,
+  }) {
+    final read = license?.fullName ?? '';
+    if (read.trim().isEmpty) return LicenseNameCheck.unreadable;
+    Set<String> words(String v) => v
+        .toLowerCase()
+        .split(RegExp(r'[\s-]+'))
+        .map((w) => w.replaceAll(RegExp(r'[^a-z]'), ''))
+        .where((w) => w.length > 1)
+        .toSet();
+    final onLicense = words(read);
+    final typed = {...words(firstName), ...words(lastName)};
+    return typed.any(onLicense.contains)
+        ? LicenseNameCheck.matches
+        : LicenseNameCheck.mismatch;
   }
 
   /// Uses the name read from the license for the identity submission.
@@ -406,4 +424,16 @@ class AuthFlowProvider extends ChangeNotifier {
     change();
     notifyListeners();
   }
+}
+
+/// Result of comparing the typed name with the name read from the license.
+enum LicenseNameCheck {
+  /// First or last name appears on the license.
+  matches,
+
+  /// A name was read, but neither the first nor the last name is on it.
+  mismatch,
+
+  /// No name could be read from the photos.
+  unreadable,
 }

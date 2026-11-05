@@ -24,8 +24,9 @@ class AppBottomNav extends StatelessWidget {
   /// Route for each tab; `null` = not built yet (tab is inert).
   static String? routeOf(AppTab tab) => switch (tab) {
     AppTab.home => AppRoutes.home,
+    AppTab.messages => AppRoutes.messages,
     AppTab.profile => AppRoutes.profile,
-    AppTab.messages || AppTab.rides => null,
+    AppTab.rides => null,
   };
 
   void _defaultSelect(BuildContext context, AppTab tab) {

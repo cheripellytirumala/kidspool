@@ -76,7 +76,7 @@ class _RideMapState extends State<RideMap> {
 
   void _loadMarkers() {
     if (_mapAvailable == false) return;
-    final label = widget.tracking?.school.label ?? '';
+    final label = widget.tracking?.destination.label ?? '';
     if (_markersFor == label) return;
     _markersFor = label;
     final ratio = MediaQuery.devicePixelRatioOf(context);
@@ -93,7 +93,7 @@ class _RideMapState extends State<RideMap> {
     return [
       ?t.location?.point,
       if (!t.pickedUp) ?t.pickup.point,
-      ?t.school.point,
+      ?t.destination.point,
     ].map(_ll).toList();
   }
 
@@ -134,11 +134,44 @@ class _RideMapState extends State<RideMap> {
     unawaited(controller.animateCamera(update).catchError((Object _) {}));
   }
 
+  /// Opens already framing every stop. Starting zoomed in on one end of a
+  /// very long route made the iOS Maps SDK lay out the whole route at street
+  /// zoom and freeze the app.
   CameraPosition get _initialCamera {
     final points = _focusPoints;
-    return points.isEmpty
-        ? _fallbackCamera
-        : CameraPosition(target: points.first, zoom: 14);
+    if (points.isEmpty) return _fallbackCamera;
+    if (points.length == 1) {
+      return CameraPosition(target: points.first, zoom: 14);
+    }
+    var south = points.first.latitude, north = south;
+    var west = points.first.longitude, east = west;
+    for (final p in points) {
+      south = math.min(south, p.latitude);
+      north = math.max(north, p.latitude);
+      west = math.min(west, p.longitude);
+      east = math.max(east, p.longitude);
+    }
+    final span = math.max(north - south, (east - west).abs());
+    // ~360° fills the world at zoom 0; leave room for the header and sheet.
+    final zoom = span <= 0
+        ? 14.0
+        : (math.log(360 / span) / math.ln2 - 1.5).clamp(1.0, 15.0).toDouble();
+    return CameraPosition(
+      target: LatLng((south + north) / 2, (west + east) / 2),
+      zoom: zoom,
+    );
+  }
+
+  /// Dotted patterns are laid out dot by dot by the SDK; keep them for
+  /// normal trips only.
+  static const double _maxDottedMeters = 50000;
+
+  static double _lengthMeters(List<ride.GeoPoint> points) {
+    var total = 0.0;
+    for (var i = 0; i < points.length - 1; i++) {
+      total += points[i].metersTo(points[i + 1]);
+    }
+    return total;
   }
 
   Set<Marker> _buildMarkers() {
@@ -154,7 +187,7 @@ class _RideMapState extends State<RideMap> {
           anchor: const Offset(0.5, 0.5),
           infoWindow: InfoWindow(title: t.pickup.label),
         ),
-      if (t.school.point case final p?)
+      if (t.destination.point case final p?)
         Marker(
           markerId: const MarkerId('school'),
           position: _ll(p),
@@ -178,7 +211,11 @@ class _RideMapState extends State<RideMap> {
     if (t == null) return const {};
     final car = t.location?.point;
     final driven = [...t.path, ?car];
-    final ahead = [?car, if (!t.pickedUp) ?t.pickup.point, ?t.school.point];
+    final ahead = [
+      ?car,
+      if (!t.pickedUp) ?t.pickup.point,
+      ?t.destination.point,
+    ];
     return {
       if (driven.length > 1)
         Polyline(
@@ -196,13 +233,15 @@ class _RideMapState extends State<RideMap> {
           points: ahead.map(_ll).toList(),
           color: RideColors.routeAhead,
           width: 4,
-          patterns: [PatternItem.dot, PatternItem.gap(10)],
+          patterns: _lengthMeters(ahead) <= _maxDottedMeters
+              ? [PatternItem.dot, PatternItem.gap(10)]
+              : const [],
         ),
     };
   }
 
   Set<Circle> _buildCircles() {
-    final school = widget.tracking?.school.point;
+    final school = widget.tracking?.destination.point;
     if (school == null) return const {};
     return {
       Circle(
@@ -219,7 +258,7 @@ class _RideMapState extends State<RideMap> {
   @override
   Widget build(BuildContext context) {
     if (_mapAvailable != true) {
-      return RideStaticMap(schoolLabel: widget.tracking?.school.label);
+      return RideStaticMap(schoolLabel: widget.tracking?.destination.label);
     }
     return Listener(
       onPointerDown: (_) => _lastTouch = DateTime.now(),

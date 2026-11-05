@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/failures.dart';
 import '../entities/child.dart';
+import '../entities/geo_point.dart';
 import '../entities/place.dart';
 
 /// Kids contract. Methods return `Future<Either<Failure, T>>`.
@@ -14,8 +15,12 @@ abstract interface class KidsRepository {
 
   Future<Either<Failure, Unit>> deleteKid(String id);
 
-  /// Active schools matching [query] (`get_schools`).
-  Future<Either<Failure, List<Place>>> searchSchools(String query);
+  /// The `schools.id` for a school picked from Google search
+  /// (`school_from_place`; the same Google place always gives the same id).
+  Future<Either<Failure, String>> schoolFromPlace(Place place);
+
+  /// Coordinates of the parent's default saved address, or `null`.
+  Future<Either<Failure, GeoPoint?>> homeLocation();
 
   /// Sets [schoolId] as the school of every kid in [kidIds].
   Future<Either<Failure, Unit>> assignSchool({

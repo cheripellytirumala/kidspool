@@ -7,7 +7,7 @@ import '../../core/constants/kids_styles.dart';
 import 'icon_disc.dart';
 
 /// White field row of the F06 form ("Dropdown · Name/Age/Grade/Medical"):
-/// 40px icon disc, 14px label and a 16px value. Editable when a
+/// 40px icon disc, 12px label and a 16px value. Editable when a
 /// [controller] is given, otherwise a tappable picker with a chevron.
 class KidFieldTile extends StatelessWidget {
   const KidFieldTile({
@@ -36,7 +36,7 @@ class KidFieldTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hintStyle = KidsTextStyles.labelL.copyWith(
-      color: AppColors.textSecondary,
+      color: KidsColors.textSecondary,
     );
 
     final Widget valueWidget = _isPicker

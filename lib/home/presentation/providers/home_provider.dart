@@ -5,27 +5,28 @@ import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/error/failures.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../../common/domain/repositories/account_repository.dart';
-import '../../data/sample/home_sample_data.dart';
 import '../../domain/entities/family.dart';
 import '../../domain/entities/home_role.dart';
 import '../../domain/entities/ride_activity.dart';
 import '../../domain/entities/upcoming_ride.dart';
 import '../../domain/repositories/home_repository.dart';
+import '../../domain/usecases/get_families_near_me.dart';
 
 /// State holder for the Home dashboard: the parent's name
 /// (`get_my_status`), upcoming rides (`get_my_ride_requests`), drives the
 /// user gives (`get_my_drives`), the booked ride's driver and route group
-/// (`get_request_activity`) and the bell dot (`get_my_notifications`).
+/// (`get_request_activity`), the bell dot (`get_my_notifications`) and the
+/// FAMILIES preview (`get_families_near_me`).
 /// Registered as a lazy singleton so the user's role survives navigation.
-///
-/// Families are still sample data: the backend has no families/messages API.
 class HomeProvider extends ChangeNotifier {
   HomeProvider({
     required HomeRepository repository,
     required AccountRepository account,
     required SharedPreferences preferences,
+    required GetFamiliesNearMe getFamiliesNearMe,
     DateTime Function()? clock,
   }) : _repository = repository,
+       _getFamiliesNearMe = getFamiliesNearMe,
        _account = account,
        _preferences = preferences,
        _clock = clock ?? DateTime.now {
@@ -40,6 +41,7 @@ class HomeProvider extends ChangeNotifier {
   }
 
   final HomeRepository _repository;
+  final GetFamiliesNearMe _getFamiliesNearMe;
   final AccountRepository _account;
   final SharedPreferences _preferences;
   final DateTime Function() _clock;
@@ -52,6 +54,7 @@ class HomeProvider extends ChangeNotifier {
   List<UpcomingRide> _drives = const [];
   RideActivity? _activity;
   bool _hasUnseenNotifications = false;
+  List<Family> _families = const [];
 
   ViewStatus get status => _status;
   bool get isLoading => _status.isLoading;
@@ -90,10 +93,13 @@ class HomeProvider extends ChangeNotifier {
       _repository.getUpcomingRides(),
       _repository.getUpcomingDrives(),
       _repository.hasUnseenNotifications(),
+      _getFamiliesNearMe(const GetFamiliesNearMeParams()),
     ).wait;
     results.$1.match((_) {}, (me) => _firstName = me.firstName);
     _drives = results.$3.getOrElse((_) => const []);
     _hasUnseenNotifications = results.$4.getOrElse((_) => false);
+    // Optional: a failure (or a server without the RPC) hides FAMILIES.
+    _families = results.$5.match((_) => const [], (data) => data.families);
     final failure = results.$2.match((f) => f, (rides) {
       _rides = rides;
       return null;
@@ -194,9 +200,9 @@ class HomeProvider extends ChangeNotifier {
     return '${ride.pickupLabel} · $day${_time(at)}';
   }
 
-  /// "Lincoln Elementary"
+  /// "Lincoln Elementary", or the custom drop-off.
   String get featuredDestination {
-    final name = featuredRide?.schoolName ?? '';
+    final name = featuredRide?.destinationName ?? '';
     return name.isEmpty ? 'School' : name;
   }
 
@@ -258,10 +264,8 @@ class HomeProvider extends ChangeNotifier {
     return '$h:$m ${at.hour < 12 ? 'AM' : 'PM'}';
   }
 
-  List<Family> get previewFamilies => [
-    for (final id in HomeSampleData.previewFamilyIds)
-      HomeSampleData.families.firstWhere((f) => f.id == id),
-  ];
+  /// The nearest three families; empty hides the FAMILIES section.
+  List<Family> get previewFamilies => _families.take(3).toList();
 
   void _setStatus(ViewStatus status, {Failure? failure}) {
     _status = status;

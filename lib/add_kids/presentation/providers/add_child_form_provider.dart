@@ -9,8 +9,9 @@ import 'kids_provider.dart';
 /// Form state of F06 · Add a child. One instance per screen.
 ///
 /// The form card is either closed, adding a new child ([editingId] == null)
-/// or editing an existing one. Saving calls `add-kid` / `update-kid`, which
-/// require a date of birth, a school and (for a new kid) a school ID card.
+/// or editing an existing one. Saving calls `add-kid` / `update-kid` with the
+/// Easy-flow F06 fields (name, age, grade, medical notes, photo). The school
+/// is chosen later on "Where do your kids go?" (F08/F09).
 class AddChildFormProvider extends ChangeNotifier {
   AddChildFormProvider(this._kids, this._photos) {
     for (final controller in [firstName, lastName, medicalNotes]) {
@@ -79,9 +80,7 @@ class AddChildFormProvider extends ChangeNotifier {
       !isSaving &&
       firstName.text.trim().isNotEmpty &&
       _dateOfBirth != null &&
-      _grade != null &&
-      _school != null &&
-      hasSchoolIdCard;
+      _grade != null;
 
   /// Continue is available once there is at least one kid and no open form.
   bool get canContinue => !_isOpen && _kids.hasChildren;
@@ -161,7 +160,8 @@ class AddChildFormProvider extends ChangeNotifier {
         lastName: lastName.text,
         dateOfBirth: _dateOfBirth!,
         grade: _grade,
-        schoolId: _school!.id,
+        // Editing keeps the school set on F09; a new kid has none yet.
+        schoolId: _school?.id,
         medicalNotes: medicalNotes.text,
         needsBooster: _needsBooster,
         newPhotoPath: _newPhotoPath,

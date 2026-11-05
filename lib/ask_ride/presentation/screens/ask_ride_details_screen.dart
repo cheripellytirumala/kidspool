@@ -13,8 +13,10 @@ import '../../../common/presentation/widgets/app_snack.dart';
 import '../../../common/presentation/widgets/app_toggle.dart';
 import '../../domain/entities/ride_schedule.dart';
 import '../providers/ask_ride_provider.dart';
+import '../providers/drop_off_search_provider.dart';
 import '../widgets/ask_ride_common.dart';
 import '../widgets/ask_ride_sheet.dart';
+import '../widgets/drop_off_picker_sheet.dart';
 import '../widgets/frequency_option_card.dart';
 import '../widgets/kid_chip.dart';
 import '../widgets/place_picker_sheet.dart';
@@ -24,6 +26,7 @@ import '../widgets/route_card.dart';
 import '../widgets/schedule_sheets.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/screens/map_address_picker_screen.dart';
+import '../../domain/entities/saved_place.dart';
 
 /// G1 · Ask for a ride · details.
 ///
@@ -143,7 +146,8 @@ class _Form extends StatelessWidget {
         ].join(' · '),
         onPickupTap: () => _pickPlace(context, pickup: true),
         onDropOffTap: () => _pickPlace(context, pickup: false),
-        onSwap: provider.swapPlaces,
+        // No "Swap": create_ride_request goes from an address to the kids'
+        // school or a picked place; the way back is the return trip below.
       ),
       FrequencyOptionCard(
         title: 'Just once',
@@ -209,11 +213,30 @@ class _Form extends StatelessWidget {
     final title = pickup ? 'Pick up from' : 'Drop off at';
     final result = await showAskRideSheet<PlacePickerResult>(
       context,
-      PlacePickerSheet(
-        title: title,
-        places: provider.places,
-        selected: pickup ? provider.draft.pickup : provider.draft.dropOff,
-      ),
+      pickup
+          ? PlacePickerSheet(
+              title: title,
+              places: [
+                for (final place in provider.places)
+                  if (place.kind == PlaceKind.home) place,
+              ],
+              selected: provider.draft.pickup,
+            )
+          // Drop-off: the kids' schools, or any place from Google search.
+          : ChangeNotifierProvider<DropOffSearchProvider>(
+              create: (_) =>
+                  sl<DropOffSearchProvider>()..setNear(provider.searchNear),
+              child: DropOffPickerSheet(
+                schools: [
+                  for (final place in provider.places)
+                    if (place.kind == PlaceKind.school) place,
+                ],
+                selected: provider.draft.dropOff,
+                emptyMessage:
+                    'Add your child’s school first: Profile → your kid → '
+                    'Add school or activity.',
+              ),
+            ),
     );
     if (!context.mounted) return;
     switch (result) {
@@ -221,6 +244,8 @@ class _Form extends StatelessWidget {
         return;
       case PlacePicked(:final place):
         pickup ? provider.setPickup(place) : provider.setDropOff(place);
+      case CustomPlacePicked(:final place):
+        provider.setDropOff(place);
       case AddNewPlace():
         final picked = await MapAddressPickerScreen.open(
           context,

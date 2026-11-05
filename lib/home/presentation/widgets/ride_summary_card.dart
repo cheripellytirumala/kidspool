@@ -27,7 +27,9 @@ class RideSummaryCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
           child: Row(
             children: [
-              PersonAvatar(ride.childAvatarAsset, size: 40),
+              ride.childPhoto == null
+                  ? PersonAvatar.initials(ride.childInitial, size: 40)
+                  : PersonAvatar(ride.childPhoto!, size: 40),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

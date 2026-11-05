@@ -7,8 +7,8 @@ import 'kid_tab.dart';
 import 'kids_tip.dart';
 import 'places_group_card.dart';
 
-/// Kid tabs + the selected kid's places + tip. Shared by F08 (empty),
-/// F10 (behind the sheet) and F11 (filled).
+/// Kid tabs + the selected kid's places + tip on WhereKidsGoScreen: F08
+/// (empty, also behind the F09/F10 sheets) and F11 (filled).
 class KidsPlacesBoard extends StatelessWidget {
   const KidsPlacesBoard({
     super.key,

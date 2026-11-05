@@ -22,6 +22,7 @@ abstract final class KidsAssets {
   static const String check11 = '$_icons/kids_check_11.svg';
   static const String check18 = '$_icons/kids_check_18.svg';
   static const String shield16 = '$_icons/kids_shield_16.svg';
+  static const String camera18 = '$_icons/kids_camera_18.svg';
 
   // Form fields (F06)
   static const String person = '$_icons/kids_person.svg';
@@ -74,6 +75,12 @@ abstract final class KidsAssets {
       PlaceCategory.music => size <= 16 ? music14 : music20,
       PlaceCategory.swim => swim14,
       PlaceCategory.dance => dance14,
+      // Any other activity: the generic ball used by the "Activity" tab.
+      PlaceCategory.activity => switch (size) {
+        <= 18 => ball16,
+        <= 24 => ball24,
+        _ => ball25,
+      },
     };
   }
 }

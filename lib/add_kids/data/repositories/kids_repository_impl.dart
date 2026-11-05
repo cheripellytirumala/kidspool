@@ -5,6 +5,7 @@ import '../../../common/core/error/failures.dart';
 import '../../../common/core/utils/json_parser.dart';
 import '../../../common/core/utils/logger.dart';
 import '../../domain/entities/child.dart';
+import '../../domain/entities/geo_point.dart';
 import '../../domain/entities/place.dart';
 import '../../domain/repositories/kids_repository.dart';
 import '../data_sources/local/kids_local_data_source.dart';
@@ -56,8 +57,15 @@ class KidsRepositoryImpl implements KidsRepository {
       });
 
   @override
-  Future<Either<Failure, List<Place>>> searchSchools(String query) =>
-      ErrorHandler.guard(tag: 'Kids.schools', () => _remote.getSchools(query));
+  Future<Either<Failure, String>> schoolFromPlace(Place place) =>
+      ErrorHandler.guard(
+        tag: 'Kids.schoolFromPlace',
+        () => _remote.schoolFromPlace(place),
+      );
+
+  @override
+  Future<Either<Failure, GeoPoint?>> homeLocation() =>
+      ErrorHandler.guard(tag: 'Kids.homeLocation', _remote.getHomeLocation);
 
   @override
   Future<Either<Failure, Unit>> assignSchool({

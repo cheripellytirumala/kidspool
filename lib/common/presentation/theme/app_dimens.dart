@@ -26,8 +26,6 @@ abstract final class AppDimens {
     ),
   ];
 
-  /// Lime button drop shadow (0, 8) blur 12, #C7FF2E @ 45%.
-  static const List<BoxShadow> buttonGlow = [
-    BoxShadow(color: AppColors.limeGlow, offset: Offset(0, 8), blurRadius: 12),
-  ];
+  /// Lime button shadow — the Figma "Glow/Lime" effect (soft, not a band).
+  static const List<BoxShadow> buttonGlow = glowLime;
 }

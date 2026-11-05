@@ -10,6 +10,7 @@ import '../../../home/presentation/providers/home_provider.dart';
 import '../../../auth/core/di/auth_injection.dart';
 import '../../../home/core/di/home_injection.dart';
 import '../../../add_kids/core/di/kids_injection.dart';
+import '../../../messages/core/di/messages_injection.dart';
 import '../../../onboarding/core/di/onboarding_injection.dart';
 import '../../../profile/core/di/profile_injection.dart';
 import '../../../ride_tracking/core/di/ride_tracking_injection.dart';
@@ -53,6 +54,7 @@ Future<void> initDependencies({EnvConfig? config}) async {
   registerAskRideDependencies(sl);
   registerProfileDependencies(sl);
   registerRideTrackingDependencies(sl);
+  registerMessagesDependencies(sl);
 }
 
 Future<void> _registerCore(EnvConfig env) async {

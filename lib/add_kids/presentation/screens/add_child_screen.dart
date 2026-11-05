@@ -7,13 +7,11 @@ import '../../../common/presentation/state/view_state.dart';
 import '../../../common/presentation/theme/app_assets.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_button.dart';
-import '../../../common/presentation/widgets/app_checkbox_row.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
 import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
 import '../../domain/entities/child.dart';
-import '../../domain/entities/place.dart';
 import '../providers/add_child_form_provider.dart';
 import '../providers/kids_provider.dart';
 import '../widgets/dashed_add_button.dart';
@@ -35,8 +33,8 @@ class AddChildArgs {
 
 /// F06 · Add a child.
 ///
-/// Figma 1018:8324 — new child form ("Save"); 1018:8397 — editing an
-/// existing child ("Update", camera badge) with the other kids collapsed.
+/// Figma Easy flow 837:13631 — new child form ("Save"); 849:14674 — editing
+/// an existing child ("Update", camera badge) with the other kids collapsed.
 /// Kids are loaded with `get_my_kids` and saved with `add-kid` /
 /// `update-kid`.
 class AddChildScreen extends StatelessWidget {
@@ -204,37 +202,11 @@ class _ChildFormCard extends StatelessWidget {
     if (grade != null) form.setGrade(grade);
   }
 
-  Future<void> _pickSchool(BuildContext context) async {
-    final kids = context.read<KidsProvider>();
-    final (schools, error) = await kids.searchSchools();
-    if (!context.mounted) return;
-    if (error != null) return showAppSnack(context, error);
-    if (schools.isEmpty) {
-      return showAppSnack(context, 'No schools are available yet.');
-    }
-    final school = await showKidsOptionPicker<Place>(
-      context,
-      title: 'School',
-      options: schools,
-      selected: schools.where((s) => s.id == form.school?.id).firstOrNull,
-      labelOf: (school) => school.name,
-    );
-    if (school != null) form.setSchool(school);
-  }
-
-  Future<void> _pickIdCard(BuildContext context) async {
-    final fromCamera = await showPhotoSourceSheet(context);
-    if (fromCamera == null) return;
-    final error = await form.pickSchoolIdCard(fromCamera: fromCamera);
-    if (error != null && context.mounted) showAppSnack(context, error);
-  }
-
-  static String _dobLabel(DateTime date) {
+  /// "8 years" — the Figma "Age" value; the picker still asks for the date
+  /// of birth (add-kid stores the date).
+  static String _ageLabel(DateTime date) {
     final age = Child.ageOn(date);
-    final d =
-        '${date.month.toString().padLeft(2, '0')}/'
-        '${date.day.toString().padLeft(2, '0')}/${date.year}';
-    return '$d · $age ${age == 1 ? 'yr' : 'yrs'}';
+    return '$age ${age == 1 ? 'year' : 'years'}';
   }
 
   @override
@@ -280,9 +252,9 @@ class _ChildFormCard extends StatelessWidget {
             builder: (context, constraints) {
               final dobTile = KidFieldTile(
                 icon: KidsAssets.cake,
-                label: 'Date of birth',
+                label: 'Age',
                 hint: 'Select',
-                value: dob == null ? null : _dobLabel(dob),
+                value: dob == null ? null : _ageLabel(dob),
                 onTap: () => _pickDateOfBirth(context),
               );
               final gradeTile = KidFieldTile(
@@ -292,8 +264,9 @@ class _ChildFormCard extends StatelessWidget {
                 value: form.grade,
                 onTap: () => _pickGrade(context),
               );
-              // Side by side as in Figma; stacked on narrow phones.
-              if (constraints.maxWidth < 340) {
+              // Side by side as in Figma (each tile keeps ≥64px for the
+              // value); stacked on 320pt phones.
+              if (constraints.maxWidth < 318) {
                 return Column(spacing: 10, children: [dobTile, gradeTile]);
               }
               return Row(
@@ -306,30 +279,11 @@ class _ChildFormCard extends StatelessWidget {
             },
           ),
           KidFieldTile(
-            icon: KidsAssets.grad20,
-            label: 'School',
-            hint: 'Select school',
-            value: form.school?.name,
-            onTap: () => _pickSchool(context),
-          ),
-          KidFieldTile(
-            icon: KidsAssets.shield16,
-            label: 'School ID card photo',
-            hint: 'Add a photo',
-            value: form.hasSchoolIdCard ? 'Added ✓ · tap to replace' : null,
-            onTap: () => _pickIdCard(context),
-          ),
-          KidFieldTile(
             icon: KidsAssets.heart,
             label: 'Medical notes (optional)',
             hint: 'Allergies, medication…',
             controller: form.medicalNotes,
             textInputAction: TextInputAction.done,
-          ),
-          AppCheckboxRow(
-            value: form.needsBooster,
-            label: 'Needs a booster seat',
-            onChanged: form.setNeedsBooster,
           ),
           AppButton(
             label: form.isEditing ? 'Update' : 'Save',
@@ -404,7 +358,7 @@ class _PhotoRow extends StatelessWidget {
                           color: AppColors.screen,
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const AppIcon(AppAssets.iconCamera, size: 18),
+                        child: const AppIcon(KidsAssets.camera18, size: 18),
                       ),
                     ),
                 ],

@@ -5,7 +5,8 @@ import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
 import 'icon_disc.dart';
 
-/// "Add · Child" — dashed 2px outline row with a lime plus disc.
+/// "Add · Child" — dashed 2px border/subtle outline (8 on / 4 off) with a
+/// lime plus disc.
 class DashedAddButton extends StatelessWidget {
   const DashedAddButton({super.key, required this.label, required this.onTap});
 
@@ -20,7 +21,7 @@ class DashedAddButton extends StatelessWidget {
       button: true,
       child: CustomPaint(
         foregroundPainter: const _DashedBorderPainter(
-          color: AppColors.borderField,
+          color: KidsColors.borderSubtle,
           radius: _radius,
         ),
         child: Material(
@@ -57,7 +58,7 @@ class _DashedBorderPainter extends CustomPainter {
   final double radius;
 
   static const double _strokeWidth = 2;
-  static const double _dash = 6;
+  static const double _dash = 8;
   static const double _gap = 4;
 
   @override

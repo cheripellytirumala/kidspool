@@ -23,6 +23,7 @@ abstract final class RideTrackingModel {
     if (requestId == null) throw const ParsingException();
 
     final school = _map(json['school']);
+    final dropoff = _map(json['dropoff']);
     final address = _map(json['pickupAddress']);
     final location = _map(json['currentLocation']);
     final locationPoint = _point(location);
@@ -45,6 +46,7 @@ abstract final class RideTrackingModel {
         label: school.readString('name') ?? 'School',
         point: _point(school),
       ),
+      dropoff: _dropoff(dropoff),
       location: locationPoint == null
           ? null
           : RideLocation(
@@ -108,6 +110,18 @@ abstract final class RideTrackingModel {
       carModel: vehicle.readString('model'),
       plate: vehicle.readString('plateNumber'),
     );
+  }
+
+  /// `dropoff` `{label, addressLine1, …, latitude, longitude}`; `null` (or
+  /// no coordinates) → the ride goes to the school.
+  static RideStop? _dropoff(Map<String, dynamic> m) {
+    final point = _point(m);
+    if (point == null) return null;
+    final label = [m['label'], m['addressLine1']]
+        .whereType<String>()
+        .map((s) => s.trim())
+        .firstWhere((s) => s.isNotEmpty, orElse: () => 'Drop-off');
+    return RideStop(label: label, point: point);
   }
 
   static Map<String, dynamic> _map(Object? v) =>

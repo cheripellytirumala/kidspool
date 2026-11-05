@@ -12,11 +12,12 @@ import '../../../home/presentation/screens/families_near_you_screen.dart';
 import '../../../home/presentation/screens/home_screen.dart';
 import '../../../add_kids/presentation/screens/add_child_screen.dart';
 import '../../../add_kids/presentation/screens/all_set_screen.dart';
-import '../../../add_kids/presentation/screens/child_places_screen.dart';
-import '../../../add_kids/presentation/screens/find_school_screen.dart';
 import '../../../add_kids/presentation/screens/where_kids_go_screen.dart';
-import '../../../add_kids/presentation/screens/who_goes_when_screen.dart';
 import '../../../add_kids/presentation/screens/your_kids_screen.dart';
+import '../../../messages/presentation/screens/messages_screen.dart';
+import '../../../messages/presentation/screens/ride_chat_screen.dart';
+import '../../../messages/presentation/screens/ride_group_info_screen.dart';
+import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
 import '../../../onboarding/presentation/screens/splash_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../ride_tracking/presentation/screens/live_tracking_screen.dart';
@@ -38,15 +39,18 @@ abstract final class AppRouter {
     AppRoutes.addChild: (_) => const AddChildScreen(),
     AppRoutes.yourKids: (_) => const YourKidsScreen(),
     AppRoutes.whereKidsGo: (_) => const WhereKidsGoScreen(),
-    AppRoutes.findSchool: (_) => const FindSchoolScreen(),
-    AppRoutes.whoGoesWhen: (_) => const WhoGoesWhenScreen(),
-    AppRoutes.childPlaces: (_) => const ChildPlacesScreen(),
     AppRoutes.allSet: (_) => const AllSetScreen(),
     AppRoutes.home: (_) => const HomeScreen(),
     AppRoutes.familiesNearYou: (_) => const FamiliesNearYouScreen(),
     AppRoutes.askRide: (_) => const AskRideDetailsScreen(),
     AppRoutes.messageSent: (_) => const MessageSentScreen(),
     AppRoutes.profile: (_) => const ProfileScreen(),
+    // Messages: request detail reads `RideRequestArgs`, chat and group info
+    // read [RideChatArgs].
+    AppRoutes.messages: (_) => const MessagesScreen(),
+    AppRoutes.rideRequestDetail: (_) => const RideRequestDetailScreen(),
+    AppRoutes.rideChat: (_) => const RideChatScreen(),
+    AppRoutes.rideGroupInfo: (_) => const RideGroupInfoScreen(),
     // Ride-day screens read [RideArgs] from the route settings.
     AppRoutes.liveTracking: (_) => const LiveTrackingScreen(),
     AppRoutes.rideCompleted: (_) => const RideCompletedScreen(),
@@ -58,14 +62,15 @@ abstract final class AppRouter {
     AppRoutes.addChild,
     AppRoutes.yourKids,
     AppRoutes.whereKidsGo,
-    AppRoutes.findSchool,
-    AppRoutes.whoGoesWhen,
-    AppRoutes.childPlaces,
     AppRoutes.allSet,
     AppRoutes.home,
     AppRoutes.familiesNearYou,
     AppRoutes.askRide,
     AppRoutes.messageSent,
+    AppRoutes.messages,
+    AppRoutes.rideRequestDetail,
+    AppRoutes.rideChat,
+    AppRoutes.rideGroupInfo,
     AppRoutes.liveTracking,
     AppRoutes.rideCompleted,
   };

@@ -33,13 +33,5 @@ abstract final class HomeAssets {
   static const String heroNothingToday = '$_images/home_hero_nothing_today.png';
 
   // Sample people (design data — referenced from sample data only)
-  static const String avatarSarah = '$_images/avatar_sarah.png';
   static const String avatarEmma = '$_images/avatar_emma.png';
-  static const String avatarJen = '$_images/avatar_jen.png';
-  static const String avatarDavid = '$_images/avatar_david.png';
-  static const String avatarRachel = '$_images/avatar_rachel.png';
-  static const String avatarMaria = '$_images/avatar_maria.png';
-  static const String avatarScott = '$_images/avatar_scott.png';
-  static const String avatarKevin = '$_images/avatar_kevin.png';
-  static const String avatarRuth = '$_images/avatar_ruth.png';
 }

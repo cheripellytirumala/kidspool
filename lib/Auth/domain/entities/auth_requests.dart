@@ -63,7 +63,7 @@ class IdentitySubmission extends Equatable {
     required this.firstName,
     required this.lastName,
     required this.idType,
-    required this.selfiePath,
+    this.selfiePath,
     required this.idFrontPath,
     this.idBackPath,
   });
@@ -75,7 +75,8 @@ class IdentitySubmission extends Equatable {
   final String idType;
 
   /// Local file paths (JPEG/PNG, ≤ 1 MB each).
-  final String selfiePath;
+  /// Profile photo; optional (reviewers check the license photos).
+  final String? selfiePath;
   final String idFrontPath;
   final String? idBackPath;
 
