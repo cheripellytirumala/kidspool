@@ -156,7 +156,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
     final otherName =
         other?.firstName ??
         (tracking.isDriver ? 'the parent' : 'your Ride Partner');
-    void onMessage() => RideContact.message(context, name: otherName);
+    void onMessage() => RideContact.message(context, tracking);
     void onCall() =>
         RideContact.call(context, name: otherName, phone: other?.phone);
 

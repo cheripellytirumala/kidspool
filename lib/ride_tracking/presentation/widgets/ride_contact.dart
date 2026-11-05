@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
+import '../../domain/entities/ride_tracking.dart';
 import 'ride_styles.dart';
 
-/// Call / message / SOS helpers. The app has no `url_launcher` and no ride
-/// chat yet, so these show the number (with Copy) instead of dialing.
+/// Call / message / SOS helpers. Message opens the ride chat; the app has
+/// no `url_launcher`, so Call shows the number (with Copy) instead of dialing.
 abstract final class RideContact {
   static void call(
     BuildContext context, {
@@ -35,10 +37,23 @@ abstract final class RideContact {
       );
   }
 
-  static void message(BuildContext context, {required String name}) {
-    showAppSnack(
-      context,
-      'Messaging $name in the app is coming soon. Use Call for now.',
+  /// Opens this ride's chat (F19) with the other grown-up.
+  static void message(BuildContext context, RideTracking tracking) {
+    final other = tracking.isDriver ? tracking.parent : tracking.driver;
+    final driverId = tracking.driver?.id;
+    if (driverId == null || driverId.isEmpty) {
+      showAppSnack(context, 'This ride has no Ride Partner to message yet.');
+      return;
+    }
+    Navigator.of(context).pushNamed(
+      AppRoutes.rideChat,
+      arguments: RideChatArgs(
+        requestId: tracking.requestId,
+        driverId: driverId,
+        iAmDriver: tracking.isDriver,
+        otherName: other?.firstName,
+        otherInitials: other?.initials,
+      ),
     );
   }
 

@@ -121,8 +121,7 @@ class _RideCompletedView extends StatelessWidget {
                         label: 'Message $parentName',
                         icon: RideTrackingAssets.message,
                         lime: false,
-                        onPressed: () =>
-                            RideContact.message(context, name: parentName),
+                        onPressed: () => RideContact.message(context, tracking),
                       ),
                     ] else ...[
                       AppButton(

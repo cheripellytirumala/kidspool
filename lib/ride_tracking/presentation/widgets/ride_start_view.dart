@@ -159,18 +159,24 @@ class _MapCard extends StatelessWidget {
 
   final RideTracking tracking;
 
+  /// No school run takes longer; beyond it the addresses are wrong (e.g. a
+  /// pickup in another country), so the pill is hidden rather than "437 h".
+  static const int _maxTripMinutes = 180;
+
   /// Planned pickup → drop-off minutes, when the ride knows them.
   int? get _tripMinutes {
     final t = tracking;
+    int? m;
     if (t.estimatedDropoffAt case final end?) {
-      final m = end.difference(t.pickupAt).inMinutes;
-      if (m > 0) return m;
+      final d = end.difference(t.pickupAt).inMinutes;
+      if (d > 0) m = d;
     }
-    if (t.plannedTripMiles case final miles? when miles > 0) {
+    final miles = t.plannedTripMiles;
+    if (m == null && miles != null && miles > 0) {
       // ~20 mph town average.
-      return (miles / 20 * 60).ceil();
+      m = (miles / 20 * 60).ceil();
     }
-    return null;
+    return m != null && m <= _maxTripMinutes ? m : null;
   }
 
   @override

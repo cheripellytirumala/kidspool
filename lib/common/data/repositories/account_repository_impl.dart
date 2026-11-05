@@ -6,6 +6,7 @@ import '../../core/error/failures.dart';
 import '../../core/network/api_client.dart';
 import '../../core/network/auth_token_provider.dart';
 import '../../domain/entities/my_status.dart';
+import '../../presentation/state/nav_badges.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../models/my_status_model.dart';
 
@@ -29,5 +30,9 @@ class AccountRepositoryImpl implements AccountRepository {
   );
 
   @override
-  Future<void> signOut() => _tokens.clear();
+  Future<void> signOut() {
+    // The next account must not see this one's unread count.
+    NavBadges.instance.clear();
+    return _tokens.clear();
+  }
 }
