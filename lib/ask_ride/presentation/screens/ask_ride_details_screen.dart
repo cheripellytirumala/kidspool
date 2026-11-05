@@ -287,12 +287,7 @@ class _Form extends StatelessWidget {
       ),
     );
     if (result == null) return;
-    provider.setCustom(
-      start: result.start,
-      end: result.end,
-      weekdays: result.weekdays,
-      time: result.time,
-    );
+    provider.setCustom(dates: result.dates, time: result.time);
   }
 
   Future<void> _submit(BuildContext context) async {

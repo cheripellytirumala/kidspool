@@ -47,7 +47,7 @@ class FamilyPreviewCard extends StatelessWidget {
                   fit: BoxFit.scaleDown,
                   child: Text(
                     family.compactLabel,
-                    style: HomeTextStyles.captionM,
+                    style: HomeTextStyles.captionS,
                     maxLines: 1,
                   ),
                 ),

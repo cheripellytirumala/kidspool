@@ -186,10 +186,19 @@ class _Tab extends StatelessWidget {
 
 /// F24 thread row.
 class ChatListTile extends StatelessWidget {
-  const ChatListTile({super.key, required this.chat, required this.onTap});
+  const ChatListTile({
+    super.key,
+    required this.chat,
+    required this.onTap,
+    this.place,
+  });
 
   final RideChat chat;
   final VoidCallback onTap;
+
+  /// Ride's place ("Lincoln Elementary"); the last line falls back to the
+  /// ride status when unknown.
+  final String? place;
 
   String get _statusLine => switch (chat.status) {
     RideRequestStatus.open =>
@@ -255,7 +264,7 @@ class ChatListTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 1),
                     Text(
-                      _statusLine,
+                      place ?? _statusLine,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: MessagesStyles.labelS,

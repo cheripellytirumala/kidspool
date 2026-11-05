@@ -21,6 +21,12 @@ abstract final class MessagesStyles {
   static const double radiusBubble = 20;
   static const double radiusBubbleTail = 6;
 
+  /// F19 bubble width (max; short messages shrink-wrap).
+  static const double bubbleWidth = 268;
+
+  /// F19 in-chat "Ride request card" width.
+  static const double rideCardWidth = 290;
+
   static TextStyle _s(
     double size,
     double height,

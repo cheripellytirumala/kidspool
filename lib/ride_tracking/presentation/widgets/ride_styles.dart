@@ -175,6 +175,14 @@ abstract final class RideTextStyles {
     letterSpacing: -0.085,
   );
 
+  /// F23 big pill buttons ("Done", "Message Sarah") — 19/24 SemiBold.
+  static final TextStyle buttonXL = _s(
+    19,
+    24,
+    FontWeight.w600,
+    letterSpacing: -0.19,
+  );
+
   /// Alert card meta — 14/18 SemiBold secondary ("KIDPOOL · now").
   static final TextStyle alertMeta = _s(
     14,

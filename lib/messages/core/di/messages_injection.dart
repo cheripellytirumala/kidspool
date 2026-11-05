@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../../common/presentation/state/nav_badges.dart';
+import '../../presentation/providers/messages_badge_counter.dart';
 import '../../data/data_sources/remote/messages_remote_data_source.dart';
 import '../../data/repositories/messages_repository_impl.dart';
 import '../../domain/repositories/messages_repository.dart';
@@ -56,7 +58,11 @@ void registerMessagesDependencies(GetIt sl) {
         withdrawOffer: sl(),
         respondToOffer: sl(),
         myUserId: () => sl<GetRideMessages>().myUserId,
+        onBadgeChanged: NavBadges.instance.setMessages,
       ),
+    )
+    ..registerLazySingleton<MessagesBadgeCounter>(
+      () => MessagesBadgeCounter(getRequestsInbox: sl(), getMyChats: sl()),
     )
     ..registerFactory<RideRequestDetailProvider>(
       () => RideRequestDetailProvider(
@@ -92,4 +98,9 @@ void registerMessagesDependencies(GetIt sl) {
         driverCancelRide: sl(),
       ),
     );
+
+  // Lets the bottom nav recount the Messages badge from any tab.
+  NavBadges.instance.registerMessagesCounter(
+    () => sl<MessagesBadgeCounter>()(),
+  );
 }

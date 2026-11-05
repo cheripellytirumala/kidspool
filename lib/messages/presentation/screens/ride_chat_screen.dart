@@ -151,22 +151,6 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
     final ride = provider.ride;
     final other = provider.other;
     final items = <Widget>[const SafetyTip()];
-    if (ride != null) {
-      final (status, actions) = _cardState(provider, ride);
-      items.add(
-        RideRequestChatCard(
-          ride: ride,
-          statusLine: status,
-          actions: actions,
-          busy: provider.busy,
-          onTap: () => _push(AppRoutes.rideGroupInfo, provider.args),
-        ),
-      );
-    } else if (provider.rideStatus.isFailure) {
-      items.add(ChatPill(provider.rideError ?? 'We couldn’t load this ride.'));
-    } else {
-      items.add(const Center(child: AppLoader(size: 48)));
-    }
 
     if (provider.messagesStatus.isFailure) {
       items.add(
@@ -194,6 +178,24 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
         ChatBubble(message: m, mine: provider.isMine(m), sender: other),
       );
     }
+    // F19: the ride card sits in the thread under the latest messages.
+    if (ride != null) {
+      final (status, actions) = _cardState(provider, ride);
+      items.add(
+        RideRequestChatCard(
+          ride: ride,
+          statusLine: status,
+          actions: actions,
+          busy: provider.busy,
+          onTap: () => _push(AppRoutes.rideGroupInfo, provider.args),
+        ),
+      );
+    } else if (provider.rideStatus.isFailure) {
+      items.add(ChatPill(provider.rideError ?? 'We couldn’t load this ride.'));
+    } else {
+      items.add(const Center(child: AppLoader(size: 48)));
+    }
+
     if (provider.messages.isEmpty &&
         provider.messagesStatus.isSuccess &&
         !provider.chatMissing) {

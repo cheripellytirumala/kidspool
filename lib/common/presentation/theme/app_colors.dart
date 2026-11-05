@@ -32,4 +32,7 @@ abstract final class AppColors {
   // Feedback
   /// Inline error text (WCAG AA on white).
   static const Color danger = Color(0xFFC62828);
+
+  /// Unread-count badge fill (bottom nav), with a white ring.
+  static const Color badge = Color(0xFFFF4D3D);
 }

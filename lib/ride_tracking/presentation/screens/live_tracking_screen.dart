@@ -19,6 +19,7 @@ import '../widgets/live_tracking_sheet.dart';
 import '../widgets/ride_buttons.dart';
 import '../widgets/ride_contact.dart';
 import '../widgets/ride_map.dart';
+import '../widgets/ride_start_view.dart';
 import '../widgets/ride_state_view.dart';
 import '../widgets/ride_styles.dart';
 
@@ -155,6 +156,20 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
     final otherName =
         other?.firstName ??
         (tracking.isDriver ? 'the parent' : 'your Ride Partner');
+    void onMessage() => RideContact.message(context, name: otherName);
+    void onCall() =>
+        RideContact.call(context, name: otherName, phone: other?.phone);
+
+    // F20 · The Ride Partner before the ride starts.
+    if (provider.driverAction == DriverRideAction.start) {
+      return RideStartView(
+        tracking: tracking,
+        busy: provider.busyAction != null,
+        onStart: _onDriverAction,
+        onMessage: onMessage,
+        onCall: onCall,
+      );
+    }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -192,13 +207,8 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
                       driverAction: provider.driverAction,
                       busyAction: provider.busyAction,
                       onDriverAction: _onDriverAction,
-                      onMessage: () =>
-                          RideContact.message(context, name: otherName),
-                      onCall: () => RideContact.call(
-                        context,
-                        name: otherName,
-                        phone: other?.phone,
-                      ),
+                      onMessage: onMessage,
+                      onCall: onCall,
                     ),
                   ],
                 );

@@ -13,6 +13,23 @@ abstract final class RideFormat {
 
   static String meridiem(DateTime time) => time.hour < 12 ? 'AM' : 'PM';
 
+  static bool isSameDay(DateTime a, DateTime b) {
+    final x = a.toLocal(), y = b.toLocal();
+    return x.year == y.year && x.month == y.month && x.day == y.day;
+  }
+
+  static const List<String> _weekdays = [
+    'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', //
+  ];
+  static const List<String> _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// `Wed, Nov 4`.
+  static String dayDate(DateTime time) =>
+      '${_weekdays[time.weekday - 1]}, ${_months[time.month - 1]} ${time.day}';
+
   /// `Emma`, `Emma & Noah`, `Emma, Noah & Mia`.
   static String names(List<String> names, {String fallback = 'Your kids'}) {
     final list = names.where((n) => n.trim().isNotEmpty).toList();

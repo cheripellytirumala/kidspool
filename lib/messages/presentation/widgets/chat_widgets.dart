@@ -168,9 +168,8 @@ class ChatBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     const big = Radius.circular(MessagesStyles.radiusBubble);
     const tail = Radius.circular(MessagesStyles.radiusBubbleTail);
-    final maxWidth = MediaQuery.sizeOf(context).width * 0.72;
     final bubble = ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxWidth.clamp(200, 300)),
+      constraints: const BoxConstraints(maxWidth: MessagesStyles.bubbleWidth),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
@@ -272,11 +271,12 @@ class RideRequestChatCard extends StatelessWidget {
       MessagesFormat.dayAndTime(ride.pickupAt),
       if (ride.repeats) '${ride.openDaysInSeries} days',
     ].join(' · ');
-    final title = ride.status.isBooked ? 'Ride booked' : 'Ride request';
     return Align(
       alignment: Alignment.centerLeft,
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 320),
+        constraints: const BoxConstraints(
+          maxWidth: MessagesStyles.rideCardWidth,
+        ),
         child: Material(
           color: AppColors.screen,
           shape: RoundedRectangleBorder(
@@ -305,7 +305,10 @@ class RideRequestChatCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Text(title, style: MessagesStyles.labelL),
+                        child: Text(
+                          'Ride request',
+                          style: MessagesStyles.labelL,
+                        ),
                       ),
                     ],
                   ),
@@ -338,7 +341,6 @@ class RideRequestChatCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const AppIcon(MessagesAssets.check, size: 14),
                       const SizedBox(width: 6),

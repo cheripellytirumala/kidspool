@@ -142,14 +142,14 @@ class _Route extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 5),
               child: Column(
                 children: [
                   const _Dot(fill: AppColors.ink),
                   const SizedBox(height: 4),
                   Container(
                     width: 2,
-                    height: 22,
+                    height: 28,
                     color: AppColors.surfaceStrong,
                   ),
                   const SizedBox(height: 4),

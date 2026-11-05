@@ -100,7 +100,8 @@ class _HomeView extends StatelessWidget {
 
   /// H1e / H3e.
   List<Widget> _emptyLayout(BuildContext context, HomeProvider provider) => [
-    _Header(provider: provider),
+    // H3e (both) uses the 44pt "Alerts" button; H1e keeps 48/22.
+    _Header(provider: provider, compact: provider.role == HomeRole.both),
     const SizedBox(height: AppDimens.sectionGap),
     HomeHeroCard(
       illustration: provider.role == HomeRole.needsRides
@@ -176,10 +177,7 @@ class _HomeView extends StatelessWidget {
       ],
       if (provider.previewFamilies.isNotEmpty) ...[
         const SizedBox(height: AppDimens.sectionGap),
-        _FamiliesHeader(
-          onSeeAll: () => _openFamilies(context),
-          style: HomeTextStyles.captionS,
-        ),
+        _FamiliesHeader(onSeeAll: () => _openFamilies(context)),
         const SizedBox(height: AppDimens.sectionGap),
         _families(context, provider),
       ],
@@ -237,7 +235,8 @@ class _Header extends StatelessWidget {
 
   final HomeProvider provider;
 
-  /// H3 uses the 44pt "Alerts" button with a 24pt bell; H1e/H3e use 48/22.
+  /// H3 and H3e use the 44pt "Alerts" button with a 24pt bell; H1e uses
+  /// 48/22.
   final bool compact;
 
   @override
@@ -301,12 +300,9 @@ class _Header extends StatelessWidget {
 }
 
 class _FamiliesHeader extends StatelessWidget {
-  const _FamiliesHeader({required this.onSeeAll, this.style});
+  const _FamiliesHeader({required this.onSeeAll});
 
   final VoidCallback onSeeAll;
-
-  /// Label style; defaults to Caption/M (H1e/H3e).
-  final TextStyle? style;
 
   @override
   Widget build(BuildContext context) {
@@ -317,7 +313,7 @@ class _FamiliesHeader extends StatelessWidget {
           Expanded(
             child: Semantics(
               header: true,
-              child: Text('FAMILIES', style: style ?? HomeTextStyles.captionM),
+              child: Text('FAMILIES', style: HomeTextStyles.captionS),
             ),
           ),
           GestureDetector(

@@ -31,7 +31,9 @@ class MessagesProvider extends ChangeNotifier {
     required WithdrawOffer withdrawOffer,
     required RespondToOffer respondToOffer,
     required String? Function() myUserId,
-  }) : _getInbox = getRequestsInbox,
+    void Function(int count)? onBadgeChanged,
+  }) : _onBadgeChanged = onBadgeChanged,
+       _getInbox = getRequestsInbox,
        _getChats = getMyChats,
        _offerRide = offerRide,
        _pass = passRideRequest,
@@ -46,6 +48,9 @@ class MessagesProvider extends ChangeNotifier {
   final WithdrawOffer _withdraw;
   final RespondToOffer _respond;
   final String? Function() _myUserId;
+
+  /// Receives the bottom-nav Messages count after each change.
+  final void Function(int count)? _onBadgeChanged;
 
   MessagesTab _tab = MessagesTab.chats;
   String _query = '';
@@ -103,6 +108,17 @@ class MessagesProvider extends ChangeNotifier {
       ]))
         r,
   ];
+
+  /// Place of the ride behind [chat] ("Lincoln Elementary"), shown as the
+  /// chat row's last line; null when the request isn't in the inbox.
+  String? chatPlace(RideChat chat) {
+    for (final r in [..._inbox.mine, ..._inbox.incoming]) {
+      if (r.id == chat.requestId) {
+        return r.destinationName.isEmpty ? null : r.destinationName;
+      }
+    }
+    return null;
+  }
 
   /// Chats, newest first: server chats plus ride threads without messages.
   List<RideChat> get chats {
@@ -279,7 +295,12 @@ class MessagesProvider extends ChangeNotifier {
   static String? _message(Failure? failure) => failure?.message;
 
   void _notify() {
-    if (!_disposed) notifyListeners();
+    if (_disposed) return;
+    // Same total as MessagesBadgeCounter, once the requests are known.
+    if (_requestsStatus.isSuccess) {
+      _onBadgeChanged?.call(requestsBadge + chatsBadge);
+    }
+    notifyListeners();
   }
 
   @override

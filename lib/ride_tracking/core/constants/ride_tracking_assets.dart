@@ -17,6 +17,12 @@ abstract final class RideTrackingAssets {
   static const String phone = '$_icons/ride_phone.svg';
   static const String schoolPin = '$_icons/ride_pin.svg';
 
+  // F20 · Start the ride (Ride Partner, before start)
+  static const String startRoute = '$_icons/ride_start_route.svg';
+
+  /// Icon/school (24px, ink) — identical export already bundled.
+  static const String schoolIcon = '$_icons/profile_school_16.svg';
+
   // F23 · Ride completed
   static const String successCheck = '$_icons/ride_success_check.svg';
   static const String successCheckDriver =

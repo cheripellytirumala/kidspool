@@ -20,9 +20,17 @@ import 'ride_styles.dart';
 /// has a key (the iOS SDK crashes without one, and widget tests have no
 /// native side); otherwise shows the design's static dark map artwork.
 class RideMap extends StatefulWidget {
-  const RideMap({super.key, required this.tracking, required this.padding});
+  const RideMap({
+    super.key,
+    required this.tracking,
+    required this.padding,
+    this.fallback,
+  });
 
   final ride.RideTracking? tracking;
+
+  /// Shown instead of [RideStaticMap] when no native map can be created.
+  final Widget? fallback;
 
   /// Space covered by the header and the bottom sheet.
   final EdgeInsets padding;
@@ -258,7 +266,8 @@ class _RideMapState extends State<RideMap> {
   @override
   Widget build(BuildContext context) {
     if (_mapAvailable != true) {
-      return RideStaticMap(schoolLabel: widget.tracking?.destination.label);
+      return widget.fallback ??
+          RideStaticMap(schoolLabel: widget.tracking?.destination.label);
     }
     return Listener(
       onPointerDown: (_) => _lastTouch = DateTime.now(),

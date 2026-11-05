@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-/// How often the ride is needed: a single day, or chosen weekdays between two
-/// dates.
+/// How often the ride is needed: a single day, or any chosen days.
 sealed class RideSchedule extends Equatable {
   const RideSchedule();
 
@@ -21,35 +20,30 @@ class OnceSchedule extends RideSchedule {
   List<Object?> get props => [date];
 }
 
+/// Any set of days the parent picked in "Which days?" (need not be
+/// consecutive).
 class CustomSchedule extends RideSchedule {
-  const CustomSchedule({
-    required this.start,
-    required this.end,
-    required this.weekdays,
-  });
+  CustomSchedule(Iterable<DateTime> dates)
+    : dates = List.unmodifiable(
+        {for (final d in dates) DateTime(d.year, d.month, d.day)}.toList()
+          ..sort(),
+      );
 
-  final DateTime start;
-  final DateTime end;
+  /// The chosen days, date-only, unique and in order.
+  final List<DateTime> dates;
 
-  /// [DateTime.monday] … [DateTime.sunday]. Empty means every day.
-  final Set<int> weekdays;
+  /// First and last chosen day; `null` when nothing is chosen.
+  DateTime? get start => dates.isEmpty ? null : dates.first;
+  DateTime? get end => dates.isEmpty ? null : dates.last;
 
   bool includes(DateTime day) {
     final d = DateTime(day.year, day.month, day.day);
-    if (d.isBefore(start) || d.isAfter(end)) return false;
-    return weekdays.isEmpty || weekdays.contains(d.weekday);
+    return dates.contains(d);
   }
 
   @override
-  List<DateTime> get rideDates => [
-    for (
-      var d = start;
-      !d.isAfter(end);
-      d = DateTime(d.year, d.month, d.day + 1)
-    )
-      if (includes(d)) d,
-  ];
+  List<DateTime> get rideDates => dates;
 
   @override
-  List<Object?> get props => [start, end, weekdays.toList()..sort()];
+  List<Object?> get props => [dates];
 }

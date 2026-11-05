@@ -114,7 +114,13 @@ class _GroupInfoView extends StatelessWidget {
                     const SizedBox(height: 12),
                     _RideRow(ride: ride),
                     const SizedBox(height: 12),
-                    MessagesSectionLabel('Members · ${members.length}'),
+                    // GC6: section label sits 6px under the row above.
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: MessagesSectionLabel(
+                        'Members · ${members.length}',
+                      ),
+                    ),
                     for (final m in members) ...[
                       const SizedBox(height: 12),
                       _MemberTile(
@@ -128,7 +134,8 @@ class _GroupInfoView extends StatelessWidget {
                       ),
                     ],
                     if (leave != null) ...[
-                      const SizedBox(height: 18),
+                      // 12 gap + the 6px tap padding = Figma's 18.
+                      const SizedBox(height: 12),
                       Center(
                         child: InkWell(
                           borderRadius: BorderRadius.circular(999),

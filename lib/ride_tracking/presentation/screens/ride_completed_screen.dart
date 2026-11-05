@@ -15,6 +15,7 @@ import '../../core/utils/ride_format.dart';
 import '../../domain/entities/ride_tracking.dart';
 import '../providers/ride_completed_provider.dart';
 import '../widgets/ride_avatar.dart';
+import '../widgets/ride_buttons.dart';
 import '../widgets/ride_contact.dart';
 import '../widgets/ride_state_view.dart';
 import '../widgets/ride_styles.dart';
@@ -110,24 +111,16 @@ class _RideCompletedView extends StatelessWidget {
                     const Spacer(),
                     const SizedBox(height: AppDimens.sectionGap),
                     if (isDriver) ...[
-                      AppButton(
+                      RidePillButton(
                         label: 'Done',
-                        height: 64,
-                        leading: const AppIcon(
-                          RideTrackingAssets.done,
-                          size: 22,
-                        ),
+                        icon: RideTrackingAssets.done,
                         onPressed: () => _goHome(context),
                       ),
                       const SizedBox(height: 14),
-                      AppButton(
+                      RidePillButton(
                         label: 'Message $parentName',
-                        height: 64,
-                        variant: AppButtonVariant.light,
-                        leading: const AppIcon(
-                          RideTrackingAssets.message,
-                          size: 22,
-                        ),
+                        icon: RideTrackingAssets.message,
+                        lime: false,
                         onPressed: () =>
                             RideContact.message(context, name: parentName),
                       ),

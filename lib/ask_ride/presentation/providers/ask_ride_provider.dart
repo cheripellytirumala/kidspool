@@ -229,21 +229,13 @@ class AskRideProvider extends ChangeNotifier {
     ),
   );
 
-  void setCustom({
-    required DateTime start,
-    required DateTime end,
-    required Set<int> weekdays,
-    required RideTime time,
-  }) => _update(
-    _draft.copyWith(
-      schedule: () => CustomSchedule(
-        start: RideDateFormat.dateOnly(start),
-        end: RideDateFormat.dateOnly(end),
-        weekdays: Set.unmodifiable(weekdays),
-      ),
-      pickupTime: () => time,
-    ),
-  );
+  void setCustom({required Set<DateTime> dates, required RideTime time}) =>
+      _update(
+        _draft.copyWith(
+          schedule: () => CustomSchedule(dates),
+          pickupTime: () => time,
+        ),
+      );
 
   /// Subtitle of the "Just once" card.
   String get onceSummary => switch (_draft.schedule) {
@@ -254,11 +246,17 @@ class AskRideProvider extends ChangeNotifier {
 
   /// Subtitle of the "Custom" card.
   String get customSummary => switch (_draft.schedule) {
-    CustomSchedule(:final start, :final end) =>
-      '${RideDateFormat.short(start)} to ${RideDateFormat.short(end)} | '
-          '${_draft.pickupTime?.format() ?? ''}',
+    CustomSchedule(:final dates) when dates.isNotEmpty =>
+      '${_daysLabel(dates)} | ${_draft.pickupTime?.format() ?? ''}',
     _ => 'Choose the days yourself',
   };
+
+  /// "Nov 11", "Nov 11, Nov 13", "5 days, Nov 11 to Nov 20".
+  static String _daysLabel(List<DateTime> dates) {
+    if (dates.length <= 2) return dates.map(RideDateFormat.short).join(', ');
+    return '${dates.length} days, ${RideDateFormat.short(dates.first)} to '
+        '${RideDateFormat.short(dates.last)}';
+  }
 
   // ── Extras ──────────────────────────────────────────────────────────────
 

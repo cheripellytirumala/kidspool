@@ -13,12 +13,7 @@ import 'ride_calendar.dart';
 import 'ride_time_field.dart';
 
 typedef OnceSelection = ({DateTime date, RideTime time});
-typedef CustomSelection = ({
-  DateTime start,
-  DateTime end,
-  Set<int> weekdays,
-  RideTime time,
-});
+typedef CustomSelection = ({Set<DateTime> dates, RideTime time});
 
 DateTime _today() => RideDateFormat.dateOnly(DateTime.now());
 
@@ -74,9 +69,9 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
   }
 }
 
-/// "Which days?" — weekdays plus a start and end date, and the pick-up time.
-/// Tap the first day, then the last day; the chosen weekdays in between are
-/// the ride days.
+/// "Which days?" — any number of days plus the pick-up time. Tap a day to
+/// add or remove it; a weekday chip adds (or removes) every such day of the
+/// month on screen, from today on.
 class WhichDaysSheet extends StatefulWidget {
   const WhichDaysSheet({super.key, this.initial, this.initialTime});
 
@@ -88,10 +83,8 @@ class WhichDaysSheet extends StatefulWidget {
 }
 
 class _WhichDaysSheetState extends State<WhichDaysSheet> {
-  late DateTime? _start = widget.initial?.start;
-  late DateTime? _end = widget.initial?.end;
-  late final Set<int> _weekdays = {...?widget.initial?.weekdays};
-  late DateTime _month = _start ?? _today();
+  late final Set<DateTime> _dates = {...?widget.initial?.dates};
+  late DateTime _month = widget.initial?.start ?? _today();
   late RideTime? _time = widget.initialTime;
 
   /// Sun … Sat, as in the Figma chips.
@@ -105,48 +98,41 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
     DateTime.saturday,
   ];
 
-  CustomSchedule? get _schedule {
-    final start = _start;
-    if (start == null) return null;
-    return CustomSchedule(
-      start: start,
-      end: _end ?? start,
-      weekdays: _weekdays,
-    );
-  }
-
-  bool get _canFinish =>
-      _start != null &&
-      _end != null &&
-      _time != null &&
-      (_schedule?.rideDates.isNotEmpty ?? false);
+  bool get _canFinish => _dates.isNotEmpty && _time != null;
 
   void _onDayTap(DateTime day) {
+    final d = RideDateFormat.dateOnly(day);
+    setState(() => _dates.contains(d) ? _dates.remove(d) : _dates.add(d));
+  }
+
+  bool _isSelected(DateTime day) =>
+      _dates.contains(RideDateFormat.dateOnly(day));
+
+  /// Days of [weekday] in the month on screen that can still be picked.
+  List<DateTime> _weekdayDays(int weekday) {
+    final today = _today();
+    final last = DateTime(_month.year, _month.month + 1, 0).day;
+    return [
+      for (var day = 1; day <= last; day++)
+        if (DateTime(_month.year, _month.month, day) case final d
+            when d.weekday == weekday && !d.isBefore(today))
+          d,
+    ];
+  }
+
+  /// A chip is on when every pickable such day of the shown month is chosen.
+  bool _weekdaySelected(int weekday) {
+    final days = _weekdayDays(weekday);
+    return days.isNotEmpty && days.every(_dates.contains);
+  }
+
+  void _toggleWeekday(int weekday) {
+    final days = _weekdayDays(weekday);
     setState(() {
-      final start = _start;
-      if (start == null || _end != null || day.isBefore(start)) {
-        _start = day;
-        _end = null;
-      } else {
-        _end = day;
-      }
+      _weekdaySelected(weekday)
+          ? _dates.removeAll(days)
+          : _dates.addAll(days);
     });
-  }
-
-  bool _isSelected(DateTime day) {
-    final start = _start;
-    if (start == null) return false;
-    if (_end == null) return RideDateFormat.isSameDay(day, start);
-    return _schedule!.includes(day);
-  }
-
-  /// Bands the weeks that repeat after the first one, up to the last day.
-  bool _isWeekBanded(DateTime weekStart) {
-    final start = _start;
-    final end = _end;
-    if (start == null || end == null) return false;
-    final firstWeek = start.subtract(Duration(days: start.weekday % 7));
-    return weekStart.isAfter(firstWeek) && !weekStart.isAfter(end);
   }
 
   @override
@@ -155,12 +141,9 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
       title: 'Which days?',
       footer: _DoneButton(
         onPressed: _canFinish
-            ? () => Navigator.of(context).pop<CustomSelection>((
-                start: _start!,
-                end: _end!,
-                weekdays: _weekdays,
-                time: _time!,
-              ))
+            ? () => Navigator.of(
+                context,
+              ).pop<CustomSelection>((dates: {..._dates}, time: _time!))
             : null,
       ),
       children: [
@@ -171,13 +154,8 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
               Expanded(
                 child: _WeekdayChip(
                   label: RideDateFormat.weekdayShort(_order[i]),
-                  selected: _weekdays.contains(_order[i]),
-                  onTap: () => setState(() {
-                    final day = _order[i];
-                    _weekdays.contains(day)
-                        ? _weekdays.remove(day)
-                        : _weekdays.add(day);
-                  }),
+                  selected: _weekdaySelected(_order[i]),
+                  onTap: () => _toggleWeekday(_order[i]),
                 ),
               ),
             ],
@@ -187,7 +165,6 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
           month: _month,
           firstDate: _today(),
           isSelected: _isSelected,
-          isWeekBanded: _isWeekBanded,
           onDayTap: _onDayTap,
           onMonthChanged: (m) => setState(() => _month = m),
         ),

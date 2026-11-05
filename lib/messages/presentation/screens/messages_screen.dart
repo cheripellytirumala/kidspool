@@ -187,6 +187,7 @@ class _MessagesView extends StatelessWidget {
       for (final chat in chats)
         ChatListTile(
           chat: chat,
+          place: provider.chatPlace(chat),
           onTap: () => _openChat(context, _argsOf(chat)),
         ),
     ];
