@@ -11,8 +11,10 @@ import '../../../auth/core/di/auth_injection.dart';
 import '../../../home/core/di/home_injection.dart';
 import '../../../add_kids/core/di/kids_injection.dart';
 import '../../../messages/core/di/messages_injection.dart';
+import '../../../notifications/core/di/notifications_injection.dart';
 import '../../../onboarding/core/di/onboarding_injection.dart';
 import '../../../profile/core/di/profile_injection.dart';
+import '../../../rides/core/di/rides_injection.dart';
 import '../../../ride_tracking/core/di/ride_tracking_injection.dart';
 import '../../../ride_tracking/domain/repositories/ride_location_sharing.dart';
 import '../../presentation/widgets/approval_gate.dart';
@@ -55,6 +57,8 @@ Future<void> initDependencies({EnvConfig? config}) async {
   registerProfileDependencies(sl);
   registerRideTrackingDependencies(sl);
   registerMessagesDependencies(sl);
+  registerNotificationsDependencies(sl);
+  registerRidesDependencies(sl);
 }
 
 Future<void> _registerCore(EnvConfig env) async {

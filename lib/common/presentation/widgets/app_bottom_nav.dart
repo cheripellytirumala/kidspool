@@ -27,7 +27,7 @@ class AppBottomNav extends StatefulWidget {
     AppTab.home => AppRoutes.home,
     AppTab.messages => AppRoutes.messages,
     AppTab.profile => AppRoutes.profile,
-    AppTab.rides => null,
+    AppTab.rides => AppRoutes.rides,
   };
 
   static const double _itemSize = 80;

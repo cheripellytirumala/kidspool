@@ -18,8 +18,10 @@ import '../../../messages/presentation/screens/messages_screen.dart';
 import '../../../messages/presentation/screens/ride_chat_screen.dart';
 import '../../../messages/presentation/screens/ride_group_info_screen.dart';
 import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
+import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../onboarding/presentation/screens/splash_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../rides/presentation/screens/rides_screen.dart';
 import '../../../ride_tracking/presentation/screens/live_tracking_screen.dart';
 import '../../../ride_tracking/presentation/screens/ride_completed_screen.dart';
 import '../../presentation/widgets/approval_gate.dart';
@@ -42,8 +44,10 @@ abstract final class AppRouter {
     AppRoutes.allSet: (_) => const AllSetScreen(),
     AppRoutes.home: (_) => const HomeScreen(),
     AppRoutes.familiesNearYou: (_) => const FamiliesNearYouScreen(),
+    AppRoutes.notifications: (_) => const NotificationsScreen(),
     AppRoutes.askRide: (_) => const AskRideDetailsScreen(),
     AppRoutes.messageSent: (_) => const MessageSentScreen(),
+    AppRoutes.rides: (_) => const RidesScreen(),
     AppRoutes.profile: (_) => const ProfileScreen(),
     // Messages: request detail reads `RideRequestArgs`, chat and group info
     // read [RideChatArgs].
@@ -65,9 +69,11 @@ abstract final class AppRouter {
     AppRoutes.allSet,
     AppRoutes.home,
     AppRoutes.familiesNearYou,
+    AppRoutes.notifications,
     AppRoutes.askRide,
     AppRoutes.messageSent,
     AppRoutes.messages,
+    AppRoutes.rides,
     AppRoutes.rideRequestDetail,
     AppRoutes.rideChat,
     AppRoutes.rideGroupInfo,
