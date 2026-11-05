@@ -1,3 +1,5 @@
+import '../../../notifications/core/constants/notifications_api_constants.dart';
+
 /// Supabase functions owned by the Home feature group.
 ///
 /// App-wide values (base URLs, headers, timeouts) stay in
@@ -38,5 +40,7 @@ abstract final class HomeApiConstants {
   static const String scopeUpcoming = 'upcoming';
 
   /// SharedPreferences key: newest notification time the user has seen.
-  static const String notificationsSeenAtKey = 'home.notifications_seen_at';
+  /// Same key as the Notifications screen, which marks rows seen.
+  static const String notificationsSeenAtKey =
+      NotificationsApiConstants.seenAtKey;
 }

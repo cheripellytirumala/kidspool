@@ -270,7 +270,10 @@ class _Header extends StatelessWidget {
                     : 'Notifications',
                 size: compact ? 44 : 48,
                 iconSize: compact ? 24 : 22,
-                onPressed: provider.markNotificationsSeen,
+                onPressed: () => Navigator.pushNamed(
+                  context,
+                  AppRoutes.notifications,
+                ).then((_) => provider.load()),
               ),
               if (provider.hasUnseenNotifications)
                 Positioned(

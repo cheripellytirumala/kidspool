@@ -17,6 +17,9 @@ abstract interface class MessagesRemoteDataSource {
   /// `get_my_ride_requests(upcoming)`, open ones only.
   Future<List<RideRequest>> getMyOpenRequests();
 
+  /// `get_my_ride_requests(scope)` — every status in that scope.
+  Future<List<RideRequest>> getMyRequests(String scope);
+
   /// `get_ride_request(requestId)` (with offers and driver).
   Future<RideRequest> getMyRequest(String requestId);
 
@@ -69,16 +72,21 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
   // ----------------------------------------------------------- parent
 
   @override
-  Future<List<RideRequest>> getMyOpenRequests() => _call(
+  Future<List<RideRequest>> getMyOpenRequests() async => (await getMyRequests(
+    MessagesApiConstants.scopeUpcoming,
+  )).where((r) => r.isOpen).toList(growable: false);
+
+  @override
+  Future<List<RideRequest>> getMyRequests(String scope) => _call(
     MessagesApiConstants.getMyRideRequests,
-    const {'scope': MessagesApiConstants.scopeUpcoming},
+    {'scope': scope},
     'We couldn’t load your ride requests. Pull to refresh.',
     (json) {
       if (json is! List) throw const ParsingException();
       return [
         for (final row in json.whereType<Map>())
           ?RideRequestModel.mine(Map<String, dynamic>.from(row)),
-      ].where((r) => r.isOpen).toList(growable: false);
+      ];
     },
   );
 

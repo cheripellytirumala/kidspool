@@ -20,9 +20,15 @@ abstract final class AppRoutes {
   static const String home = '/home';
   static const String familiesNearYou = '/home/families';
 
+  // F25b · Notifications (Home bell)
+  static const String notifications = '/notifications';
+
   // Ask for a ride
   static const String askRide = '/ask-ride';
   static const String messageSent = '/ask-ride/sent';
+
+  // Rides tab (F19c · Your rides)
+  static const String rides = '/rides';
 
   // Profile
   static const String profile = '/profile';

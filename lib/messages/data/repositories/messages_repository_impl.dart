@@ -71,6 +71,28 @@ class MessagesRepositoryImpl implements MessagesRepository {
       }, tag: _tag);
 
   @override
+  Future<Either<Failure, List<RideRequest>>> getMyRides(String scope) =>
+      ErrorHandler.guard(() async {
+        final lists = await Future.wait([
+          _remote.getMyRequests(scope),
+          _remote.getMyDrives(scope),
+        ], eagerError: true);
+        final [mine, drives] = lists;
+        final byId = <String, RideRequest>{
+          for (final r in await _withKidPhotos(mine)) r.id: r,
+          // Booked drives only; an open row here is a pending offer.
+          for (final r in drives)
+            if (!r.isOpen) r.id: r,
+        };
+        final past = scope == MessagesApiConstants.scopePast;
+        return byId.values.toList()..sort(
+          (a, b) => past
+              ? b.pickupAt.compareTo(a.pickupAt)
+              : a.pickupAt.compareTo(b.pickupAt),
+        );
+      }, tag: _tag);
+
+  @override
   Future<Either<Failure, RideRequest>> getMyRequest(String requestId) =>
       ErrorHandler.guard(() async {
         final request = await _remote.getMyRequest(requestId);

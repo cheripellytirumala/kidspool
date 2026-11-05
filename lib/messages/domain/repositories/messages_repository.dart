@@ -18,6 +18,11 @@ abstract interface class MessagesRepository {
   // Requests
   Future<Either<Failure, RequestsInbox>> getRequestsInbox();
 
+  /// Rides tab (F19c): the user's own requests and the rides they drive
+  /// (booked only — pending offers live in Requests). [scope] is
+  /// `upcoming` (soonest first) or `past` (newest first).
+  Future<Either<Failure, List<RideRequest>>> getMyRides(String scope);
+
   /// The user's own request with its offers and driver.
   Future<Either<Failure, RideRequest>> getMyRequest(String requestId);
 

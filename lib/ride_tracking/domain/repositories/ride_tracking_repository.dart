@@ -11,7 +11,7 @@ abstract interface class RideTrackingRepository {
     bool includePath = false,
   });
 
-  /// Ride Partner — from 30 minutes before pickup.
+  /// Ride Partner — any time while the ride is confirmed.
   Future<Either<Failure, Unit>> startRide(String requestId);
 
   /// Ride Partner — the kids are in the car.

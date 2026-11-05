@@ -8,6 +8,7 @@ import '../../domain/repositories/messages_repository.dart';
 import '../../domain/usecases/cancel_ride_request.dart';
 import '../../domain/usecases/driver_cancel_ride.dart';
 import '../../domain/usecases/get_drive_request.dart';
+import '../../domain/usecases/get_my_rides.dart';
 import '../../domain/usecases/get_my_chats.dart';
 import '../../domain/usecases/get_my_ride_request.dart';
 import '../../domain/usecases/get_request_activity.dart';
@@ -36,6 +37,7 @@ void registerMessagesDependencies(GetIt sl) {
     )
     // Use cases
     ..registerLazySingleton<GetRequestsInbox>(() => GetRequestsInbox(sl()))
+    ..registerLazySingleton<GetMyRides>(() => GetMyRides(sl()))
     ..registerLazySingleton<GetMyRideRequest>(() => GetMyRideRequest(sl()))
     ..registerLazySingleton<GetDriveRequest>(() => GetDriveRequest(sl()))
     ..registerLazySingleton<GetRequestActivity>(() => GetRequestActivity(sl()))

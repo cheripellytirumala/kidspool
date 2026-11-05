@@ -8,6 +8,7 @@ import 'package:kidspool/common/core/di/injection_container.dart';
 import 'package:kidspool/common/core/error/failures.dart';
 import 'package:kidspool/common/core/router/app_routes.dart';
 import 'package:kidspool/common/presentation/theme/app_theme.dart';
+import 'package:kidspool/common/presentation/widgets/app_toggle.dart';
 import 'package:kidspool/messages/core/constants/messages_api_constants.dart';
 import 'package:kidspool/messages/domain/entities/chat_person.dart';
 import 'package:kidspool/messages/domain/entities/ride_chat.dart';
@@ -27,6 +28,12 @@ import 'package:kidspool/messages/domain/usecases/respond_to_offer.dart';
 import 'package:kidspool/messages/domain/usecases/send_ride_message.dart';
 import 'package:kidspool/messages/domain/usecases/withdraw_offer.dart';
 import 'package:kidspool/messages/presentation/providers/messages_provider.dart';
+import 'package:kidspool/messages/domain/usecases/get_my_rides.dart';
+import 'package:kidspool/profile/domain/entities/ride_mode.dart';
+import 'package:kidspool/profile/domain/repositories/profile_repository.dart';
+import 'package:kidspool/profile/domain/usecases/change_ride_mode.dart';
+import 'package:kidspool/rides/presentation/providers/rides_provider.dart';
+import 'package:kidspool/rides/presentation/screens/rides_screen.dart';
 import 'package:kidspool/messages/presentation/providers/ride_chat_provider.dart';
 import 'package:kidspool/messages/presentation/providers/ride_group_info_provider.dart';
 import 'package:kidspool/messages/presentation/providers/ride_request_detail_provider.dart';
@@ -104,6 +111,10 @@ class FakeMessagesRepository implements MessagesRepository {
   @override
   Future<Either<Failure, RequestsInbox>> getRequestsInbox() async =>
       Right(RequestsInbox(mine: [_myRequest], incoming: [_incoming]));
+
+  @override
+  Future<Either<Failure, List<RideRequest>>> getMyRides(String scope) async =>
+      Right(scope == MessagesApiConstants.scopePast ? const [] : [_myRequest]);
 
   @override
   Future<Either<Failure, RideRequest>> getMyRequest(String id) async =>
@@ -204,9 +215,38 @@ class FakeMessagesRepository implements MessagesRepository {
   }
 }
 
-Future<void> _register(FakeMessagesRepository repo) async {
+/// Only ride mode is used by the Rides tab.
+class _FakeProfileRepository implements ProfileRepository {
+  _FakeProfileRepository(this.mode);
+
+  RideMode mode;
+
+  @override
+  RideMode getRideMode() => mode;
+
+  @override
+  Future<Either<Failure, RideMode>> setRideMode(RideMode m) async =>
+      Right(mode = m);
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+Future<void> _register(
+  FakeMessagesRepository repo, {
+  RideMode rideMode = RideMode.both,
+}) async {
   await sl.reset();
+  final profile = _FakeProfileRepository(rideMode);
   sl
+    ..registerFactory<RidesProvider>(
+      () => RidesProvider(
+        getRequestsInbox: GetRequestsInbox(repo),
+        getMyRides: GetMyRides(repo),
+        profile: profile,
+        changeRideMode: ChangeRideMode(profile),
+      ),
+    )
     ..registerFactory<MessagesProvider>(
       () => MessagesProvider(
         getRequestsInbox: GetRequestsInbox(repo),
@@ -321,6 +361,45 @@ void main() {
       expect(tester.takeException(), isNull);
       await _dispose(tester);
     });
+
+    testWidgets('F19c rides tab: requests, upcoming, past at $tag', (
+      tester,
+    ) async {
+      await _register(FakeMessagesRepository());
+      await _pump(tester, const RidesScreen(), size: size);
+      expect(find.text('Your rides'), findsOneWidget);
+      expect(find.text('Available to help families near you'), findsOneWidget);
+      expect(find.text('View request'), findsOneWidget);
+      expect(find.textContaining('Rachel'), findsWidgets);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('^Upcoming')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Asking'), findsOneWidget);
+
+      await tester.tap(find.bySemanticsLabel(RegExp('^Past')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('No past rides yet'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _dispose(tester);
+    });
+
+    testWidgets(
+      'F19c not available: requests hidden, toggle turns on at $tag',
+      (tester) async {
+        await _register(FakeMessagesRepository(), rideMode: RideMode.seeker);
+        await _pump(tester, const RidesScreen(), size: size);
+        // Opens on Upcoming when the parent only gets rides.
+        expect(find.text('Asking'), findsOneWidget);
+        await tester.tap(find.bySemanticsLabel(RegExp('^Requests')));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('You’re not helping right now'), findsOneWidget);
+        await tester.tap(find.byType(AppToggle));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text('View request'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await _dispose(tester);
+      },
+    );
 
     testWidgets('A7a incoming request renders at $tag', (tester) async {
       await _register(FakeMessagesRepository());

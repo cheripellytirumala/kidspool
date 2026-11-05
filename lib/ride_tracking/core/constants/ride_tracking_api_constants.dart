@@ -15,7 +15,7 @@ abstract final class RideTrackingApiConstants {
   static const String getRideTracking = 'get_ride_tracking';
 
   /// Ride Partner: `start_ride(requestId, latitude?, longitude?)` — allowed
-  /// from 30 minutes before pickup.
+  /// any time while confirmed (the 30-min window is off for now).
   static const String startRide = 'start_ride';
 
   /// Ride Partner: `update_ride_location(requestId, latitude, longitude,
