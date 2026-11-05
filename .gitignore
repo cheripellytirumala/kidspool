@@ -30,7 +30,7 @@ migrate_working_dir/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
+/build
 /coverage/
 
 # Symbolication related
@@ -46,3 +46,6 @@ app.*.map.json
 
 # Local Claude Code settings
 .claude/settings.local.json
+
+# Google Maps API keys (see docs/google_maps_setup.md)
+/ios/Flutter/Secrets.xcconfig

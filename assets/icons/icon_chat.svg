@@ -1,0 +1,5 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Icon/chat">
+<path id="Vector" d="M4 5.5C4 4.83696 4.26339 4.20107 4.73223 3.73223C5.20107 3.26339 5.83696 3 6.5 3H17.5C18.163 3 18.7989 3.26339 19.2678 3.73223C19.7366 4.20107 20 4.83696 20 5.5V13.5C20 14.163 19.7366 14.7989 19.2678 15.2678C18.7989 15.7366 18.163 16 17.5 16H10L5 20V15.8C4.6455 15.5387 4.36632 15.1884 4.19072 14.7845C4.01512 14.3806 3.94933 13.9375 4 13.5V5.5Z" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke="#0F0F0F"/>
+</g>
+</svg>
