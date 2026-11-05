@@ -10,6 +10,7 @@ import '../../../common/presentation/widgets/app_badge.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
+import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 import '../../domain/entities/home_role.dart';
@@ -56,6 +57,26 @@ class _HomeView extends StatelessWidget {
         AppRoutes.askRide,
       ).then((_) => provider.load());
 
+  /// A booked ride opens live tracking; one still asking parents has no
+  /// driver to track yet, so it opens its request (A7a), which offers
+  /// "Open live ride" once a driver confirms.
+  void _openNextRide(BuildContext context, HomeProvider provider) {
+    final ride = provider.nextRide;
+    if (ride == null) return;
+    final route = ride.isBooked
+        ? Navigator.pushNamed(
+            context,
+            AppRoutes.liveTracking,
+            arguments: RideArgs(ride.id),
+          )
+        : Navigator.pushNamed(
+            context,
+            AppRoutes.rideRequestDetail,
+            arguments: RideRequestArgs(requestId: ride.id, isMine: true),
+          );
+    route.then((_) => provider.load());
+  }
+
   /// Up to three tiles; fewer families keep the tile width of three.
   Widget _families(BuildContext context, HomeProvider provider) {
     final families = provider.previewFamilies;
@@ -87,6 +108,9 @@ class _HomeView extends StatelessWidget {
           : HomeAssets.heroNothingToday,
       title: provider.emptyTitle,
       subtitle: provider.emptySubtitle,
+      onTap: provider.nextRide == null
+          ? null
+          : () => _openNextRide(context, provider),
     ),
     const SizedBox(height: AppDimens.sectionGap),
     AskRideActionCard(onTap: () => _askRide(context, provider)),
