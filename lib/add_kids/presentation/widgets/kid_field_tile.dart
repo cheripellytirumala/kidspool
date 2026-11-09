@@ -20,6 +20,7 @@ class KidFieldTile extends StatelessWidget {
     this.onTap,
     this.textCapitalization = TextCapitalization.sentences,
     this.textInputAction = TextInputAction.next,
+    this.focusNode,
   });
 
   final String icon;
@@ -30,6 +31,7 @@ class KidFieldTile extends StatelessWidget {
   final VoidCallback? onTap;
   final TextCapitalization textCapitalization;
   final TextInputAction textInputAction;
+  final FocusNode? focusNode;
 
   bool get _isPicker => controller == null;
 
@@ -47,6 +49,7 @@ class KidFieldTile extends StatelessWidget {
             style: value == null ? hintStyle : KidsTextStyles.labelL,
           )
         : TextField(
+            focusNode: focusNode,
             controller: controller,
             style: KidsTextStyles.labelL,
             textCapitalization: textCapitalization,

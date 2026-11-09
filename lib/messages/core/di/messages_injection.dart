@@ -34,6 +34,7 @@ import '../../presentation/providers/group_chat_provider.dart';
 import '../../presentation/providers/group_info_provider.dart';
 import '../../presentation/providers/messages_provider.dart';
 import '../../presentation/providers/ride_chat_provider.dart';
+import '../../presentation/providers/ride_groups_provider.dart';
 import '../../presentation/providers/ride_group_info_provider.dart';
 import '../../presentation/providers/ride_request_detail_provider.dart';
 
@@ -108,6 +109,9 @@ void registerMessagesDependencies(GetIt sl) {
         cancelRideRequest: sl(),
         myUserId: () => sl<GetRideMessages>().myUserId,
       ),
+    )
+    ..registerFactory<RideGroupsProvider>(
+      () => RideGroupsProvider(getMyRideGroups: sl()),
     )
     ..registerFactory<RideChatProvider>(
       () => RideChatProvider(

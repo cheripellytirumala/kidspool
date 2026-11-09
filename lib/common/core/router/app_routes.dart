@@ -43,6 +43,7 @@ abstract final class AppRoutes {
   // Ride groups (standing groups of families). Both take [GroupChatArgs].
   static const String groupChat = '/messages/groups/chat';
   static const String groupInfo = '/messages/groups/info';
+  static const String rideGroups = '/messages/groups';
 
   // Ride day (arguments: [RideArgs])
   static const String liveTracking = '/ride/live';

@@ -19,6 +19,7 @@ import '../../../messages/presentation/screens/group_info_screen.dart';
 import '../../../messages/presentation/screens/messages_screen.dart';
 import '../../../messages/presentation/screens/ride_chat_screen.dart';
 import '../../../messages/presentation/screens/ride_group_info_screen.dart';
+import '../../../messages/presentation/screens/ride_groups_screen.dart';
 import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
 import '../../../notifications/presentation/screens/notifications_screen.dart';
 import '../../../onboarding/presentation/screens/splash_screen.dart';
@@ -60,6 +61,7 @@ abstract final class AppRouter {
     AppRoutes.rideGroupInfo: (_) => const RideGroupInfoScreen(),
     AppRoutes.groupChat: (_) => const GroupChatScreen(),
     AppRoutes.groupInfo: (_) => const GroupInfoScreen(),
+    AppRoutes.rideGroups: (_) => const RideGroupsScreen(),
     // Ride-day screens read [RideArgs] from the route settings.
     AppRoutes.liveTracking: (_) => const LiveTrackingScreen(),
     AppRoutes.rideCompleted: (_) => const RideCompletedScreen(),
@@ -86,6 +88,7 @@ abstract final class AppRouter {
     AppRoutes.rideGroupInfo,
     AppRoutes.groupChat,
     AppRoutes.groupInfo,
+    AppRoutes.rideGroups,
     AppRoutes.liveTracking,
     AppRoutes.rideCompleted,
   };

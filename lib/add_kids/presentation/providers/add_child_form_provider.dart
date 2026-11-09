@@ -180,9 +180,10 @@ class AddChildFormProvider extends ChangeNotifier {
   }
 
   /// Saves pending changes (if any), then runs [next]. Returns an error
-  /// message when saving failed (and [next] did not run).
+  /// message when saving failed (and [next] did not run) — incomplete edits
+  /// are never discarded silently.
   Future<String?> _saveThen(VoidCallback next) async {
-    if (_isOpen && _dirty && canSave) {
+    if (_isOpen && _dirty) {
       final error = await save();
       if (error != null) return error;
     }
@@ -190,7 +191,18 @@ class AddChildFormProvider extends ChangeNotifier {
     return null;
   }
 
-  Future<String?> addAnother() => _saveThen(openNew);
+  /// First name field of the open form; focused when a new form opens so
+  /// it scrolls into view.
+  final FocusNode firstNameFocus = FocusNode();
+
+  /// Saves the open form, then opens a blank one. With an untouched new-child
+  /// form already open there is nothing to save, so ask for its details.
+  Future<String?> addAnother() async {
+    if (_isOpen && _editingId == null && !_dirty) {
+      return 'Fill in this child’s details first, then add another.';
+    }
+    return _saveThen(openNew);
+  }
 
   Future<String?> switchTo(String childId) => _saveThen(() => edit(childId));
 
@@ -226,6 +238,7 @@ class AddChildFormProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    firstNameFocus.dispose();
     firstName.dispose();
     lastName.dispose();
     medicalNotes.dispose();

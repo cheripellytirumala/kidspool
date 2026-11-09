@@ -201,26 +201,32 @@ class GroupListTile extends StatelessWidget {
                   children: [
                     Row(
                       children: [
-                        Flexible(
-                          child: Text(
-                            group.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: MessagesStyles.labelL,
+                        // The name takes all the width the time leaves.
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  group.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: MessagesStyles.labelL,
+                                ),
+                              ),
+                              if (group.muted) ...[
+                                const SizedBox(width: 4),
+                                Semantics(
+                                  label: 'Muted',
+                                  child: const Icon(
+                                    Icons.notifications_off_outlined,
+                                    size: 14,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
-                        if (group.muted) ...[
-                          const SizedBox(width: 4),
-                          Semantics(
-                            label: 'Muted',
-                            child: const Icon(
-                              Icons.notifications_off_outlined,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ],
-                        const Spacer(),
                         if (group.lastAt != null) ...[
                           const SizedBox(width: 8),
                           Text(
