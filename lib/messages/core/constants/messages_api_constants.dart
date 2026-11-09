@@ -55,6 +55,47 @@ abstract final class MessagesApiConstants {
   /// createdAt}`.
   static const String sendRideMessage = 'send_ride_message';
 
+  // -------------------------------------------------------- ride groups
+  // `docs/backend/2026-11-09_ride_groups.sql`; may not be on the server yet:
+  // see [groupsMissing].
+
+  /// `get_my_ride_groups()` → `[{id, name, memberCount, unread, muted,
+  /// lastMessage, lastAt}]`, newest first.
+  static const String getMyRideGroups = 'get_my_ride_groups';
+
+  /// `get_ride_group(groupId)` → `{id, name, schoolName, muted, maxMembers,
+  /// members: [{id, firstName, initials, role, isMe, kids}]}`.
+  static const String getRideGroup = 'get_ride_group';
+
+  /// `get_ride_group_messages(groupId, before?)` → `[{id, kind, body,
+  /// createdAt, sender{id, firstName, initials} | null}]`, oldest first.
+  static const String getRideGroupMessages = 'get_ride_group_messages';
+
+  /// `send_ride_group_message(groupId, body)` → the message.
+  static const String sendRideGroupMessage = 'send_ride_group_message';
+
+  /// `mark_ride_group_read(groupId)`.
+  static const String markRideGroupRead = 'mark_ride_group_read';
+
+  /// `create_ride_group(name, memberIds, schoolId?)` → `{id}`.
+  static const String createRideGroup = 'create_ride_group';
+
+  /// `add_ride_group_members(groupId, memberIds)` → `{added}`.
+  static const String addRideGroupMembers = 'add_ride_group_members';
+
+  /// `leave_ride_group(groupId)`.
+  static const String leaveRideGroup = 'leave_ride_group';
+
+  /// `rename_ride_group(groupId, name)`.
+  static const String renameRideGroup = 'rename_ride_group';
+
+  /// `set_ride_group_muted(groupId, muted)`.
+  static const String setRideGroupMuted = 'set_ride_group_muted';
+
+  /// `get_ride_group_candidates(groupId?)` → `[{id, firstName, initials,
+  /// kids}]` (parents the user may add; current members excluded).
+  static const String getRideGroupCandidates = 'get_ride_group_candidates';
+
   // ------------------------------------------------------------- values
 
   static const String scopeUpcoming = 'upcoming';
@@ -73,6 +114,19 @@ abstract final class MessagesApiConstants {
   /// Shown in the composer / Chats tab while [chatMissing].
   static const String chatMissingMessage =
       'Chat isn’t set up on the server yet.';
+
+  /// App-side code of a `ServerException` raised when the ride group RPCs
+  /// are not on the server yet.
+  static const String groupsMissing = 'groups_not_deployed';
+
+  /// Shown on a group screen while [groupsMissing]; lists stay quiet.
+  static const String groupsMissingMessage = 'Group chats aren’t set up yet.';
+
+  /// Families per ride group (`ride_group_max_members()`).
+  static const int maxGroupMembers = 8;
+
+  /// Group name limit (SQL check: 1–60 characters).
+  static const int maxGroupNameLength = 60;
 
   /// `send_ride_message` body limit (SQL check).
   static const int maxMessageLength = 2000;

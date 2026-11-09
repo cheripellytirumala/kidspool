@@ -40,6 +40,10 @@ abstract final class AppRoutes {
   static const String rideChat = '/messages/chat';
   static const String rideGroupInfo = '/messages/group';
 
+  // Ride groups (standing groups of families). Both take [GroupChatArgs].
+  static const String groupChat = '/messages/groups/chat';
+  static const String groupInfo = '/messages/groups/info';
+
   // Ride day (arguments: [RideArgs])
   static const String liveTracking = '/ride/live';
   static const String rideCompleted = '/ride/completed';
@@ -87,4 +91,15 @@ class RideChatArgs {
   /// The other parent's first name / initials, shown before the ride loads.
   final String? otherName;
   final String? otherInitials;
+}
+
+/// Route arguments for a ride group's chat and its info screen.
+class GroupChatArgs {
+  const GroupChatArgs({required this.groupId, this.name});
+
+  /// `ride_groups.id`.
+  final String groupId;
+
+  /// The group's name, shown before the group loads.
+  final String? name;
 }

@@ -131,6 +131,7 @@ class _SendMessageSheetState extends State<SendMessageSheet> {
               const SizedBox(height: 10),
               AppButton(
                 label: 'Send',
+                isLoading: provider.isSending,
                 onPressed: provider.canSend ? widget.onSend : null,
               ),
             ],

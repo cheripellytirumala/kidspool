@@ -3,12 +3,14 @@ import 'package:fpdart/fpdart.dart';
 import '../../../common/core/error/failures.dart';
 import '../entities/chat_person.dart';
 import '../entities/ride_chat.dart';
+import '../entities/ride_group.dart';
 import '../entities/ride_request.dart';
 
 /// Ride requests, offers and ride chats (Messages tab).
 ///
 /// Chat calls fail with code `MessagesApiConstants.chatMissing` while the
-/// chat SQL isn't applied on the server.
+/// chat SQL isn't applied on the server; ride group calls fail with
+/// `MessagesApiConstants.groupsMissing` until the groups SQL is applied.
 abstract interface class MessagesRepository {
   /// `profiles.id` of the signed-in user (tells own messages apart).
   String? get myUserId;
@@ -61,4 +63,49 @@ abstract interface class MessagesRepository {
     required String driverId,
     required String body,
   });
+
+  // Ride groups
+  Future<Either<Failure, List<RideGroup>>> getMyGroups();
+
+  Future<Either<Failure, RideGroupDetails>> getGroup(String groupId);
+
+  /// Latest messages of a group, oldest first.
+  Future<Either<Failure, List<GroupMessage>>> getGroupMessages(String groupId);
+
+  Future<Either<Failure, GroupMessage>> sendGroupMessage({
+    required String groupId,
+    required String body,
+  });
+
+  Future<Either<Failure, Unit>> markGroupRead(String groupId);
+
+  /// Starts a group with the user as owner. Returns its id.
+  Future<Either<Failure, String>> createGroup({
+    required String name,
+    required List<String> memberIds,
+    String? schoolId,
+  });
+
+  /// Returns how many parents were added.
+  Future<Either<Failure, int>> addGroupMembers({
+    required String groupId,
+    required List<String> memberIds,
+  });
+
+  Future<Either<Failure, Unit>> leaveGroup(String groupId);
+
+  Future<Either<Failure, Unit>> renameGroup({
+    required String groupId,
+    required String name,
+  });
+
+  Future<Either<Failure, Unit>> setGroupMuted({
+    required String groupId,
+    required bool muted,
+  });
+
+  /// Parents the user may add ([groupId] null: for a new group).
+  Future<Either<Failure, List<RideGroupMember>>> getGroupCandidates(
+    String? groupId,
+  );
 }

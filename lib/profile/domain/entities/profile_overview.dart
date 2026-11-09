@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../add_kids/domain/entities/child.dart';
 import '../../../common/domain/entities/my_status.dart';
-import '../../../messages/domain/entities/ride_chat.dart';
+import '../../../messages/domain/entities/ride_group.dart';
 import 'profile_details.dart';
 import 'ride_mode.dart';
 import 'saved_address.dart';
@@ -33,8 +33,8 @@ class ProfileOverview extends Equatable {
   final List<SavedAddress> addresses;
   final String? addressesError;
 
-  /// Ride chats, newest first ("Ride groups").
-  final List<RideChat> rideGroups;
+  /// The user's ride groups, newest activity first ("Ride groups").
+  final List<RideGroup> rideGroups;
 
   String get fullName {
     final first = details.firstName.isNotEmpty

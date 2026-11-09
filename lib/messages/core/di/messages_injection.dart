@@ -5,20 +5,33 @@ import '../../presentation/providers/messages_badge_counter.dart';
 import '../../data/data_sources/remote/messages_remote_data_source.dart';
 import '../../data/repositories/messages_repository_impl.dart';
 import '../../domain/repositories/messages_repository.dart';
+import '../../domain/usecases/add_group_members.dart';
 import '../../domain/usecases/cancel_ride_request.dart';
+import '../../domain/usecases/create_ride_group.dart';
 import '../../domain/usecases/driver_cancel_ride.dart';
 import '../../domain/usecases/get_drive_request.dart';
+import '../../domain/usecases/get_group_candidates.dart';
+import '../../domain/usecases/get_group_messages.dart';
 import '../../domain/usecases/get_my_rides.dart';
 import '../../domain/usecases/get_my_chats.dart';
+import '../../domain/usecases/get_my_ride_groups.dart';
 import '../../domain/usecases/get_my_ride_request.dart';
 import '../../domain/usecases/get_request_activity.dart';
 import '../../domain/usecases/get_requests_inbox.dart';
+import '../../domain/usecases/get_ride_group.dart';
 import '../../domain/usecases/get_ride_messages.dart';
+import '../../domain/usecases/leave_ride_group.dart';
+import '../../domain/usecases/mark_group_read.dart';
 import '../../domain/usecases/offer_ride.dart';
 import '../../domain/usecases/pass_ride_request.dart';
+import '../../domain/usecases/rename_ride_group.dart';
 import '../../domain/usecases/respond_to_offer.dart';
+import '../../domain/usecases/send_group_message.dart';
 import '../../domain/usecases/send_ride_message.dart';
+import '../../domain/usecases/set_group_muted.dart';
 import '../../domain/usecases/withdraw_offer.dart';
+import '../../presentation/providers/group_chat_provider.dart';
+import '../../presentation/providers/group_info_provider.dart';
 import '../../presentation/providers/messages_provider.dart';
 import '../../presentation/providers/ride_chat_provider.dart';
 import '../../presentation/providers/ride_group_info_provider.dart';
@@ -50,6 +63,18 @@ void registerMessagesDependencies(GetIt sl) {
     ..registerLazySingleton<GetMyChats>(() => GetMyChats(sl()))
     ..registerLazySingleton<GetRideMessages>(() => GetRideMessages(sl()))
     ..registerLazySingleton<SendRideMessage>(() => SendRideMessage(sl()))
+    // Ride groups
+    ..registerLazySingleton<GetMyRideGroups>(() => GetMyRideGroups(sl()))
+    ..registerLazySingleton<GetRideGroup>(() => GetRideGroup(sl()))
+    ..registerLazySingleton<GetGroupMessages>(() => GetGroupMessages(sl()))
+    ..registerLazySingleton<SendGroupMessage>(() => SendGroupMessage(sl()))
+    ..registerLazySingleton<MarkGroupRead>(() => MarkGroupRead(sl()))
+    ..registerLazySingleton<CreateRideGroup>(() => CreateRideGroup(sl()))
+    ..registerLazySingleton<AddGroupMembers>(() => AddGroupMembers(sl()))
+    ..registerLazySingleton<LeaveRideGroup>(() => LeaveRideGroup(sl()))
+    ..registerLazySingleton<RenameRideGroup>(() => RenameRideGroup(sl()))
+    ..registerLazySingleton<SetGroupMuted>(() => SetGroupMuted(sl()))
+    ..registerLazySingleton<GetGroupCandidates>(() => GetGroupCandidates(sl()))
     // Providers: one per screen.
     ..registerFactory<MessagesProvider>(
       () => MessagesProvider(
@@ -60,11 +85,16 @@ void registerMessagesDependencies(GetIt sl) {
         withdrawOffer: sl(),
         respondToOffer: sl(),
         myUserId: () => sl<GetRideMessages>().myUserId,
+        getMyRideGroups: sl(),
         onBadgeChanged: NavBadges.instance.setMessages,
       ),
     )
     ..registerLazySingleton<MessagesBadgeCounter>(
-      () => MessagesBadgeCounter(getRequestsInbox: sl(), getMyChats: sl()),
+      () => MessagesBadgeCounter(
+        getRequestsInbox: sl(),
+        getMyChats: sl(),
+        getMyRideGroups: sl(),
+      ),
     )
     ..registerFactory<RideRequestDetailProvider>(
       () => RideRequestDetailProvider(
@@ -98,6 +128,24 @@ void registerMessagesDependencies(GetIt sl) {
         cancelRideRequest: sl(),
         withdrawOffer: sl(),
         driverCancelRide: sl(),
+      ),
+    )
+    ..registerFactory<GroupChatProvider>(
+      () => GroupChatProvider(
+        getRideGroup: sl(),
+        getGroupMessages: sl(),
+        sendGroupMessage: sl(),
+        markGroupRead: sl(),
+      ),
+    )
+    ..registerFactory<GroupInfoProvider>(
+      () => GroupInfoProvider(
+        getRideGroup: sl(),
+        getGroupCandidates: sl(),
+        addGroupMembers: sl(),
+        renameRideGroup: sl(),
+        setGroupMuted: sl(),
+        leaveRideGroup: sl(),
       ),
     );
 

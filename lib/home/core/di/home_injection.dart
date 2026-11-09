@@ -36,6 +36,7 @@ void registerHomeDependencies(GetIt sl) {
         account: sl(),
         preferences: sl(),
         getFamiliesNearMe: sl(),
+        getMyRideGroups: sl(),
       ),
     )
     // Per-screen state: fresh for every "Families near you" visit.
@@ -44,6 +45,9 @@ void registerHomeDependencies(GetIt sl) {
         getFamiliesNearMe: sl(),
         account: sl(),
         rideSummary: () => _askRideSummary(sl<AskRideProvider>()),
+        requestIds: () => sl<AskRideProvider>().createdRequestIds,
+        sendRideMessage: sl(),
+        createRideGroup: sl(),
       ),
     );
 }

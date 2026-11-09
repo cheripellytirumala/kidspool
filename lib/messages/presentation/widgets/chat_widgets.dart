@@ -394,8 +394,8 @@ class RideRequestChatCard extends StatelessWidget {
 }
 
 /// F19 composer: "+ Ride", message field, lime send button. Disabled with
-/// [MessagesApiConstants.chatMissingMessage] while the chat SQL isn't on the
-/// server.
+/// [disabledHint] (default [MessagesApiConstants.chatMissingMessage]) while
+/// the chat SQL isn't on the server. No "+ Ride" when [onAddRide] is null.
 class ChatComposer extends StatelessWidget {
   const ChatComposer({
     super.key,
@@ -404,13 +404,15 @@ class ChatComposer extends StatelessWidget {
     required this.sending,
     required this.onSend,
     required this.onAddRide,
+    this.disabledHint = MessagesApiConstants.chatMissingMessage,
   });
 
   final TextEditingController controller;
   final bool enabled;
   final bool sending;
   final VoidCallback onSend;
-  final VoidCallback onAddRide;
+  final VoidCallback? onAddRide;
+  final String disabledHint;
 
   @override
   Widget build(BuildContext context) {
@@ -423,36 +425,38 @@ class ChatComposer extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           child: Row(
             children: [
-              Semantics(
-                button: true,
-                label: 'Ask for a ride',
-                excludeSemantics: true,
-                child: Material(
-                  color: AppColors.ink,
-                  shape: const StadiumBorder(),
-                  child: InkWell(
-                    customBorder: const StadiumBorder(),
-                    onTap: onAddRide,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const AppIcon(MessagesAssets.plus16, size: 16),
-                          const SizedBox(width: 6),
-                          Text(
-                            'Ride',
-                            style: MessagesStyles.labelM.copyWith(
-                              color: AppColors.textOnDark,
+              if (onAddRide != null) ...[
+                Semantics(
+                  button: true,
+                  label: 'Ask for a ride',
+                  excludeSemantics: true,
+                  child: Material(
+                    color: AppColors.ink,
+                    shape: const StadiumBorder(),
+                    child: InkWell(
+                      customBorder: const StadiumBorder(),
+                      onTap: onAddRide,
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 12, 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const AppIcon(MessagesAssets.plus16, size: 16),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Ride',
+                              style: MessagesStyles.labelM.copyWith(
+                                color: AppColors.textOnDark,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               Expanded(
                 child: Container(
                   constraints: const BoxConstraints(minHeight: 40),
@@ -482,9 +486,7 @@ class ChatComposer extends StatelessWidget {
                       enabledBorder: InputBorder.none,
                       disabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
-                      hintText: enabled
-                          ? 'Message'
-                          : MessagesApiConstants.chatMissingMessage,
+                      hintText: enabled ? 'Message' : disabledHint,
                       hintMaxLines: 2,
                       hintStyle: MessagesStyles.labelM.copyWith(
                         color: AppColors.textSecondary,
