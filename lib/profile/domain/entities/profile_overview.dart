@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../add_kids/domain/entities/child.dart';
 import '../../../common/domain/entities/my_status.dart';
+import '../../../messages/domain/entities/ride_chat.dart';
 import 'profile_details.dart';
 import 'ride_mode.dart';
 import 'saved_address.dart';
@@ -17,6 +18,7 @@ class ProfileOverview extends Equatable {
     this.kidsError,
     this.addresses = const [],
     this.addressesError,
+    this.rideGroups = const [],
   });
 
   /// `get_my_status`: name, role, ID review state.
@@ -30,6 +32,9 @@ class ProfileOverview extends Equatable {
   /// Default first.
   final List<SavedAddress> addresses;
   final String? addressesError;
+
+  /// Ride chats, newest first ("Ride groups").
+  final List<RideChat> rideGroups;
 
   String get fullName {
     final first = details.firstName.isNotEmpty
@@ -74,6 +79,7 @@ class ProfileOverview extends Equatable {
     kidsError: kidsError,
     addresses: addresses ?? this.addresses,
     addressesError: addresses != null ? null : addressesError,
+    rideGroups: rideGroups,
   );
 
   @override
@@ -85,5 +91,6 @@ class ProfileOverview extends Equatable {
     kidsError,
     addresses,
     addressesError,
+    rideGroups,
   ];
 }

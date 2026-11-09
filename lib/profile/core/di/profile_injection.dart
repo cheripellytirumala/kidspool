@@ -33,7 +33,12 @@ void registerProfileDependencies(GetIt sl) {
     )
     // Use cases
     ..registerLazySingleton<GetProfileOverview>(
-      () => GetProfileOverview(profile: sl(), account: sl(), kids: sl()),
+      () => GetProfileOverview(
+        profile: sl(),
+        account: sl(),
+        kids: sl(),
+        messages: sl(),
+      ),
     )
     ..registerLazySingleton<ChangeRideMode>(() => ChangeRideMode(sl()))
     ..registerLazySingleton<AddSavedAddress>(() => AddSavedAddress(sl()))

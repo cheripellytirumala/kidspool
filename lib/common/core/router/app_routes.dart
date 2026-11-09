@@ -43,6 +43,17 @@ abstract final class AppRoutes {
   // Ride day (arguments: [RideArgs])
   static const String liveTracking = '/ride/live';
   static const String rideCompleted = '/ride/completed';
+
+  // In-app web page (arguments: [WebPageArgs])
+  static const String webPage = '/web';
+}
+
+/// Route arguments for the in-app web page (Terms, Privacy Policy).
+class WebPageArgs {
+  const WebPageArgs({required this.title, required this.url});
+
+  final String title;
+  final String url;
 }
 
 /// Route arguments for ride-day screens.

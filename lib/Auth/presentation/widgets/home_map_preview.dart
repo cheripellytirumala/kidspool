@@ -10,16 +10,19 @@ import '../../core/constants/auth_assets.dart';
 /// "Map · Home preview" on S04: dark map tile, lime radius around home, the
 /// home pin and an address label.
 class HomeMapPreview extends StatelessWidget {
-  const HomeMapPreview({super.key, required this.label});
+  const HomeMapPreview({super.key, required this.label, this.onTap});
 
   /// Address shown in the white pill; hidden when empty.
   final String label;
+
+  /// Tapping the map (same action as "Use my current location").
+  final VoidCallback? onTap;
 
   static const double _height = 128;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
+    final map = ClipRRect(
       borderRadius: BorderRadius.circular(AppDimens.radiusMap),
       child: SizedBox(
         height: _height,
@@ -81,6 +84,16 @@ class HomeMapPreview extends StatelessWidget {
             },
           ),
         ),
+      ),
+    );
+    if (onTap == null) return map;
+    return Semantics(
+      button: true,
+      label: 'Use my current location',
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: map,
       ),
     );
   }

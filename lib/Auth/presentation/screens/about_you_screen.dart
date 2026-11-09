@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:provider/provider.dart';
 
+import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/theme/app_assets.dart';
@@ -99,6 +100,15 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
     _stateCode.text = _flow.stateCode;
   }
 
+  void _openWebPage(String title, String url) {
+    FocusScope.of(context).unfocus();
+    Navigator.pushNamed(
+      context,
+      AppRoutes.webPage,
+      arguments: WebPageArgs(title: title, url: url),
+    );
+  }
+
   /// The profile photo doubles as the selfie checked against the ID.
   Future<void> _addPhoto() async {
     final fromCamera = await showPhotoSourceSheet(context);
@@ -169,7 +179,10 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
             onTap: flow.isLocating ? () {} : _useCurrentLocation,
           ),
         ),
-        HomeMapPreview(label: flow.addressLabel),
+        HomeMapPreview(
+          label: flow.addressLabel,
+          onTap: flow.isLocating ? null : _useCurrentLocation,
+        ),
         AppPillInput(
           controller: _street,
           hint: 'Street address',
@@ -264,11 +277,17 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
         AppCheckboxRow(
           value: flow.isGuardian,
           label: 'I’m a parent or legal guardian, 18 or older',
+          underline: true,
           onChanged: flow.setGuardian,
         ),
         AppCheckboxRow(
           value: flow.agreedToTerms,
           label: 'I agree to the Terms and Privacy Policy',
+          links: {
+            'Terms': () => _openWebPage('Terms', AppConstants.termsUrl),
+            'Privacy Policy': () =>
+                _openWebPage('Privacy Policy', AppConstants.privacyUrl),
+          },
           onChanged: flow.setAgreedToTerms,
         ),
         const SizedBox(height: 10),

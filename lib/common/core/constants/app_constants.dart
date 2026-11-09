@@ -13,4 +13,12 @@ abstract final class AppConstants {
 
   /// "I need rides" / "I can offer and request rides" picked on About you.
   static const String cacheKeyRideRole = 'ride_role';
+
+  // TODO: replace with the real pages before release (placeholders).
+  /// Opened in-app from "I agree to the Terms and Privacy Policy".
+  static const String termsUrl = 'https://example.com/terms';
+  static const String privacyUrl = 'https://example.com/privacy';
+
+  /// Profile › Help & support (placeholder, like the two above).
+  static const String supportUrl = 'https://example.com/help';
 }

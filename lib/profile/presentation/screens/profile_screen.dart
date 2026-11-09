@@ -4,15 +4,18 @@ import 'package:provider/provider.dart';
 
 import '../../../add_kids/presentation/screens/add_child_screen.dart'
     show AddChildArgs;
+import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/domain/entities/my_status.dart';
 import '../../../common/presentation/screens/map_address_picker_screen.dart';
+import '../../../common/presentation/theme/app_assets.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
+import '../../../messages/domain/entities/ride_chat.dart';
 import '../../core/constants/profile_assets.dart';
 import '../../core/constants/profile_styles.dart';
 import '../../domain/entities/profile_overview.dart';
@@ -188,12 +191,44 @@ class _ProfileView extends StatelessWidget {
         onTap: () => actions.addAddress(overview.addresses.isEmpty),
       ),
 
+      // Ride groups (ride chats)
+      if (overview.rideGroups.isNotEmpty) ...[
+        const ProfileSectionLabel('Ride groups'),
+        for (final chat in overview.rideGroups.take(3))
+          ProfileRow(
+            icon: const _MaterialIcon(Icons.groups_outlined),
+            title: chat.iAmDriver
+                ? 'Driving for ${chat.other.firstName}'
+                : 'Ride with ${chat.other.firstName}',
+            subtitle: chat.hasUnread
+                ? (chat.unread == 1
+                      ? '1 new message'
+                      : '${chat.unread} new messages')
+                : (chat.lastMessage ?? 'No messages yet'),
+            onTap: () => actions.openChat(chat),
+          ),
+        if (overview.rideGroups.length > 3)
+          ProfileRow(
+            icon: const AppIcon(AppAssets.iconChat, size: 22),
+            title: 'See all in Messages',
+            subtitle: '${overview.rideGroups.length} ride groups',
+            onTap: actions.openMessages,
+          ),
+      ],
+
       // Safety & help
       const ProfileSectionLabel('Safety & help'),
-      const ProfileRow(
-        icon: AppIcon(ProfileAssets.lock, size: 22),
+      ProfileRow(
+        icon: const AppIcon(ProfileAssets.lock, size: 22),
         title: 'Privacy',
         subtitle: 'We never show your phone or address',
+        onTap: () => actions.openWeb('Privacy', AppConstants.privacyUrl),
+      ),
+      ProfileRow(
+        icon: const _MaterialIcon(Icons.help_outline_rounded),
+        title: 'Help & support',
+        subtitle: 'Questions, safety, report a problem',
+        onTap: () => actions.openWeb('Help & support', AppConstants.supportUrl),
       ),
       ProfileRow(
         icon: const AppIcon(ProfileAssets.logout, size: 22),
@@ -274,6 +309,27 @@ class _ProfileActions {
     }
   }
 
+  void openChat(RideChat chat) => _push(
+    AppRoutes.rideChat,
+    arguments: RideChatArgs(
+      requestId: chat.requestId,
+      driverId: chat.driverId,
+      iAmDriver: chat.iAmDriver,
+      otherName: chat.other.firstName,
+      otherInitials: chat.other.initials,
+    ),
+  );
+
+  void openMessages() => Navigator.of(
+    context,
+  ).pushNamedAndRemoveUntil(AppRoutes.messages, (_) => false);
+
+  void openWeb(String title, String url) => Navigator.pushNamed(
+    context,
+    AppRoutes.webPage,
+    arguments: WebPageArgs(title: title, url: url),
+  );
+
   Future<void> signOut() async {
     final ok = await showProfileConfirm(
       context,
@@ -330,4 +386,15 @@ class _LicenseRow extends StatelessWidget {
       onTap: canScan ? onScan : null,
     );
   }
+}
+
+/// 22px Material icon in the row tile (for rows without a Figma SVG here).
+class _MaterialIcon extends StatelessWidget {
+  const _MaterialIcon(this.icon);
+
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) =>
+      Icon(icon, size: 22, color: AppColors.ink);
 }
