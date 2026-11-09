@@ -94,6 +94,22 @@ class _AddChildViewState extends State<_AddChildView> {
     }
   }
 
+  /// Saves the open form, opens a blank one and puts the cursor in its
+  /// First name (which scrolls the new form into view).
+  Future<void> _addAnother(AddChildFormProvider form) async {
+    FocusScope.of(context).unfocus();
+    final error = await form.addAnother();
+    if (!mounted) return;
+    if (error != null) showAppSnack(context, error);
+    // A new form (just opened, or the blank one still waiting) gets the
+    // cursor; an incomplete edit keeps the parent where they are.
+    if (form.isOpen && form.editingId == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) form.firstNameFocus.requestFocus();
+      });
+    }
+  }
+
   Future<void> _run(
     Future<String?> Function() action, {
     bool next = false,
@@ -160,7 +176,7 @@ class _AddChildViewState extends State<_AddChildView> {
               ...cards,
               DashedAddButton(
                 label: 'Add another child',
-                onTap: () => _run(form.addAnother),
+                onTap: () => _addAnother(form),
               ),
             ],
           ),
@@ -246,6 +262,7 @@ class _ChildFormCard extends StatelessWidget {
             label: 'First Name',
             hint: 'Add first name',
             controller: form.firstName,
+            focusNode: form.firstNameFocus,
             textCapitalization: TextCapitalization.words,
           ),
           KidFieldTile(

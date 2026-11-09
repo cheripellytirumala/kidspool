@@ -50,6 +50,8 @@ import 'package:kidspool/messages/presentation/providers/messages_provider.dart'
 import 'package:kidspool/messages/presentation/screens/group_chat_screen.dart';
 import 'package:kidspool/messages/presentation/screens/group_info_screen.dart';
 import 'package:kidspool/messages/presentation/screens/messages_screen.dart';
+import 'package:kidspool/messages/presentation/providers/ride_groups_provider.dart';
+import 'package:kidspool/messages/presentation/screens/ride_groups_screen.dart';
 
 const _me = 'me-id';
 
@@ -308,6 +310,9 @@ Future<void> _register(_GroupsRepository repo) async {
         setGroupMuted: SetGroupMuted(repo),
         leaveRideGroup: LeaveRideGroup(repo),
       ),
+    )
+    ..registerFactory<RideGroupsProvider>(
+      () => RideGroupsProvider(getMyRideGroups: GetMyRideGroups(repo)),
     );
 }
 
@@ -610,6 +615,31 @@ void main() {
   group('screens', () {
     for (final size in const [Size(390, 844), Size(320, 568)]) {
       final tag = '${size.width.toInt()}x${size.height.toInt()}';
+
+      testWidgets('Ride groups (See all) lists every group at $tag', (
+        tester,
+      ) async {
+        await _register(_GroupsRepository());
+        await _pump(tester, const RideGroupsScreen(), size: size);
+        expect(find.text('Ride groups'), findsOneWidget);
+        expect(find.text('You’re in 2 groups'), findsOneWidget);
+        expect(find.text('Home → Lincoln parents'), findsOneWidget);
+        expect(find.text('Swim carpool'), findsOneWidget);
+        expect(find.text('Start a group'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await _dispose(tester);
+      });
+
+      testWidgets('Ride groups before the SQL: plain message at $tag', (
+        tester,
+      ) async {
+        await _register(_GroupsRepository()..groupsDeployed = false);
+        await _pump(tester, const RideGroupsScreen(), size: size);
+        expect(find.text('Group chats aren’t set up yet.'), findsOneWidget);
+        expect(find.text('Start a group'), findsNothing);
+        expect(tester.takeException(), isNull);
+        await _dispose(tester);
+      });
 
       testWidgets('Chats tab lists groups with chats at $tag', (tester) async {
         await _register(_GroupsRepository());

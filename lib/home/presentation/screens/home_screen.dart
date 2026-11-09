@@ -135,7 +135,12 @@ class _HomeView extends StatelessWidget {
     if (group == null) return const [];
     return [
       const SizedBox(height: AppDimens.sectionGap),
-      const _GroupLabel(),
+      _GroupLabel(
+        onSeeAll: () => Navigator.pushNamed(
+          context,
+          AppRoutes.rideGroups,
+        ).then((_) => provider.load()),
+      ),
       const SizedBox(height: AppDimens.sectionGap),
       RideGroupCard(
         title: group.name,
@@ -381,17 +386,37 @@ class _FamiliesHeader extends StatelessWidget {
   }
 }
 
-/// "YOUR RIDE GROUP" section label.
+/// "YOUR RIDE GROUP" section label, with "See all" when the user has
+/// groups (opens the Ride groups list).
 class _GroupLabel extends StatelessWidget {
-  const _GroupLabel();
+  const _GroupLabel({this.onSeeAll});
+
+  final VoidCallback? onSeeAll;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Semantics(
-        header: true,
-        child: Text('YOUR RIDE GROUP', style: HomeTextStyles.groupLabel),
+      child: Row(
+        children: [
+          Expanded(
+            child: Semantics(
+              header: true,
+              child: Text('YOUR RIDE GROUP', style: HomeTextStyles.groupLabel),
+            ),
+          ),
+          if (onSeeAll != null)
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: onSeeAll,
+              child: Semantics(
+                button: true,
+                label: 'See all ride groups',
+                excludeSemantics: true,
+                child: Text('See all', style: HomeTextStyles.labelM),
+              ),
+            ),
+        ],
       ),
     );
   }

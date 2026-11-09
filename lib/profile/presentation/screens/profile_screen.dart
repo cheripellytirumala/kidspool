@@ -206,9 +206,9 @@ class _ProfileView extends StatelessWidget {
         if (overview.rideGroups.length > 3)
           ProfileRow(
             icon: const AppIcon(AppAssets.iconChat, size: 22),
-            title: 'See all in Messages',
+            title: 'See all ride groups',
             subtitle: '${overview.rideGroups.length} ride groups',
-            onTap: actions.openMessages,
+            onTap: actions.openRideGroups,
           ),
       ],
 
@@ -310,9 +310,7 @@ class _ProfileActions {
     arguments: GroupChatArgs(groupId: group.id, name: group.name),
   );
 
-  void openMessages() => Navigator.of(
-    context,
-  ).pushNamedAndRemoveUntil(AppRoutes.messages, (_) => false);
+  void openRideGroups() => _push(AppRoutes.rideGroups);
 
   void openWeb(String title, String url) => Navigator.pushNamed(
     context,
