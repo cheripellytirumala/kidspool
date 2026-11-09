@@ -7,6 +7,9 @@ abstract final class AppDimens {
   static const double screenPadding = 20;
   static const double sectionGap = 14;
 
+  /// Extra space added under the status bar / notch on every screen.
+  static const double extraTopInset = 7;
+
   static const double buttonHeight = 60;
   static const double inputHeight = 60;
 

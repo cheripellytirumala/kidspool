@@ -24,6 +24,7 @@ import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../rides/presentation/screens/rides_screen.dart';
 import '../../../ride_tracking/presentation/screens/live_tracking_screen.dart';
 import '../../../ride_tracking/presentation/screens/ride_completed_screen.dart';
+import '../../presentation/screens/web_page_screen.dart';
 import '../../presentation/widgets/approval_gate.dart';
 import 'app_routes.dart';
 
@@ -58,6 +59,8 @@ abstract final class AppRouter {
     // Ride-day screens read [RideArgs] from the route settings.
     AppRoutes.liveTracking: (_) => const LiveTrackingScreen(),
     AppRoutes.rideCompleted: (_) => const RideCompletedScreen(),
+    // Reads [WebPageArgs]; open during sign-up (Terms, Privacy Policy).
+    AppRoutes.webPage: (_) => const WebPageScreen(),
   };
 
   /// Screens that need an approved ID (see [ApprovalGate]). Sign-up,

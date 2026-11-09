@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
+import '../../../common/core/usecase/usecase.dart';
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
@@ -10,7 +11,10 @@ import '../../../common/presentation/widgets/app_badge.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
+import '../../../common/presentation/widgets/app_snack.dart';
 import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
+import '../../../profile/domain/usecases/sign_out.dart';
+import '../../../profile/presentation/widgets/profile_sheets.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 import '../../domain/entities/home_role.dart';
@@ -239,6 +243,25 @@ class _Header extends StatelessWidget {
   /// 48/22.
   final bool compact;
 
+  /// "Log out?" confirmation, then sign out and back to the phone screen.
+  Future<void> _logOut(BuildContext context) async {
+    final ok = await showProfileConfirm(
+      context,
+      title: 'Log out?',
+      message: 'You’ll need your phone number to sign in again.',
+      confirmLabel: 'Log out',
+    );
+    if (!ok || !context.mounted) return;
+    final result = await sl<SignOut>()(const NoParams());
+    if (!context.mounted) return;
+    final failure = result.getLeft().toNullable();
+    if (failure != null) return showAppSnack(context, failure.message);
+    resetSessionState();
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.phoneNumber, (_) => false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Row(
@@ -287,15 +310,22 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        Container(
-          width: 48,
-          height: 48,
-          alignment: Alignment.center,
-          decoration: const BoxDecoration(
+        // Log out (was the initials avatar).
+        SizedBox.square(
+          dimension: compact ? 44 : 48,
+          child: Material(
             color: AppColors.lime,
-            shape: BoxShape.circle,
+            shape: const CircleBorder(),
+            child: IconButton(
+              tooltip: 'Log out',
+              onPressed: () => _logOut(context),
+              icon: const Icon(
+                Icons.power_settings_new_rounded,
+                color: AppColors.ink,
+                size: 24,
+              ),
+            ),
           ),
-          child: Text(provider.initials, style: HomeTextStyles.labelM),
         ),
       ],
     );

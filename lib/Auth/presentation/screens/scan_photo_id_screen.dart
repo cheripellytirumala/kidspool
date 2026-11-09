@@ -39,8 +39,35 @@ class ScanPhotoIdScreen extends StatelessWidget {
   }
 }
 
-class _ScanBody extends StatelessWidget {
+class _ScanBody extends StatefulWidget {
   const _ScanBody();
+
+  @override
+  State<_ScanBody> createState() => _ScanBodyState();
+}
+
+class _ScanBodyState extends State<_ScanBody> {
+  @override
+  void initState() {
+    super.initState();
+    // On landing, ask right away whether to take or pick the photo.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _askSource());
+  }
+
+  /// "Take a photo" / "Choose from library" for the current side; skipped
+  /// once that side already has a photo (e.g. coming back from V3).
+  Future<void> _askSource() async {
+    if (!mounted) return;
+    final scan = context.read<ScanIdProvider>();
+    final flow = context.read<AuthFlowProvider>();
+    final done = scan.side == IdSide.front
+        ? flow.idFrontPath != null
+        : flow.idBackPath != null;
+    if (done || scan.isBusy) return;
+    final fromCamera = await showPhotoSourceSheet(context);
+    if (fromCamera == null || !mounted) return;
+    await _capture(context, fromCamera: fromCamera);
+  }
 
   Future<void> _capture(
     BuildContext context, {

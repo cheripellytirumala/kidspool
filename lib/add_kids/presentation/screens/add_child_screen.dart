@@ -186,7 +186,14 @@ class _ChildFormCard extends StatelessWidget {
       // add-kid accepts kids under 19, not born in the future.
       firstDate: DateTime(now.year - 19, now.month, now.day + 1),
       lastDate: now,
-      initialEntryMode: DatePickerEntryMode.calendarOnly,
+      // Start on the year grid (no paging back month by month), then the
+      // month; the pencil switches to typing the date.
+      initialDatePickerMode: DatePickerMode.year,
+      initialEntryMode: DatePickerEntryMode.calendar,
+      fieldHintText: 'MM/DD/YYYY',
+      fieldLabelText: 'Date of birth',
+      errorFormatText: 'Enter a date like 05/14/2017',
+      errorInvalidText: 'Kids must be under 19',
     );
     if (picked != null) form.setDateOfBirth(picked);
   }

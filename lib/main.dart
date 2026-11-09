@@ -6,6 +6,7 @@ import 'common/core/di/injection_container.dart';
 import 'common/core/router/app_router.dart';
 import 'common/core/router/app_routes.dart';
 import 'common/presentation/theme/app_theme.dart';
+import 'common/presentation/widgets/extra_top_inset.dart';
 import 'onboarding/presentation/providers/app_version_provider.dart';
 import 'ride_tracking/presentation/widgets/ride_alerts_host.dart';
 
@@ -35,8 +36,10 @@ class KidsPoolApp extends StatelessWidget {
         initialRoute: AppRoutes.splash,
         onGenerateRoute: AppRouter.onGenerateRoute,
         // S19 / S20: "Ride started" / "Arrived" banners over every screen.
-        builder: (context, child) =>
-            RideAlertsHost(navigatorKey: rootNavigatorKey, child: child!),
+        // ExtraTopInset: 7px more space under the status bar on every screen.
+        builder: (context, child) => ExtraTopInset(
+          child: RideAlertsHost(navigatorKey: rootNavigatorKey, child: child!),
+        ),
       ),
     );
   }
