@@ -213,6 +213,10 @@ class FakeMessagesRepository implements MessagesRepository {
     sent.add(m);
     return Right(m);
   }
+
+  // Ride groups are covered by test/ride_groups_test.dart.
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Only ride mode is used by the Rides tab.

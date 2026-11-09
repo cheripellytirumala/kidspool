@@ -14,6 +14,8 @@ import '../../../add_kids/presentation/screens/add_child_screen.dart';
 import '../../../add_kids/presentation/screens/all_set_screen.dart';
 import '../../../add_kids/presentation/screens/where_kids_go_screen.dart';
 import '../../../add_kids/presentation/screens/your_kids_screen.dart';
+import '../../../messages/presentation/screens/group_chat_screen.dart';
+import '../../../messages/presentation/screens/group_info_screen.dart';
 import '../../../messages/presentation/screens/messages_screen.dart';
 import '../../../messages/presentation/screens/ride_chat_screen.dart';
 import '../../../messages/presentation/screens/ride_group_info_screen.dart';
@@ -56,6 +58,8 @@ abstract final class AppRouter {
     AppRoutes.rideRequestDetail: (_) => const RideRequestDetailScreen(),
     AppRoutes.rideChat: (_) => const RideChatScreen(),
     AppRoutes.rideGroupInfo: (_) => const RideGroupInfoScreen(),
+    AppRoutes.groupChat: (_) => const GroupChatScreen(),
+    AppRoutes.groupInfo: (_) => const GroupInfoScreen(),
     // Ride-day screens read [RideArgs] from the route settings.
     AppRoutes.liveTracking: (_) => const LiveTrackingScreen(),
     AppRoutes.rideCompleted: (_) => const RideCompletedScreen(),
@@ -80,6 +84,8 @@ abstract final class AppRouter {
     AppRoutes.rideRequestDetail,
     AppRoutes.rideChat,
     AppRoutes.rideGroupInfo,
+    AppRoutes.groupChat,
+    AppRoutes.groupInfo,
     AppRoutes.liveTracking,
     AppRoutes.rideCompleted,
   };

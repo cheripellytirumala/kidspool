@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/error/failures.dart';
+import '../../../common/core/usecase/usecase.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../../common/domain/repositories/account_repository.dart';
 import '../../domain/entities/family.dart';
@@ -11,12 +12,15 @@ import '../../domain/entities/ride_activity.dart';
 import '../../domain/entities/upcoming_ride.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../../domain/usecases/get_families_near_me.dart';
+import '../../../messages/domain/entities/ride_group.dart';
+import '../../../messages/domain/usecases/get_my_ride_groups.dart';
 
 /// State holder for the Home dashboard: the parent's name
 /// (`get_my_status`), upcoming rides (`get_my_ride_requests`), drives the
 /// user gives (`get_my_drives`), the booked ride's driver and route group
 /// (`get_request_activity`), the bell dot (`get_my_notifications`) and the
-/// FAMILIES preview (`get_families_near_me`).
+/// FAMILIES preview (`get_families_near_me`) and the latest ride group
+/// (`get_my_ride_groups`, optional).
 /// Registered as a lazy singleton so the user's role survives navigation.
 class HomeProvider extends ChangeNotifier {
   HomeProvider({
@@ -24,8 +28,10 @@ class HomeProvider extends ChangeNotifier {
     required AccountRepository account,
     required SharedPreferences preferences,
     required GetFamiliesNearMe getFamiliesNearMe,
+    GetMyRideGroups? getMyRideGroups,
     DateTime Function()? clock,
   }) : _repository = repository,
+       _getRideGroups = getMyRideGroups,
        _getFamiliesNearMe = getFamiliesNearMe,
        _account = account,
        _preferences = preferences,
@@ -42,6 +48,7 @@ class HomeProvider extends ChangeNotifier {
 
   final HomeRepository _repository;
   final GetFamiliesNearMe _getFamiliesNearMe;
+  final GetMyRideGroups? _getRideGroups;
   final AccountRepository _account;
   final SharedPreferences _preferences;
   final DateTime Function() _clock;
@@ -55,6 +62,7 @@ class HomeProvider extends ChangeNotifier {
   RideActivity? _activity;
   bool _hasUnseenNotifications = false;
   List<Family> _families = const [];
+  RideGroup? _latestGroup;
 
   ViewStatus get status => _status;
   bool get isLoading => _status.isLoading;
@@ -88,6 +96,7 @@ class HomeProvider extends ChangeNotifier {
     _readRole(); // pick up a change made on Profile
     _setStatus(ViewStatus.loading);
 
+    final groupsF = _getRideGroups?.call(const NoParams());
     final results = await (
       _account.getMyStatus(),
       _repository.getUpcomingRides(),
@@ -100,6 +109,13 @@ class HomeProvider extends ChangeNotifier {
     _hasUnseenNotifications = results.$4.getOrElse((_) => false);
     // Optional: a failure (or a server without the RPC) hides FAMILIES.
     _families = results.$5.match((_) => const [], (data) => data.families);
+    // Optional: no groups (or no groups SQL) keeps the route group card.
+    if (groupsF != null) {
+      _latestGroup = (await groupsF).match(
+        (_) => _latestGroup,
+        (groups) => groups.firstOrNull,
+      );
+    }
     final failure = results.$2.match((f) => f, (rides) {
       _rides = rides;
       return null;
@@ -205,6 +221,10 @@ class HomeProvider extends ChangeNotifier {
     final name = featuredRide?.destinationName ?? '';
     return name.isEmpty ? 'School' : name;
   }
+
+  /// The user's most recently active ride group, if any: "Your ride group"
+  /// shows it (and opens its chat) instead of the route's parents.
+  RideGroup? get latestGroup => _latestGroup;
 
   /// The parents on the booked ride's route. Null hides "Your ride group".
   String? get rideGroupTitle {

@@ -12,8 +12,10 @@ import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
 import '../../core/constants/messages_api_constants.dart';
 import '../../domain/entities/ride_chat.dart';
+import '../../domain/entities/ride_group.dart';
 import '../../domain/entities/ride_request.dart';
 import '../providers/messages_provider.dart';
+import '../widgets/group_chat_widgets.dart';
 import '../widgets/messages_common.dart';
 import '../widgets/messages_list_widgets.dart';
 import 'ride_request_detail_screen.dart';
@@ -161,11 +163,11 @@ class _MessagesView extends StatelessWidget {
   // ------------------------------------------------------------- chats
 
   List<Widget> _chats(BuildContext context, MessagesProvider provider) {
-    final chats = provider.chats;
+    final items = provider.items;
     return [
       if (provider.chatMissing)
         const _Notice(MessagesApiConstants.chatMissingMessage),
-      if (chats.isEmpty)
+      if (items.isEmpty)
         if (provider.chatsStatus.isLoading ||
             provider.chatsStatus.isInitial ||
             provider.requestsStatus.isLoading)
@@ -184,12 +186,18 @@ class _MessagesView extends StatelessWidget {
                       'chat here.'
                 : 'Try a different name.',
           ),
-      for (final chat in chats)
-        ChatListTile(
-          chat: chat,
-          place: provider.chatPlace(chat),
-          onTap: () => _openChat(context, _argsOf(chat)),
-        ),
+      for (final item in items)
+        switch (item) {
+          RideChatItem(:final chat) => ChatListTile(
+            chat: chat,
+            place: provider.chatPlace(chat),
+            onTap: () => _openChat(context, _argsOf(chat)),
+          ),
+          RideGroupItem(:final group) => GroupListTile(
+            group: group,
+            onTap: () => _openGroup(context, group),
+          ),
+        },
     ];
   }
 
@@ -219,6 +227,15 @@ class _MessagesView extends StatelessWidget {
     }
     final provider = context.read<MessagesProvider>();
     await Navigator.of(context).pushNamed(AppRoutes.rideChat, arguments: args);
+    await provider.load();
+  }
+
+  Future<void> _openGroup(BuildContext context, RideGroup group) async {
+    final provider = context.read<MessagesProvider>();
+    await Navigator.of(context).pushNamed(
+      AppRoutes.groupChat,
+      arguments: GroupChatArgs(groupId: group.id, name: group.name),
+    );
     await provider.load();
   }
 

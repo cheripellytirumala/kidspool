@@ -15,7 +15,7 @@ import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
-import '../../../messages/domain/entities/ride_chat.dart';
+import '../../../messages/domain/entities/ride_group.dart';
 import '../../core/constants/profile_assets.dart';
 import '../../core/constants/profile_styles.dart';
 import '../../domain/entities/profile_overview.dart';
@@ -191,21 +191,17 @@ class _ProfileView extends StatelessWidget {
         onTap: () => actions.addAddress(overview.addresses.isEmpty),
       ),
 
-      // Ride groups (ride chats)
+      // Ride groups
       if (overview.rideGroups.isNotEmpty) ...[
         const ProfileSectionLabel('Ride groups'),
-        for (final chat in overview.rideGroups.take(3))
+        for (final group in overview.rideGroups.take(3))
           ProfileRow(
             icon: const _MaterialIcon(Icons.groups_outlined),
-            title: chat.iAmDriver
-                ? 'Driving for ${chat.other.firstName}'
-                : 'Ride with ${chat.other.firstName}',
-            subtitle: chat.hasUnread
-                ? (chat.unread == 1
-                      ? '1 new message'
-                      : '${chat.unread} new messages')
-                : (chat.lastMessage ?? 'No messages yet'),
-            onTap: () => actions.openChat(chat),
+            title: group.name,
+            subtitle: group.hasUnread
+                ? '${group.membersLabel} · ${group.unread} new'
+                : group.membersLabel,
+            onTap: () => actions.openGroup(group),
           ),
         if (overview.rideGroups.length > 3)
           ProfileRow(
@@ -309,15 +305,9 @@ class _ProfileActions {
     }
   }
 
-  void openChat(RideChat chat) => _push(
-    AppRoutes.rideChat,
-    arguments: RideChatArgs(
-      requestId: chat.requestId,
-      driverId: chat.driverId,
-      iAmDriver: chat.iAmDriver,
-      otherName: chat.other.firstName,
-      otherInitials: chat.other.initials,
-    ),
+  void openGroup(RideGroup group) => _push(
+    AppRoutes.groupChat,
+    arguments: GroupChatArgs(groupId: group.id, name: group.name),
   );
 
   void openMessages() => Navigator.of(

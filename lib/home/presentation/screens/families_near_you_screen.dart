@@ -10,6 +10,8 @@ import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
+import '../../../common/presentation/widgets/app_snack.dart';
+import '../../../messages/presentation/widgets/group_name_dialog.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 import '../../domain/entities/kid_place.dart';
@@ -27,6 +29,7 @@ import '../widgets/send_message_sheet.dart';
 ///   starts selecting with that family checked.
 /// * Select (1018:9238 / 1018:9436): ride summary, filters, "Select All",
 ///   checkable rows, Cancel / Say Hi → "Send Message" sheet → message sent.
+///   "Start a group" (1–7 families) names a ride group and opens its chat.
 ///
 /// Families come from `get_families_near_me`; the place switch has one chip
 /// per school in the results. Pull to refresh.
@@ -78,7 +81,7 @@ class _FamiliesView extends StatelessWidget {
         child: Scaffold(
           backgroundColor: AppColors.screen,
           body: AppLoadingOverlay(
-            isLoading: provider.isLoading,
+            isLoading: provider.isLoading || provider.isCreatingGroup,
             child: SafeArea(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,8 +168,11 @@ class _FamiliesView extends StatelessWidget {
                       onSayHi: () => SendMessageSheet.show(
                         context,
                         provider: provider,
-                        onSend: () => _send(context, provider.selectedCount),
+                        onSend: () => _send(context, provider),
                       ),
+                      onStartGroup: provider.canStartGroup
+                          ? () => _startGroup(context, provider)
+                          : null,
                     ),
                 ],
               ),
@@ -174,6 +180,37 @@ class _FamiliesView extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Names the group, creates it with the selected parents and opens its
+  /// chat.
+  Future<void> _startGroup(
+    BuildContext context,
+    FamiliesNearYouProvider provider,
+  ) async {
+    final count = provider.selectedCount;
+    final name = await showGroupNameDialog(
+      context,
+      title: 'Start a group',
+      message: count == 1
+          ? 'You and 1 family will share a group chat.'
+          : 'You and $count families will share a group chat.',
+      confirm: 'Start group',
+      initial: provider.suggestedGroupName,
+    );
+    if (name == null || !context.mounted) return;
+    final (groupId, error) = await provider.startGroup(name);
+    if (!context.mounted) return;
+    if (groupId == null) {
+      if (error != null) showAppSnack(context, error);
+      return;
+    }
+    if (!provider.startedInSelectMode) provider.cancelSelection();
+    Navigator.pushNamed(
+      context,
+      AppRoutes.groupChat,
+      arguments: GroupChatArgs(groupId: groupId, name: name),
     );
   }
 
@@ -185,11 +222,22 @@ class _FamiliesView extends StatelessWidget {
     }
   }
 
-  void _send(BuildContext context, int parentCount) {
+  /// Delivers the picked / typed message, then opens F20 "Message sent".
+  Future<void> _send(
+    BuildContext context,
+    FamiliesNearYouProvider provider,
+  ) async {
     final navigator = Navigator.of(context);
+    final (sent, error) = await provider.sendMessage();
+    if (!context.mounted) return;
+    if (error != null) {
+      navigator.pop(); // close the sheet so the snack is visible
+      return showAppSnack(context, error);
+    }
+    if (sent == 0) return; // already sending
     navigator.pop(); // close the sheet
     // F20 reads the number of parents messaged from the route arguments.
-    navigator.pushNamed(AppRoutes.messageSent, arguments: parentCount);
+    navigator.pushNamed(AppRoutes.messageSent, arguments: sent);
   }
 }
 
@@ -330,40 +378,75 @@ class _SelectActions extends StatelessWidget {
     required this.canSayHi,
     required this.onCancel,
     required this.onSayHi,
+    this.onStartGroup,
   });
 
   final bool canSayHi;
   final VoidCallback onCancel;
   final VoidCallback onSayHi;
 
+  /// "Start a group"; hidden when null (no selection or too many).
+  final VoidCallback? onStartGroup;
+
   @override
   Widget build(BuildContext context) {
+    final row = Row(
+      children: [
+        Expanded(
+          child: _PillAction(
+            color: AppColors.surface,
+            onTap: onCancel,
+            child: Text('Cancel', style: AppTextStyles.label),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _PillAction(
+            color: AppColors.lime,
+            onTap: canSayHi ? onSayHi : null,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const AppIcon(HomeAssets.iconCheck),
+                const SizedBox(width: 12),
+                Text('Say Hi', style: HomeTextStyles.buttonL),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: _PillAction(
-              color: AppColors.surface,
-              onTap: onCancel,
-              child: Text('Cancel', style: AppTextStyles.label),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _PillAction(
-              color: AppColors.lime,
-              onTap: canSayHi ? onSayHi : null,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const AppIcon(HomeAssets.iconCheck),
-                  const SizedBox(width: 12),
-                  Text('Say Hi', style: HomeTextStyles.buttonL),
-                ],
+          if (onStartGroup != null) ...[
+            Semantics(
+              button: true,
+              label: 'Start a group',
+              excludeSemantics: true,
+              child: _PillAction(
+                color: AppColors.surface,
+                onTap: onStartGroup,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.groups_outlined,
+                      size: 22,
+                      color: AppColors.ink,
+                    ),
+                    const SizedBox(width: 10),
+                    Text('Start a group', style: AppTextStyles.label),
+                  ],
+                ),
               ),
             ),
-          ),
+            const SizedBox(height: 8),
+          ],
+          row,
         ],
       ),
     );

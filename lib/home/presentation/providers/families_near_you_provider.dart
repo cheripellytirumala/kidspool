@@ -8,6 +8,9 @@ import '../../domain/entities/family.dart';
 import '../../domain/entities/kid_place.dart';
 import '../../domain/entities/ride_summary.dart';
 import '../../domain/usecases/get_families_near_me.dart';
+import '../../../messages/core/constants/messages_api_constants.dart';
+import '../../../messages/domain/usecases/create_ride_group.dart';
+import '../../../messages/domain/usecases/send_ride_message.dart';
 
 /// F14 states: browsing families by place, or picking families to say hi to
 /// about a ride.
@@ -47,15 +50,29 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     required GetFamiliesNearMe getFamiliesNearMe,
     AccountRepository? account,
     RideSummary? Function()? rideSummary,
+    List<String> Function()? requestIds,
+    SendRideMessage? sendRideMessage,
+    CreateRideGroup? createRideGroup,
   }) : _getFamiliesNearMe = getFamiliesNearMe,
+       _createRideGroup = createRideGroup,
        _account = account,
-       _rideSummary = rideSummary;
+       _rideSummary = rideSummary,
+       _requestIds = requestIds,
+       _sendRideMessage = sendRideMessage;
 
   final GetFamiliesNearMe _getFamiliesNearMe;
   final AccountRepository? _account;
 
   /// The ride being asked for (from the ask-for-a-ride draft), if any.
   final RideSummary? Function()? _rideSummary;
+
+  /// Requests just made on "Ask for a ride" (select mode); the message goes
+  /// into the first one's chat with each selected parent.
+  final List<String> Function()? _requestIds;
+  final SendRideMessage? _sendRideMessage;
+  final CreateRideGroup? _createRideGroup;
+  bool _isSending = false;
+  bool _isCreatingGroup = false;
   String _myFirstName = '';
 
   /// Families within this distance count as "Nearby".
@@ -315,5 +332,108 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   /// The message that will be sent to every selected parent.
   String get message => _useTemplate ? messageTemplate : _customMessage.trim();
 
-  bool get canSend => hasSelection && message.isNotEmpty;
+  bool get canSend => hasSelection && message.isNotEmpty && !_isSending;
+  bool get isSending => _isSending;
+
+  /// A ride request the message can be sent with (made on Ask for a ride).
+  String? get _requestId => _requestIds?.call().firstOrNull;
+  bool get canDeliver => _requestId != null && _sendRideMessage != null;
+
+  /// Sends [message] to every selected parent in the ride's chat. Returns
+  /// how many got it, or an error when none did.
+  Future<(int sent, String? error)> sendMessage() async {
+    final requestId = _requestId;
+    final send = _sendRideMessage;
+    if (requestId == null || send == null) {
+      return (0, 'Ask for a ride first — your message goes with the request.');
+    }
+    if (_isSending || !canSend) return (0, null);
+    _isSending = true;
+    notifyListeners();
+    final body = message;
+    var sent = 0;
+    String? lastError;
+    for (final parentId in _selectedIds.toList()) {
+      final result = await send(
+        SendRideMessageParams(
+          requestId: requestId,
+          driverId: parentId,
+          body: body,
+        ),
+      );
+      result.match((f) => lastError = f.message, (_) => sent++);
+    }
+    _isSending = false;
+    notifyListeners();
+    if (sent == 0) {
+      return (0, lastError ?? 'Your message couldn’t be sent. Try again.');
+    }
+    return (sent, null);
+  }
+
+  // Start a group
+
+  /// Other families a new group can take (the user makes up the rest).
+  static const int maxGroupFamilies = MessagesApiConstants.maxGroupMembers - 1;
+
+  bool get isCreatingGroup => _isCreatingGroup;
+
+  /// "Start a group" shows for 1–7 selected families.
+  bool get canStartGroup =>
+      _createRideGroup != null &&
+      _selectedIds.isNotEmpty &&
+      _selectedIds.length <= maxGroupFamilies;
+
+  /// The school the group is about: the chosen place, else the first school
+  /// every selected family shares. Null when there is none.
+  KidPlace? get groupPlace {
+    if (_places.where((p) => p.id == _placeId).firstOrNull case final p?) {
+      return p;
+    }
+    final selected = _families.where((f) => _selectedIds.contains(f.id));
+    if (selected.isEmpty) return null;
+    return _places
+        .where((p) => selected.every((f) => f.placeIds.contains(p.id)))
+        .firstOrNull;
+  }
+
+  /// Prefilled group name: "Home → Lincoln Elementary".
+  String get suggestedGroupName {
+    final place = groupPlace?.name;
+    final name = place == null ? 'Our ride group' : 'Home → $place';
+    return name.length <= MessagesApiConstants.maxGroupNameLength
+        ? name
+        : name.substring(0, MessagesApiConstants.maxGroupNameLength);
+  }
+
+  /// Starts a group called [name] with the selected parents. Returns the
+  /// new group's id, or an error message.
+  Future<(String? groupId, String? error)> startGroup(String name) async {
+    final create = _createRideGroup;
+    if (create == null || _isCreatingGroup) return (null, null);
+    if (!canStartGroup) {
+      return (null, 'Pick 1 to $maxGroupFamilies families for a group.');
+    }
+    final place = groupPlace;
+    _isCreatingGroup = true;
+    notifyListeners();
+    final result = await create(
+      CreateRideGroupParams(
+        name: name,
+        memberIds: _selectedIds.toList(),
+        schoolId: place?.kind == KidPlaceKind.school ? place?.id : null,
+      ),
+    );
+    _isCreatingGroup = false;
+    notifyListeners();
+    return result.match(
+      (failure) => (
+        null,
+        failure.code == MessagesApiConstants.groupsMissing
+            ? MessagesApiConstants.groupsMissingMessage
+            : failure.message,
+      ),
+      (id) => (id, null),
+    );
+  }
 }

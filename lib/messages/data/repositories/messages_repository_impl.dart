@@ -7,6 +7,7 @@ import '../../../common/core/network/auth_token_provider.dart';
 import '../../core/constants/messages_api_constants.dart';
 import '../../domain/entities/chat_person.dart';
 import '../../domain/entities/ride_chat.dart';
+import '../../domain/entities/ride_group.dart';
 import '../../domain/entities/ride_request.dart';
 import '../../domain/repositories/messages_repository.dart';
 import '../data_sources/remote/messages_remote_data_source.dart';
@@ -203,6 +204,138 @@ class MessagesRepositoryImpl implements MessagesRepository {
       tag: _tag,
     );
   }
+
+  // ------------------------------------------------------- ride groups
+
+  @override
+  Future<Either<Failure, List<RideGroup>>> getMyGroups() =>
+      ErrorHandler.guard(_remote.getMyGroups, tag: _tag);
+
+  @override
+  Future<Either<Failure, RideGroupDetails>> getGroup(String groupId) =>
+      ErrorHandler.guard(() => _remote.getGroup(groupId), tag: _tag);
+
+  @override
+  Future<Either<Failure, List<GroupMessage>>> getGroupMessages(
+    String groupId,
+  ) => ErrorHandler.guard(() => _remote.getGroupMessages(groupId), tag: _tag);
+
+  @override
+  Future<Either<Failure, GroupMessage>> sendGroupMessage({
+    required String groupId,
+    required String body,
+  }) {
+    final text = body.trim();
+    if (text.isEmpty || text.length > MessagesApiConstants.maxMessageLength) {
+      return Future.value(
+        const Left(
+          ServerFailure(
+            'Messages can be 1–2000 characters.',
+            code: 'invalid_field',
+          ),
+        ),
+      );
+    }
+    return ErrorHandler.guard(
+      () => _remote.sendGroupMessage(groupId, text),
+      tag: _tag,
+    );
+  }
+
+  @override
+  Future<Either<Failure, Unit>> markGroupRead(String groupId) =>
+      ErrorHandler.guard(() async {
+        await _remote.markGroupRead(groupId);
+        return unit;
+      }, tag: _tag);
+
+  @override
+  Future<Either<Failure, String>> createGroup({
+    required String name,
+    required List<String> memberIds,
+    String? schoolId,
+  }) {
+    final text = name.trim();
+    final invalid = _invalidName(text);
+    if (invalid != null) return Future.value(Left(invalid));
+    if (memberIds.isEmpty) {
+      return Future.value(
+        const Left(
+          ServerFailure('Pick at least one family.', code: 'invalid_field'),
+        ),
+      );
+    }
+    if (memberIds.length + 1 > MessagesApiConstants.maxGroupMembers) {
+      return Future.value(
+        const Left(
+          ServerFailure(
+            'Groups can have up to 8 families.',
+            code: 'group_full',
+          ),
+        ),
+      );
+    }
+    return ErrorHandler.guard(
+      () => _remote.createGroup(
+        name: text,
+        memberIds: memberIds,
+        schoolId: schoolId,
+      ),
+      tag: _tag,
+    );
+  }
+
+  @override
+  Future<Either<Failure, int>> addGroupMembers({
+    required String groupId,
+    required List<String> memberIds,
+  }) => ErrorHandler.guard(
+    () => _remote.addGroupMembers(groupId, memberIds),
+    tag: _tag,
+  );
+
+  @override
+  Future<Either<Failure, Unit>> leaveGroup(String groupId) =>
+      ErrorHandler.guard(() async {
+        await _remote.leaveGroup(groupId);
+        return unit;
+      }, tag: _tag);
+
+  @override
+  Future<Either<Failure, Unit>> renameGroup({
+    required String groupId,
+    required String name,
+  }) {
+    final text = name.trim();
+    final invalid = _invalidName(text);
+    if (invalid != null) return Future.value(Left(invalid));
+    return ErrorHandler.guard(() async {
+      await _remote.renameGroup(groupId, text);
+      return unit;
+    }, tag: _tag);
+  }
+
+  @override
+  Future<Either<Failure, Unit>> setGroupMuted({
+    required String groupId,
+    required bool muted,
+  }) => ErrorHandler.guard(() async {
+    await _remote.setGroupMuted(groupId, muted: muted);
+    return unit;
+  }, tag: _tag);
+
+  @override
+  Future<Either<Failure, List<RideGroupMember>>> getGroupCandidates(
+    String? groupId,
+  ) => ErrorHandler.guard(() => _remote.getGroupCandidates(groupId), tag: _tag);
+
+  static Failure? _invalidName(String name) =>
+      name.isEmpty || name.length > MessagesApiConstants.maxGroupNameLength
+      ? const ServerFailure(
+          'Group names can be 1–60 characters.',
+          code: 'invalid_field',
+        )
+      : null;
 
   // ------------------------------------------------------------ photos
 

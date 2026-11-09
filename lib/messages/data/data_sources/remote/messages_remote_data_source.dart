@@ -2,17 +2,21 @@ import '../../../../common/core/constants/api_constants.dart';
 import '../../../../common/core/error/exceptions.dart';
 import '../../../../common/core/network/api_client.dart';
 import '../../../../common/core/network/api_error_messages.dart';
+import '../../../../common/core/utils/json_parser.dart';
 import '../../../core/constants/messages_api_constants.dart';
 import '../../../domain/entities/chat_person.dart';
 import '../../../domain/entities/ride_chat.dart';
+import '../../../domain/entities/ride_group.dart';
 import '../../../domain/entities/ride_request.dart';
 import '../../models/ride_chat_model.dart';
+import '../../models/ride_group_model.dart';
 import '../../models/ride_request_model.dart';
 
 /// Ride + chat RPCs of the Messages tab. Throws only `AppException`s.
 ///
 /// Chat calls throw a [ServerException] with code
-/// [MessagesApiConstants.chatMissing] when the chat RPCs are not deployed.
+/// [MessagesApiConstants.chatMissing] when the chat RPCs are not deployed;
+/// ride group calls likewise use [MessagesApiConstants.groupsMissing].
 abstract interface class MessagesRemoteDataSource {
   /// `get_my_ride_requests(upcoming)`, open ones only.
   Future<List<RideRequest>> getMyOpenRequests();
@@ -50,6 +54,35 @@ abstract interface class MessagesRemoteDataSource {
     String driverId,
     String body,
   );
+
+  // Ride groups
+  Future<List<RideGroup>> getMyGroups();
+
+  Future<RideGroupDetails> getGroup(String groupId);
+
+  Future<List<GroupMessage>> getGroupMessages(String groupId);
+
+  Future<GroupMessage> sendGroupMessage(String groupId, String body);
+
+  Future<void> markGroupRead(String groupId);
+
+  /// Returns the new group's id.
+  Future<String> createGroup({
+    required String name,
+    required List<String> memberIds,
+    String? schoolId,
+  });
+
+  /// Returns how many parents were added.
+  Future<int> addGroupMembers(String groupId, List<String> memberIds);
+
+  Future<void> leaveGroup(String groupId);
+
+  Future<void> renameGroup(String groupId, String name);
+
+  Future<void> setGroupMuted(String groupId, {required bool muted});
+
+  Future<List<RideGroupMember>> getGroupCandidates(String? groupId);
 
   /// Signed URLs for private kid photo paths (failures → empty).
   Future<Map<String, String>> signKidPhotos(List<String> paths);
@@ -264,6 +297,136 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
     chat: true,
   );
 
+  // ------------------------------------------------------ ride groups
+
+  @override
+  Future<List<RideGroup>> getMyGroups() => _call(
+    MessagesApiConstants.getMyRideGroups,
+    const {},
+    'We couldn’t load your groups. Pull to refresh.',
+    (json) {
+      if (json is! List) throw const ParsingException();
+      return RideGroupModel.groupsFromJson(json);
+    },
+    groups: true,
+  );
+
+  @override
+  Future<RideGroupDetails> getGroup(String groupId) => _call(
+    MessagesApiConstants.getRideGroup,
+    {'groupId': groupId},
+    'We couldn’t load this group.',
+    (json) {
+      final group = RideGroupModel.detailsFromJson(json);
+      if (group == null) throw const ParsingException();
+      return group;
+    },
+    groups: true,
+  );
+
+  @override
+  Future<List<GroupMessage>> getGroupMessages(String groupId) => _call(
+    MessagesApiConstants.getRideGroupMessages,
+    {'groupId': groupId},
+    'We couldn’t load the messages.',
+    (json) {
+      if (json is! List) throw const ParsingException();
+      return RideGroupModel.messagesFromJson(json);
+    },
+    groups: true,
+  );
+
+  @override
+  Future<GroupMessage> sendGroupMessage(String groupId, String body) => _call(
+    MessagesApiConstants.sendRideGroupMessage,
+    {'groupId': groupId, 'body': body},
+    'We couldn’t send your message. Please try again.',
+    (json) {
+      final message = json is Map
+          ? RideGroupModel.messageFromJson(Map<String, dynamic>.from(json))
+          : null;
+      if (message == null) throw const ParsingException();
+      return message;
+    },
+    groups: true,
+  );
+
+  @override
+  Future<void> markGroupRead(String groupId) => _call(
+    MessagesApiConstants.markRideGroupRead,
+    {'groupId': groupId},
+    'We couldn’t update this group.',
+    (_) {},
+    groups: true,
+  );
+
+  @override
+  Future<String> createGroup({
+    required String name,
+    required List<String> memberIds,
+    String? schoolId,
+  }) => _call(
+    MessagesApiConstants.createRideGroup,
+    {'name': name, 'memberIds': memberIds, 'schoolId': ?schoolId},
+    'We couldn’t start the group. Please try again.',
+    (json) {
+      final id = RideGroupModel.idFromJson(json);
+      if (id == null) throw const ParsingException();
+      return id;
+    },
+    groups: true,
+  );
+
+  @override
+  Future<int> addGroupMembers(String groupId, List<String> memberIds) => _call(
+    MessagesApiConstants.addRideGroupMembers,
+    {'groupId': groupId, 'memberIds': memberIds},
+    'We couldn’t add these parents. Please try again.',
+    (json) => json is Map
+        ? (Map<String, dynamic>.from(json).readInt('added') ?? 0)
+        : 0,
+    groups: true,
+  );
+
+  @override
+  Future<void> leaveGroup(String groupId) => _call(
+    MessagesApiConstants.leaveRideGroup,
+    {'groupId': groupId},
+    'We couldn’t leave the group. Please try again.',
+    (_) {},
+    groups: true,
+  );
+
+  @override
+  Future<void> renameGroup(String groupId, String name) => _call(
+    MessagesApiConstants.renameRideGroup,
+    {'groupId': groupId, 'name': name},
+    'We couldn’t rename the group. Please try again.',
+    (_) {},
+    groups: true,
+  );
+
+  @override
+  Future<void> setGroupMuted(String groupId, {required bool muted}) => _call(
+    MessagesApiConstants.setRideGroupMuted,
+    {'groupId': groupId, 'muted': muted},
+    'We couldn’t change notifications. Please try again.',
+    (_) {},
+    groups: true,
+  );
+
+  @override
+  Future<List<RideGroupMember>> getGroupCandidates(String? groupId) => _call(
+    MessagesApiConstants.getRideGroupCandidates,
+    {'groupId': ?groupId},
+    'We couldn’t load parents to add.',
+    (json) {
+      if (json is! List) throw const ParsingException();
+      return RideGroupModel.membersFromJson(json);
+    },
+    groups: true,
+  );
+
   // ----------------------------------------------------------- photos
 
   @override
@@ -320,13 +483,15 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
 
   /// Runs an RPC; known codes keep their friendly text (see
   /// [ApiErrorMessages]), anything else gets [fallback]. For [chat] RPCs a
-  /// missing function becomes [MessagesApiConstants.chatMissing].
+  /// missing function becomes [MessagesApiConstants.chatMissing], for
+  /// [groups] RPCs [MessagesApiConstants.groupsMissing].
   Future<T> _call<T>(
     String name,
     Map<String, dynamic> params,
     String fallback,
     ResponseParser<T> parser, {
     bool chat = false,
+    bool groups = false,
   }) async {
     try {
       return await _apiClient.rpc<T>(name, params: params, parser: parser);
@@ -338,6 +503,14 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
           MessagesApiConstants.chatMissingMessage,
           e.statusCode,
           MessagesApiConstants.chatMissing,
+          e.data,
+        );
+      }
+      if (groups && isMissingFunction(e)) {
+        throw ServerException(
+          MessagesApiConstants.groupsMissingMessage,
+          e.statusCode,
+          MessagesApiConstants.groupsMissing,
           e.data,
         );
       }

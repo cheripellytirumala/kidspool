@@ -7,7 +7,7 @@ import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 
 /// H3 "Group · Home → Lincoln" row: the parents sharing the booked ride's
-/// route. Inert while [onTap] is null (there is no group chat screen yet).
+/// route, or the user's ride group. Inert while [onTap] is null.
 class RideGroupCard extends StatelessWidget {
   const RideGroupCard({
     super.key,

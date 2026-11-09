@@ -119,6 +119,7 @@ class _HomeView extends StatelessWidget {
     ),
     const SizedBox(height: AppDimens.sectionGap),
     AskRideActionCard(onTap: () => _askRide(context, provider)),
+    ..._groupSection(context, provider),
     if (provider.previewFamilies.isNotEmpty) ...[
       const SizedBox(height: AppDimens.sectionGap),
       _FamiliesHeader(onSeeAll: () => _openFamilies(context)),
@@ -126,6 +127,27 @@ class _HomeView extends StatelessWidget {
       _families(context, provider),
     ],
   ];
+
+  /// "Your ride group": the user's latest ride group, opening its chat.
+  /// Empty when the user has no group.
+  List<Widget> _groupSection(BuildContext context, HomeProvider provider) {
+    final group = provider.latestGroup;
+    if (group == null) return const [];
+    return [
+      const SizedBox(height: AppDimens.sectionGap),
+      const _GroupLabel(),
+      const SizedBox(height: AppDimens.sectionGap),
+      RideGroupCard(
+        title: group.name,
+        subtitle: group.membersLabel,
+        onTap: () => Navigator.pushNamed(
+          context,
+          AppRoutes.groupChat,
+          arguments: GroupChatArgs(groupId: group.id, name: group.name),
+        ).then((_) => provider.load()),
+      ),
+    ];
+  }
 
   /// H3 · Home · Both (get & give).
   List<Widget> _rideLayout(BuildContext context, HomeProvider provider) {
@@ -166,17 +188,13 @@ class _HomeView extends StatelessWidget {
       ),
       const SizedBox(height: AppDimens.sectionGap),
       AskRideActionCard(onTap: () => _askRide(context, provider)),
-      if (groupTitle != null) ...[
+      if (provider.latestGroup != null)
+        ..._groupSection(context, provider)
+      else if (groupTitle != null) ...[
         const SizedBox(height: AppDimens.sectionGap),
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Semantics(
-            header: true,
-            child: Text('YOUR RIDE GROUP', style: HomeTextStyles.groupLabel),
-          ),
-        ),
+        const _GroupLabel(),
         const SizedBox(height: AppDimens.sectionGap),
-        // No group chat screen yet: the row is informational only.
+        // No ride group yet: the route's parents, informational only.
         RideGroupCard(title: groupTitle, subtitle: provider.rideGroupSubtitle),
       ],
       if (provider.previewFamilies.isNotEmpty) ...[
@@ -358,6 +376,22 @@ class _FamiliesHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "YOUR RIDE GROUP" section label.
+class _GroupLabel extends StatelessWidget {
+  const _GroupLabel();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Semantics(
+        header: true,
+        child: Text('YOUR RIDE GROUP', style: HomeTextStyles.groupLabel),
       ),
     );
   }

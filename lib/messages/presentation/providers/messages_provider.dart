@@ -6,8 +6,10 @@ import '../../../common/presentation/state/view_state.dart';
 import '../../core/constants/messages_api_constants.dart';
 import '../../domain/entities/chat_person.dart';
 import '../../domain/entities/ride_chat.dart';
+import '../../domain/entities/ride_group.dart';
 import '../../domain/entities/ride_request.dart';
 import '../../domain/usecases/get_my_chats.dart';
+import '../../domain/usecases/get_my_ride_groups.dart';
 import '../../domain/usecases/get_requests_inbox.dart';
 import '../../domain/usecases/offer_ride.dart';
 import '../../domain/usecases/pass_ride_request.dart';
@@ -16,12 +18,39 @@ import '../../domain/usecases/withdraw_offer.dart';
 
 enum MessagesTab { requests, chats }
 
+/// A row of the Chats tab: a ride chat or a ride group.
+sealed class ChatsItem {
+  const ChatsItem();
+
+  DateTime? get lastAt;
+}
+
+class RideChatItem extends ChatsItem {
+  const RideChatItem(this.chat);
+
+  final RideChat chat;
+
+  @override
+  DateTime? get lastAt => chat.lastAt;
+}
+
+class RideGroupItem extends ChatsItem {
+  const RideGroupItem(this.group);
+
+  final RideGroup group;
+
+  @override
+  DateTime? get lastAt => group.lastAt;
+}
+
 /// F24 · Messages (Chats tab) and F24a · Requests tab.
 ///
 /// Requests come from the live ride RPCs. Chats come from
 /// `get_my_ride_chats`; ride threads that have no messages yet (an offer on
 /// the user's request, the user's own offer) are added from the requests, so
-/// the tab still lists them while the chat SQL isn't applied.
+/// the tab still lists them while the chat SQL isn't applied. Ride groups
+/// (`get_my_ride_groups`) are listed with them; while the groups SQL isn't
+/// applied, or the groups fail to load, there are simply no group rows.
 class MessagesProvider extends ChangeNotifier {
   MessagesProvider({
     required GetRequestsInbox getRequestsInbox,
@@ -31,8 +60,10 @@ class MessagesProvider extends ChangeNotifier {
     required WithdrawOffer withdrawOffer,
     required RespondToOffer respondToOffer,
     required String? Function() myUserId,
+    GetMyRideGroups? getMyRideGroups,
     void Function(int count)? onBadgeChanged,
   }) : _onBadgeChanged = onBadgeChanged,
+       _getGroups = getMyRideGroups,
        _getInbox = getRequestsInbox,
        _getChats = getMyChats,
        _offerRide = offerRide,
@@ -43,6 +74,7 @@ class MessagesProvider extends ChangeNotifier {
 
   final GetRequestsInbox _getInbox;
   final GetMyChats _getChats;
+  final GetMyRideGroups? _getGroups;
   final OfferRide _offerRide;
   final PassRideRequest _pass;
   final WithdrawOffer _withdraw;
@@ -64,6 +96,9 @@ class MessagesProvider extends ChangeNotifier {
   List<RideChat> _chats = const [];
   bool _chatMissing = false;
 
+  List<RideGroup> _groups = const [];
+  bool _groupsMissing = false;
+
   /// Request / offer id with an action in flight.
   String? _busyId;
   bool _disposed = false;
@@ -83,8 +118,13 @@ class MessagesProvider extends ChangeNotifier {
   /// Badge on the Requests tab.
   int get requestsBadge => _inbox.needsAnswerCount;
 
-  /// Badge on the Chats tab: chats with unread messages.
-  int get chatsBadge => _chats.where((c) => c.hasUnread).length;
+  /// Badge on the Chats tab: chats and groups with unread messages.
+  int get chatsBadge =>
+      _chats.where((c) => c.hasUnread).length +
+      _groups.where((g) => g.hasUnread).length;
+
+  /// The user's ride groups, newest first (unfiltered).
+  List<RideGroup> get groups => _groups;
 
   bool _matches(Iterable<String?> fields) {
     final q = _query.trim().toLowerCase();
@@ -141,6 +181,29 @@ class MessagesProvider extends ChangeNotifier {
     return list;
   }
 
+  /// The Chats tab: ride chats and ride groups, newest activity first.
+  List<ChatsItem> get items {
+    final list = <ChatsItem>[
+      for (final c in chats) RideChatItem(c),
+      for (final g in _groups)
+        if (_matches([g.name, g.lastMessage])) RideGroupItem(g),
+    ];
+    // Stable: equal times keep chats before groups.
+    final indexed = list.indexed.toList()
+      ..sort((a, b) {
+        final at = a.$2.lastAt, bt = b.$2.lastAt;
+        final byTime = at == null && bt == null
+            ? 0
+            : at == null
+            ? 1
+            : bt == null
+            ? -1
+            : bt.compareTo(at);
+        return byTime != 0 ? byTime : a.$1.compareTo(b.$1);
+      });
+    return [for (final (_, item) in indexed) item];
+  }
+
   /// Threads implied by the requests (offers on mine, my offers on theirs).
   List<RideChat> _rideThreads() {
     final me = _myUserId();
@@ -174,7 +237,8 @@ class MessagesProvider extends ChangeNotifier {
   }
 
   /// Loads both tabs.
-  Future<void> load() => Future.wait([loadRequests(), loadChats()]);
+  Future<void> load() =>
+      Future.wait([loadRequests(), loadChats(), loadGroups()]);
 
   Future<void> refresh() => load();
 
@@ -221,6 +285,22 @@ class MessagesProvider extends ChangeNotifier {
         _chatsError = null;
       },
     );
+    _notify();
+  }
+
+  /// Loads the ride groups. Quiet: a failure (or a server without the
+  /// groups SQL) keeps the last list and shows no error.
+  Future<void> loadGroups() async {
+    final get = _getGroups;
+    if (get == null || _groupsMissing) return;
+    final result = await get(const NoParams());
+    if (_disposed) return;
+    result.match((failure) {
+      if (failure.code == MessagesApiConstants.groupsMissing) {
+        _groupsMissing = true;
+        _groups = const [];
+      }
+    }, (groups) => _groups = groups);
     _notify();
   }
 

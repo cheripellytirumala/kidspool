@@ -12,6 +12,8 @@ import 'package:kidspool/home/data/repositories/home_repository_impl.dart';
 import 'package:kidspool/home/domain/entities/family.dart';
 import 'package:kidspool/home/domain/usecases/get_families_near_me.dart';
 import 'package:kidspool/home/presentation/providers/families_near_you_provider.dart';
+import 'package:kidspool/messages/domain/entities/ride_chat.dart';
+import 'package:kidspool/messages/domain/usecases/send_ride_message.dart';
 
 /// Answers `rpc` calls from [handlers] (name → JSON or a thrown exception).
 class _FakeApiClient extends ApiClient {
@@ -310,6 +312,68 @@ void main() {
       _family('d', schools: [('s1', 'Lincoln Elementary')]),
     ];
 
+    group('sendMessage', () {
+      FamiliesNearYouProvider sender(
+        _FakeSend send, {
+        List<String> requests = const ['r1', 'r2'],
+      }) => FamiliesNearYouProvider(
+        getFamiliesNearMe: GetFamiliesNearMe(
+          _FakeRepository(
+            () async =>
+                Right(FamiliesNearMe(families: families, hasSchool: true)),
+          ),
+        ),
+        requestIds: () => requests,
+        sendRideMessage: send,
+      );
+
+      test('delivers the typed text to each selected parent', () async {
+        final send = _FakeSend();
+        final p = sender(send);
+        await p.load();
+        p.toggle(families[0]);
+        p.toggle(families[2]);
+        p.setCustomMessage('  Want to carpool on Fridays?  ');
+        final (sent, error) = await p.sendMessage();
+        expect(error, isNull);
+        expect(sent, 2);
+        expect(send.calls.map((c) => (c.requestId, c.driverId, c.body)), [
+          ('r1', 'a', 'Want to carpool on Fridays?'),
+          ('r1', 'c', 'Want to carpool on Fridays?'),
+        ]);
+      });
+
+      test('sends the template when nothing is typed', () async {
+        final send = _FakeSend();
+        final p = sender(send);
+        await p.load();
+        p.toggle(families[1]);
+        await p.sendMessage();
+        expect(send.calls.single.body, p.messageTemplate);
+        expect(send.calls.single.body, contains('Would you like to share'));
+      });
+
+      test('no ride request: nothing is sent and the user is told', () async {
+        final send = _FakeSend();
+        final p = sender(send, requests: const []);
+        await p.load();
+        p.toggle(families[0]);
+        final (sent, error) = await p.sendMessage();
+        expect(sent, 0);
+        expect(error, contains('Ask for a ride first'));
+        expect(send.calls, isEmpty);
+      });
+
+      test('reports the server error when no parent got it', () async {
+        final p = sender(_FakeSend(fail: true));
+        await p.load();
+        p.toggle(families[0]);
+        final (sent, error) = await p.sendMessage();
+        expect(sent, 0);
+        expect(error, 'You can’t message this parent yet.');
+      });
+    });
+
     test('chips: All · N, then one per school with its count', () async {
       final p = provider(
         () async => Right(FamiliesNearMe(families: families, hasSchool: true)),
@@ -408,4 +472,27 @@ class _FakeRepository extends HomeRepositoryImpl {
     String? schoolId,
     double? radiusMiles,
   }) => _answer();
+}
+
+class _FakeSend implements SendRideMessage {
+  _FakeSend({this.fail = false});
+
+  final bool fail;
+  final List<SendRideMessageParams> calls = [];
+
+  @override
+  Future<Either<Failure, ChatMessage>> call(SendRideMessageParams p) async {
+    calls.add(p);
+    if (fail) {
+      return const Left(ServerFailure('You can’t message this parent yet.'));
+    }
+    return Right(
+      ChatMessage(
+        id: 'm${calls.length}',
+        senderId: 'me',
+        body: p.body,
+        createdAt: DateTime(2026),
+      ),
+    );
+  }
 }

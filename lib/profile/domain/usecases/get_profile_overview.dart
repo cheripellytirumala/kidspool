@@ -4,7 +4,7 @@ import '../../../add_kids/domain/repositories/kids_repository.dart';
 import '../../../common/core/error/failures.dart';
 import '../../../common/core/usecase/usecase.dart';
 import '../../../common/domain/repositories/account_repository.dart';
-import '../../../messages/domain/entities/ride_chat.dart';
+import '../../../messages/domain/entities/ride_group.dart';
 import '../../../messages/domain/repositories/messages_repository.dart';
 import '../entities/profile_details.dart';
 import '../entities/profile_overview.dart';
@@ -34,13 +34,13 @@ class GetProfileOverview implements UseCase<ProfileOverview, NoParams> {
     final detailsF = _profile.getDetails();
     final kidsF = _kids.getKids();
     final addressesF = _profile.getAddresses();
-    final chatsF = _messages.getMyChats();
+    final groupsF = _messages.getMyGroups();
 
     final status = await statusF;
     final details = await detailsF;
     final kids = await kidsF;
     final addresses = await addressesF;
-    final chats = await chatsF;
+    final groups = await groupsF;
 
     return status.map(
       (me) => ProfileOverview(
@@ -51,14 +51,15 @@ class GetProfileOverview implements UseCase<ProfileOverview, NoParams> {
         kidsError: kids.getLeft().toNullable()?.message,
         addresses: addresses.getOrElse((_) => const []),
         addressesError: addresses.getLeft().toNullable()?.message,
-        // Optional section: hidden when chats can't load.
-        rideGroups: _newestFirst(chats.getOrElse((_) => const [])),
+        // Optional section: hidden when groups can't load (or the groups
+        // SQL isn't applied yet).
+        rideGroups: _newestFirst(groups.getOrElse((_) => const [])),
       ),
     );
   }
 
-  static List<RideChat> _newestFirst(List<RideChat> chats) {
-    final list = [...chats];
+  static List<RideGroup> _newestFirst(List<RideGroup> groups) {
+    final list = [...groups];
     list.sort((a, b) {
       final at = a.lastAt, bt = b.lastAt;
       if (at == null && bt == null) return 0;

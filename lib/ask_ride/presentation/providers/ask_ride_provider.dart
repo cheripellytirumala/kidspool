@@ -58,6 +58,7 @@ class AskRideProvider extends ChangeNotifier {
   RideRequest _draft = const RideRequest();
   bool _submitted = false;
   int? _sentToCount;
+  List<String> _createdRequestIds = const [];
 
   ViewStatus get status => _status;
   bool get isLoading => _status.isLoading;
@@ -70,6 +71,10 @@ class AskRideProvider extends ChangeNotifier {
   /// Number of parents the request was sent to (set by the families screen
   /// via [markSent]).
   int? get sentToCount => _sentToCount;
+
+  /// Requests made by the last [submit], first ride first. The families
+  /// screen sends the parent's message in the first one's chat.
+  List<String> get createdRequestIds => _createdRequestIds;
 
   /// Defaults: first kid, default address → their school, 8:00 AM pick-up.
   static const RideTime defaultPickupTime = RideTime(8, 0);
@@ -352,6 +357,8 @@ class AskRideProvider extends ChangeNotifier {
 
       var created = 0;
       var notified = 0;
+      final ids = <String>[];
+      _createdRequestIds = const [];
       for (final date in dates) {
         final result = await _repository.createRideRequest(
           CreateRideParams(
@@ -379,6 +386,8 @@ class AskRideProvider extends ChangeNotifier {
         }
         final ok = result.getRight().toNullable()!;
         created++;
+        ids.addAll(ok.requestIds);
+        _createdRequestIds = List.unmodifiable(ids);
         if (ok.eligibleDriversCount > notified) {
           notified = ok.eligibleDriversCount;
         }

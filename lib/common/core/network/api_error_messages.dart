@@ -48,6 +48,14 @@ abstract final class ApiErrorMessages {
     'school_unavailable': 'Rides to this school aren’t available yet.',
     'pickup_too_soon': 'Pick-up must be at least 2 hours from now.',
     'duplicate_request': 'You already asked for a ride around that time.',
+    'cannot_message':
+        'This parent didn’t get your ride request, so you can’t message them '
+        'yet.',
+    // Ride groups
+    'group_not_found': 'This group isn’t available any more.',
+    'cannot_add_member':
+        'Only approved parents from your kids’ schools can join this group.',
+    'group_full': 'Groups can have up to 8 families.',
     // App version
     'invalid_platform': 'This device isn’t supported.',
     'invalid_version': 'This app version isn’t recognised.',

@@ -129,9 +129,7 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
   void _toggleWeekday(int weekday) {
     final days = _weekdayDays(weekday);
     setState(() {
-      _weekdaySelected(weekday)
-          ? _dates.removeAll(days)
-          : _dates.addAll(days);
+      _weekdaySelected(weekday) ? _dates.removeAll(days) : _dates.addAll(days);
     });
   }
 
