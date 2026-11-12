@@ -116,13 +116,24 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
                 )
               : ListView.separated(
                   padding: EdgeInsets.zero,
-                  itemCount: results.length,
+                  itemCount: results.length + (search.canSearchGoogle ? 1 : 0),
                   separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, i) => PlaceResultTile(
-                    place: results[i],
-                    selected: results[i].id == selectedId,
-                    onTap: () => _select(results[i]),
-                  ),
+                  itemBuilder: (_, i) => i == results.length
+                      // Results are from KidPool's list: the place may
+                      // still be new.
+                      ? TextButton.icon(
+                          onPressed: search.searchGoogle,
+                          icon: const Icon(Icons.search_rounded, size: 18),
+                          label: Text(
+                            'Can’t find it? Search Google',
+                            style: KidsTextStyles.captionM,
+                          ),
+                        )
+                      : PlaceResultTile(
+                          place: results[i],
+                          selected: results[i].id == selectedId,
+                          onTap: () => _select(results[i]),
+                        ),
                 ),
         ),
       ],

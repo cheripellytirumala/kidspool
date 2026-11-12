@@ -250,6 +250,67 @@ void main() {
   });
 
   group('SearchKidPlaces', () {
+    test('KidPool schools first: nearest first, no Google call', () async {
+      final places = _FakePlacesRepository();
+      final kids = _FakeKidsRepository()
+        ..saved = const [
+          Place(
+            id: 'delhi',
+            name: 'Doon Public School',
+            category: PlaceCategory.school,
+            latitude: 28.66,
+            longitude: 77.10,
+            isSaved: true,
+          ),
+          Place(
+            id: 'cbe',
+            name: 'Doon Public School',
+            category: PlaceCategory.school,
+            latitude: 10.99,
+            longitude: 76.97,
+            isSaved: true,
+          ),
+        ];
+      final result = await SearchKidPlaces(places, saved: kids)(
+        const SearchKidPlacesParams(
+          kind: PlaceKind.school,
+          query: 'doon',
+          near: GeoPoint(11.01, 76.96), // Coimbatore
+        ),
+      );
+      expect(result.toNullable()!.map((p) => p.id), ['cbe', 'delhi']);
+      expect(places.queries, isEmpty);
+    });
+
+    test('"Search Google" and nothing saved both go to Google', () async {
+      final places = _FakePlacesRepository();
+      final kids = _FakeKidsRepository()
+        ..saved = const [
+          Place(
+            id: 'cbe',
+            name: 'Doon Public School',
+            category: PlaceCategory.school,
+            latitude: 10.99,
+            longitude: 76.97,
+            isSaved: true,
+          ),
+        ];
+      await SearchKidPlaces(places, saved: kids)(
+        const SearchKidPlacesParams(
+          kind: PlaceKind.school,
+          query: 'lincoln',
+          online: true,
+        ),
+      );
+      expect(places.queries, hasLength(1));
+
+      kids.saved = const [];
+      await SearchKidPlaces(places, saved: kids)(
+        const SearchKidPlacesParams(kind: PlaceKind.school, query: 'lincoln'),
+      );
+      expect(places.queries, hasLength(2));
+    });
+
     test('without a key shows "not set up" instead of searching', () async {
       final places = _FakePlacesRepository(configured: false);
       final result = await SearchKidPlaces(places)(
@@ -391,6 +452,15 @@ class _FakeKidsRepository implements KidsRepository {
   @override
   Future<Either<Failure, List<KidActivity>>> getActivities() async =>
       const Right([]);
+
+  /// Saved schools / activities KidPool already knows.
+  List<Place> saved = const [];
+
+  @override
+  Future<Either<Failure, List<Place>>> searchSavedPlaces(
+    PlaceKind kind,
+    String query,
+  ) async => Right(saved);
 
   @override
   Future<Either<Failure, String>> schoolFromPlace(Place place) async {

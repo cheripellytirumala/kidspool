@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../../add_kids/domain/repositories/kids_repository.dart';
+import '../../../add_kids/domain/entities/place.dart' as kids_place;
 import '../../domain/entities/saved_place.dart';
 import '../../../add_kids/data/data_sources/local/kid_activities_store.dart';
 import '../../../common/core/usecase/usecase.dart';
@@ -42,7 +44,10 @@ void registerAskRideDependencies(GetIt sl) {
     ..registerLazySingleton<GetRideOptions>(() => GetRideOptions(sl()))
     ..registerLazySingleton<AddSavedPlace>(() => AddSavedPlace(sl()))
     ..registerLazySingleton<SearchDropOffPlaces>(
-      () => SearchDropOffPlaces(sl()),
+      () => SearchDropOffPlaces(
+        sl(),
+        savedSearch: (query) => _savedDropOffs(sl(), query),
+      ),
     )
     // One per "Drop off at" sheet.
     ..registerFactory<DropOffSearchProvider>(
@@ -124,4 +129,33 @@ Future<RideGroupTarget?> _findGroupForSchool(GetIt sl, String school) async {
     }
   }
   return null;
+}
+
+/// Schools and activity places KidPool already knows, as drop-offs.
+Future<List<SavedPlace>> _savedDropOffs(
+  KidsRepository kids,
+  String query,
+) async {
+  final lists = await Future.wait([
+    for (final kind in kids_place.PlaceKind.values)
+      kids
+          .searchSavedPlaces(kind, query)
+          .then((r) => r.getOrElse((_) => const [])),
+  ]);
+  return [
+    for (final p in lists.expand((l) => l).take(10))
+      SavedPlace(
+        id: 'custom:${p.googlePlaceId ?? p.id}',
+        name: p.name,
+        address: p.details,
+        kind: PlaceKind.custom,
+        detail: p.kind == kids_place.PlaceKind.school ? 'School' : 'Activity',
+        latitude: p.latitude,
+        longitude: p.longitude,
+        addressLine1: p.addressLine.isNotEmpty ? p.addressLine : p.name,
+        city: p.city,
+        state: p.state,
+        zip: p.zip,
+      ),
+  ];
 }

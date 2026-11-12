@@ -35,6 +35,14 @@ abstract final class KidsApiConstants {
   static const String setMyKidActivities = 'set_my_kid_activities';
   static const String getMyKidActivities = 'get_my_kid_activities';
 
+  /// Schools KidPool already knows (`get_schools(search)`), searched before
+  /// Google so the small Google quota isn't needed.
+  static const String getSchools = 'get_schools';
+
+  /// Activity places parents already saved
+  /// (`docs/backend/2026-11-12_search_activity_places.sql`).
+  static const String searchActivityPlaces = 'search_activity_places';
+
   /// JSON: `{kidId}`.
   static const String deleteKid = 'delete-kid';
 

@@ -12,9 +12,13 @@ import '../entities/saved_place.dart';
 /// Google Places Text Search (no place type), biased near the pick-up.
 class SearchDropOffPlaces
     implements UseCase<List<SavedPlace>, SearchDropOffPlacesParams> {
-  const SearchDropOffPlaces(this._places);
+  const SearchDropOffPlaces(this._places, {this.savedSearch});
 
   final PlacesRepository _places;
+
+  /// KidPool's own schools / activity places matching the text, searched
+  /// before Google (the project's Google quota is small).
+  final Future<List<SavedPlace>> Function(String query)? savedSearch;
 
   /// Radius of the "near home" bias.
   static const double nearRadiusMeters = 5000;
@@ -25,6 +29,16 @@ class SearchDropOffPlaces
   ) async {
     final query = buildQuery(params.query);
     if (query.isEmpty) return const Right([]);
+    // KidPool's saved places first — no Google call.
+    final saved = savedSearch;
+    if (saved != null && query.length >= 2) {
+      try {
+        final found = await saved(query);
+        if (found.isNotEmpty) return Right(found);
+      } catch (_) {
+        // Fall through to Google.
+      }
+    }
     if (!await _places.isSearchConfigured()) {
       return const Left(
         DeviceFailure('Place search isn’t set up on this build.'),

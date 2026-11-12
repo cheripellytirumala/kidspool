@@ -90,6 +90,15 @@ class KidsRepositoryImpl implements KidsRepository {
   Future<Either<Failure, List<KidActivity>>> getActivities() =>
       ErrorHandler.guard(tag: 'Kids.getActivities', _remote.getActivities);
 
+  @override
+  Future<Either<Failure, List<Place>>> searchSavedPlaces(
+    PlaceKind kind,
+    String query,
+  ) => ErrorHandler.guard(
+    tag: 'Kids.searchSavedPlaces',
+    () => _remote.searchSavedPlaces(kind, query),
+  );
+
   static Child _child(Map<String, dynamic> json, Map<String, String> urls) {
     final school = json['school'];
     final schoolMap = school is Map ? Map<String, dynamic>.from(school) : null;

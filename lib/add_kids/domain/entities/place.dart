@@ -31,7 +31,12 @@ class Place {
     this.city = '',
     this.state = '',
     this.zip = '',
+    this.isSaved = false,
   });
+
+  /// Comes from KidPool's own list (schools / activities parents already
+  /// saved), not from Google.
+  final bool isSaved;
 
   /// `schools.id` for saved schools; the Google place id for search
   /// results and activities.
@@ -74,6 +79,7 @@ class Place {
     city: city,
     state: state,
     zip: zip,
+    isSaved: isSaved,
   );
 
   bool matches(String query) {
