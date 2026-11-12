@@ -19,11 +19,15 @@ class ChatHeader extends StatelessWidget {
     required this.person,
     required this.subtitle,
     required this.onInfo,
+    this.onMore,
   });
 
   final ChatPerson person;
   final String? subtitle;
   final VoidCallback onInfo;
+
+  /// ⋮ "More" (delete chat…); hidden when null.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -85,7 +89,39 @@ class ChatHeader extends StatelessWidget {
               ),
             ),
           ),
+          if (onMore != null) ...[
+            const SizedBox(width: 8),
+            ChatMoreButton(onPressed: onMore!),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+/// 44px surface circle with ⋮, for chat actions (delete / leave).
+class ChatMoreButton extends StatelessWidget {
+  const ChatMoreButton({super.key, required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'More options',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.surface,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: const SizedBox.square(
+            dimension: 44,
+            child: Icon(Icons.more_vert_rounded, color: AppColors.ink),
+          ),
+        ),
       ),
     );
   }
@@ -527,4 +563,57 @@ class ChatComposer extends StatelessWidget {
       ),
     );
   }
+}
+
+/// One row of the ⋮ chat actions sheet.
+class ChatAction {
+  const ChatAction({
+    required this.label,
+    required this.icon,
+    this.destructive = false,
+  });
+
+  final String label;
+  final IconData icon;
+
+  /// Shown in red (delete chat / leave group).
+  final bool destructive;
+}
+
+/// Bottom sheet with the chat's ⋮ actions. Returns the index tapped.
+Future<int?> showChatActionsSheet(
+  BuildContext context,
+  List<ChatAction> actions,
+) {
+  return showModalBottomSheet<int>(
+    context: context,
+    backgroundColor: AppColors.screen,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+    ),
+    builder: (context) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final (i, a) in actions.indexed)
+              ListTile(
+                leading: Icon(
+                  a.icon,
+                  color: a.destructive ? MessagesStyles.sos : AppColors.ink,
+                ),
+                title: Text(
+                  a.label,
+                  style: MessagesStyles.labelL.copyWith(
+                    color: a.destructive ? MessagesStyles.sos : null,
+                  ),
+                ),
+                onTap: () => Navigator.pop(context, i),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
 }

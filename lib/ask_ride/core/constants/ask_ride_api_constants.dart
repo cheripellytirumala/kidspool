@@ -19,14 +19,20 @@ abstract final class AskRideApiConstants {
   /// `docs/backend/2026-11-03_ride_dropoff_location.sql`.
   static const String createRideRequest = 'create_ride_request';
 
+  /// `get_schools(search)` → `[{id, name, addressLine, city, state, zip,
+  /// latitude, longitude}]`; used for the school's location on a ride home.
+  static const String getSchools = 'get_schools';
+  static const String schoolLocationMissingMessage =
+      'We couldn’t find where this school is. Try again later.';
+
   /// PostgREST "function not found" (e.g. `dropoffAddress` before the SQL).
   static const String functionNotFound = 'PGRST202';
 
   /// Client-side code for a custom drop-off the server doesn't know yet.
   static const String dropoffNotSupported = 'dropoff_not_supported';
   static const String dropoffNotSupportedMessage =
-      "Drop-off at any place isn't set up on the server yet. "
-      "Pick your kid's school for now.";
+      "Rides home and drop-offs at any place aren't set up on the server "
+      "yet. Ask for a ride to your kid's school for now.";
 
   /// `create_ride_request`: the drop-off is within 50 m of the pick-up.
   static const String samePlace = 'same_place';

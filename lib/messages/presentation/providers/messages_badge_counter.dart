@@ -3,6 +3,7 @@ import '../../../common/presentation/state/nav_badges.dart';
 import '../../domain/usecases/get_my_chats.dart';
 import '../../domain/usecases/get_my_ride_groups.dart';
 import '../../domain/usecases/get_requests_inbox.dart';
+import '../../domain/entities/ride_chat.dart';
 
 /// Recounts the Messages tab badge from any screen: requests that need an
 /// answer (as on the Requests tab) plus chats and ride groups with unread
@@ -13,7 +14,9 @@ class MessagesBadgeCounter {
     required GetMyChats getMyChats,
     GetMyRideGroups? getMyRideGroups,
     NavBadges? badges,
-  }) : _getInbox = getRequestsInbox,
+    bool Function(RideChat chat)? isChatHidden,
+  }) : _isChatHidden = isChatHidden,
+       _getInbox = getRequestsInbox,
        _getChats = getMyChats,
        _getGroups = getMyRideGroups,
        _badges = badges ?? NavBadges.instance;
@@ -22,6 +25,9 @@ class MessagesBadgeCounter {
   final GetMyChats _getChats;
   final GetMyRideGroups? _getGroups;
   final NavBadges _badges;
+
+  /// Deleted chats don't count (see HiddenChatsStore).
+  final bool Function(RideChat chat)? _isChatHidden;
 
   Future<void> call() async {
     final groupsF = _getGroups?.call(const NoParams());
@@ -36,7 +42,9 @@ class MessagesBadgeCounter {
     // Chats missing (not deployed) or failing count as no unread chats.
     final unread = chats.match(
       (_) => 0,
-      (list) => list.where((c) => c.hasUnread).length,
+      (list) => list
+          .where((c) => c.hasUnread && !(_isChatHidden?.call(c) ?? false))
+          .length,
     );
     // Groups missing (not deployed) or failing count as 0 too.
     final unreadGroups =

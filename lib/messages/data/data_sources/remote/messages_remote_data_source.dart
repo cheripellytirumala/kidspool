@@ -6,6 +6,7 @@ import '../../../../common/core/utils/json_parser.dart';
 import '../../../core/constants/messages_api_constants.dart';
 import '../../../domain/entities/chat_person.dart';
 import '../../../domain/entities/ride_chat.dart';
+import '../../../domain/entities/ride_ask.dart';
 import '../../../domain/entities/ride_group.dart';
 import '../../../domain/entities/ride_request.dart';
 import '../../models/ride_chat_model.dart';
@@ -45,6 +46,11 @@ abstract interface class MessagesRemoteDataSource {
 
   Future<void> driverCancelRide(String requestId);
 
+  /// "Not this time": `pass_ride_request` hides the request from
+  /// `get_open_requests` for this driver. Does nothing until
+  /// `docs/backend/2026-11-10_pass_ride_request.sql` is applied.
+  Future<void> passRequest(String requestId);
+
   Future<List<RideChat>> getMyChats();
 
   Future<List<ChatMessage>> getMessages(String requestId, String driverId);
@@ -63,6 +69,20 @@ abstract interface class MessagesRemoteDataSource {
   Future<List<GroupMessage>> getGroupMessages(String groupId);
 
   Future<GroupMessage> sendGroupMessage(String groupId, String body);
+
+  /// Posts a ride ask card ([rides]: create_ride_request arguments, one
+  /// per day). Throws [MessagesApiConstants.rideAsksMissing] when the SQL
+  /// isn't applied.
+  Future<GroupMessage> postRideAsk(
+    String groupId,
+    List<Map<String, dynamic>> rides,
+    String summary,
+  );
+
+  Future<List<RideAsk>> getGroupRideAsks(String groupId);
+
+  /// "I can help": creates the request for the parent with this offer.
+  Future<void> helpWithRideAsk(String askId);
 
   Future<void> markGroupRead(String groupId);
 
@@ -244,6 +264,20 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
   );
 
   @override
+  Future<void> passRequest(String requestId) async {
+    try {
+      await _apiClient.rpc<void>(
+        MessagesApiConstants.passRideRequest,
+        params: {'requestId': requestId},
+        parser: (_) {},
+      );
+    } on ServerException catch (e) {
+      // Not deployed yet: the device keeps the pass on its own.
+      if (!isMissingFunction(e)) rethrow;
+    }
+  }
+
+  @override
   Future<void> driverCancelRide(String requestId) => _call(
     MessagesApiConstants.driverCancelRide,
     {'requestId': requestId, 'scope': MessagesApiConstants.scopeThis},
@@ -335,6 +369,114 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
     },
     groups: true,
   );
+
+  @override
+  Future<GroupMessage> postRideAsk(
+    String groupId,
+    List<Map<String, dynamic>> rides,
+    String summary,
+  ) => _askCall(
+    MessagesApiConstants.postRideAsk,
+    {'groupId': groupId, 'rides': rides, 'summary': summary},
+    'We couldn’t post your ride. Please try again.',
+    (json) {
+      final message = json is Map
+          ? RideGroupModel.messageFromJson(Map<String, dynamic>.from(json))
+          : null;
+      if (message == null) throw const ParsingException();
+      return message;
+    },
+  );
+
+  @override
+  Future<List<RideAsk>> getGroupRideAsks(String groupId) => _askCall(
+    MessagesApiConstants.getGroupRideAsks,
+    {'groupId': groupId},
+    'We couldn’t load the rides in this group.',
+    (json) => [
+      if (json is List)
+        for (final item in json.whereType<Map>())
+          ?rideAskFromJson(Map<String, dynamic>.from(item)),
+    ],
+  );
+
+  @override
+  Future<void> helpWithRideAsk(String askId) async {
+    try {
+      await _askCall(
+        MessagesApiConstants.helpWithRideAsk,
+        {'askId': askId},
+        'We couldn’t offer to help. Please try again.',
+        (_) {},
+      );
+    } on ServerException catch (e) {
+      // Worded for the driver who tapped "I can help".
+      final text = _helpErrors[e.code];
+      if (text == null) rethrow;
+      throw ServerException(text, e.statusCode, e.code, e.data);
+    }
+  }
+
+  static const Map<String, String> _helpErrors = {
+    'already_taken': 'Another parent already offered to drive this ride.',
+    'request_not_open': 'This ride isn’t open any more.',
+    'not_eligible': 'You live too far from this pick-up to drive it.',
+    'driver_busy': 'You’re already driving another ride around then.',
+    'duplicate_request':
+        'This parent already has a ride request around that time.',
+    'pickup_too_soon': 'This ride starts too soon to be offered now.',
+    'not_a_driver': 'Only parents approved to drive can offer rides.',
+  };
+
+  static RideAsk? rideAskFromJson(Map<String, dynamic> map) {
+    final id = map.readString('id');
+    if (id == null) return null;
+    return RideAsk(
+      id: id,
+      messageId: map.readString('messageId'),
+      isMine: map.readBool('isMine') ?? false,
+      status: RideAskStatus.parse(map.readString('status')),
+      helperName: map.readString('helperName'),
+      canHelp: map.readBool('canHelp') ?? false,
+      days: map.readInt('days') ?? 1,
+      isHelper: map.readBool('isHelper') ?? false,
+      rideStatus: map.readString('rideStatus'),
+      requestIds: [
+        if (map['requestIds'] case final List<dynamic> ids)
+          for (final id in ids)
+            if (id is String) id,
+      ],
+    );
+  }
+
+  /// [_call] for ride-ask RPCs: a missing function (SQL not applied)
+  /// becomes [MessagesApiConstants.rideAsksMissing].
+  Future<T> _askCall<T>(
+    String name,
+    Map<String, dynamic> params,
+    String fallback,
+    ResponseParser<T> parser,
+  ) async {
+    try {
+      return await _apiClient.rpc<T>(name, params: params, parser: parser);
+    } on UnauthorizedException {
+      rethrow;
+    } on ServerException catch (e) {
+      if (isMissingFunction(e)) {
+        throw ServerException(
+          'Ride cards aren’t set up on the server yet.',
+          e.statusCode,
+          MessagesApiConstants.rideAsksMissing,
+          e.data,
+        );
+      }
+      // Same wording rules as [_call] (never re-sends the request).
+      final known = ApiErrorMessages.forCode(e.code) != null;
+      final serverDown = e.code == null && (e.statusCode ?? 0) >= 500;
+      if (known || serverDown) rethrow;
+      throw ServerException(fallback, e.statusCode, e.code, e.data);
+    }
+  }
 
   @override
   Future<GroupMessage> sendGroupMessage(String groupId, String body) => _call(

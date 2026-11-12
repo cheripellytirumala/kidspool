@@ -28,7 +28,16 @@ class DropOffPickerSheet extends StatefulWidget {
     required this.schools,
     required this.selected,
     this.emptyMessage,
+    this.title = 'Drop off at',
+    this.activities = const [],
   });
+
+  /// The selected kids' activities (soccer, music…), listed under the
+  /// schools; picking one drops off at that place.
+  final List<SavedPlace> activities;
+
+  /// "Pick up from" when the ride goes from the school back home.
+  final String title;
 
   final List<SavedPlace> schools;
   final SavedPlace? selected;
@@ -41,7 +50,9 @@ class DropOffPickerSheet extends StatefulWidget {
 }
 
 class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
-  late DropOffTab _tab = (widget.selected?.isCustom ?? false)
+  late DropOffTab _tab =
+      (widget.selected?.isCustom ?? false) &&
+          !widget.activities.contains(widget.selected)
       ? DropOffTab.search
       : DropOffTab.schools;
   final TextEditingController _query = TextEditingController();
@@ -59,7 +70,7 @@ class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
     return SizedBox(
       height: height,
       child: AskRideSheet(
-        title: 'Drop off at',
+        title: widget.title,
         children: [
           DropOffTabs(
             value: _tab,
@@ -87,11 +98,27 @@ class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
         selected: place == widget.selected,
         onTap: () => Navigator.of(context).pop(PlacePicked(place)),
       ),
-    if (widget.schools.isEmpty && widget.emptyMessage != null)
+    if (widget.schools.isEmpty &&
+        widget.activities.isEmpty &&
+        widget.emptyMessage != null)
       Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(widget.emptyMessage!, style: AppTextStyles.bodyL),
       ),
+    if (widget.activities.isNotEmpty) ...[
+      Padding(
+        padding: const EdgeInsets.only(top: 8, left: 4),
+        child: Text('ACTIVITIES', style: AskRideTextStyles.fieldCaption),
+      ),
+      for (final place in widget.activities)
+        AppSelectCard(
+          title: place.name,
+          subtitle: [place.address, ?place.detail].join(' · '),
+          icon: savedPlaceIcon(PlaceKind.custom),
+          selected: place == widget.selected,
+          onTap: () => Navigator.of(context).pop(CustomPlacePicked(place)),
+        ),
+    ],
   ];
 
   List<Widget> _search(BuildContext context) {

@@ -10,6 +10,7 @@ import '../../presentation/providers/auth_provider.dart';
 import '../../presentation/providers/otp_provider.dart';
 import '../../presentation/providers/review_status_provider.dart';
 import '../../presentation/providers/scan_id_provider.dart';
+import '../../../profile/domain/repositories/profile_repository.dart';
 
 /// Registers everything owned by the Auth feature group.
 /// Called from `lib/core/di/injection_container.dart`.
@@ -47,6 +48,14 @@ void registerAuthDependencies(GetIt sl) {
         photos: sl(),
         preferences: sl(),
         licenseReader: sl(),
+        savedProfile: () async {
+          final d = (await sl<ProfileRepository>().getDetails())
+              .getRight()
+              .toNullable();
+          return d == null
+              ? null
+              : (firstName: d.firstName, lastName: d.lastName, phone: d.phone);
+        },
       ),
     );
 }

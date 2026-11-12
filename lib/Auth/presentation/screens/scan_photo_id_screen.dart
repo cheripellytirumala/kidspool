@@ -17,8 +17,9 @@ import '../widgets/id_viewfinder.dart';
 
 /// V1 · Scan photo ID — Figma node 1018:8233.
 ///
-/// The shutter opens the camera for the selected side and the gallery button
-/// picks a photo instead. Once both sides are captured the photos are shown
+/// On arrival it asks camera or library for the front, and again for the
+/// back once the front is in (also when a Front / Back chip is tapped); the
+/// shutter takes a photo. Once both sides are captured the photos are shown
 /// for review on V3 and sent to `submit-identity-verification`.
 class ScanPhotoIdScreen extends StatelessWidget {
   const ScanPhotoIdScreen({super.key});
@@ -50,6 +51,8 @@ class _ScanBodyState extends State<_ScanBody> {
   @override
   void initState() {
     super.initState();
+    // Restore the saved name (lost after an app restart) for the ID check.
+    context.read<AuthFlowProvider>().restoreFromProfile();
     // On landing, ask right away whether to take or pick the photo.
     WidgetsBinding.instance.addPostFrameCallback((_) => _askSource());
   }
@@ -69,6 +72,28 @@ class _ScanBodyState extends State<_ScanBody> {
     await _capture(context, fromCamera: fromCamera);
   }
 
+  /// Front / Back chip: selects that side and asks camera or library for it
+  /// (also to retake a side that already has a photo).
+  Future<void> _pickSide(IdSide side) async {
+    final scan = context.read<ScanIdProvider>();
+    if (scan.isBusy) return;
+    scan.selectSide(side);
+    final fromCamera = await showPhotoSourceSheet(context);
+    if (fromCamera == null || !mounted) return;
+    await _capture(context, fromCamera: fromCamera);
+  }
+
+  /// Back: previous screen, or About you when this is the first screen
+  /// (the app was reopened mid sign-up and started here).
+  void _back() {
+    final navigator = Navigator.of(context);
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else {
+      navigator.pushReplacementNamed(AppRoutes.aboutYou);
+    }
+  }
+
   Future<void> _capture(
     BuildContext context, {
     required bool fromCamera,
@@ -83,10 +108,15 @@ class _ScanBodyState extends State<_ScanBody> {
     if (error != null) return showAppSnack(context, error);
 
     final frontDone = flow.idFrontPath != null;
-    final backDone = flow.idBackPath != null;
+    // A passport has no back side.
+    final backDone = !flow.idNeedsBack || flow.idBackPath != null;
+    final before = scan.side;
     scan.advance(frontDone: frontDone, backDone: backDone);
-    if (frontDone && backDone) {
+    if (flow.hasIdPhotos) {
       Navigator.pushNamed(context, AppRoutes.idVerified);
+    } else if (scan.side != before) {
+      // Front done: ask camera or library for the back straight away.
+      await _askSource();
     }
   }
 
@@ -95,7 +125,8 @@ class _ScanBodyState extends State<_ScanBody> {
     final scan = context.watch<ScanIdProvider>();
     final flow = context.watch<AuthFlowProvider>();
     final frontDone = flow.idFrontPath != null;
-    final backDone = flow.idBackPath != null;
+    final backDone = !flow.idNeedsBack || flow.idBackPath != null;
+    final idTypes = flow.allowedIdTypes;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
@@ -116,9 +147,9 @@ class _ScanBodyState extends State<_ScanBody> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(32, 8, 32, 8),
-                      child: AuthBackButton(),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(32, 8, 32, 8),
+                      child: AuthBackButton(onPressed: _back),
                     ),
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
@@ -130,7 +161,9 @@ class _ScanBodyState extends State<_ScanBody> {
                               text: 'Scan your\n',
                               children: [
                                 TextSpan(
-                                  text: 'driver\'s license',
+                                  text: idTypes.length > 1
+                                      ? 'photo ID'
+                                      : flow.idType.inSentence,
                                   style: TextStyle(color: AppColors.lime),
                                 ),
                               ],
@@ -140,19 +173,45 @@ class _ScanBodyState extends State<_ScanBody> {
                             ),
                           ),
                           const SizedBox(height: 12),
+                          // Parents who only need rides pick their ID type.
+                          if (idTypes.length > 1) ...[
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  for (final type in idTypes) ...[
+                                    DarkChoiceChip(
+                                      label: type.label,
+                                      selected: type == flow.idType,
+                                      onTap: () {
+                                        flow.setIdType(type);
+                                        scan.selectSide(IdSide.front);
+                                      },
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                          ],
                           Row(
                             children: [
                               DarkChoiceChip(
                                 label: frontDone ? 'Front ✓' : 'Front',
                                 selected: scan.side == IdSide.front,
-                                onTap: () => scan.selectSide(IdSide.front),
+                                onTap: () => _pickSide(IdSide.front),
                               ),
-                              const SizedBox(width: 8),
-                              DarkChoiceChip(
-                                label: backDone ? 'Back ✓' : 'Back',
-                                selected: scan.side == IdSide.back,
-                                onTap: () => scan.selectSide(IdSide.back),
-                              ),
+                              if (flow.idNeedsBack) ...[
+                                const SizedBox(width: 8),
+                                DarkChoiceChip(
+                                  label: flow.idBackPath != null
+                                      ? 'Back ✓'
+                                      : 'Back',
+                                  selected: scan.side == IdSide.back,
+                                  onTap: () => _pickSide(IdSide.back),
+                                ),
+                              ],
                             ],
                           ),
                         ],
@@ -172,22 +231,11 @@ class _ScanBodyState extends State<_ScanBody> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          GalleryThumbnailButton(
-                            onPressed: () =>
-                                _capture(context, fromCamera: false),
-                          ),
-                          ShutterButton(
-                            onPressed: () =>
-                                _capture(context, fromCamera: true),
-                          ),
-                          // Balances the gallery button.
-                          const SizedBox(width: 72, height: 56),
-                        ],
+                    // Camera only here; the library is offered in the
+                    // camera-or-library sheet for each side.
+                    Center(
+                      child: ShutterButton(
+                        onPressed: () => _capture(context, fromCamera: true),
                       ),
                     ),
                     const SizedBox(height: 20),

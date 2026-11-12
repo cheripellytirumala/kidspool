@@ -30,6 +30,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     required TriggerRideSos triggerSos,
     required StartSharingRideLocation startSharing,
     required StopSharingRideLocation stopSharing,
+    ({double latitude, double longitude})? Function()? driverPosition,
     this.pollInterval = RideTrackingApiConstants.trackingPollInterval,
   }) : _getRideTracking = getRideTracking,
        _startRide = startRide,
@@ -37,7 +38,14 @@ class LiveTrackingProvider extends ChangeNotifier {
        _completeRide = completeRide,
        _triggerSos = triggerSos,
        _startSharing = startSharing,
-       _stopSharing = stopSharing;
+       _stopSharing = stopSharing,
+       _driverPosition = driverPosition;
+
+  /// The Ride Partner's phone GPS (fresher than the server's position).
+  final ({double latitude, double longitude})? Function()? _driverPosition;
+
+  /// Auto drop-off was already tried for this ride (once only).
+  bool _autoDropTried = false;
 
   final GetRideTracking _getRideTracking;
   final StartRide _startRide;
@@ -86,6 +94,45 @@ class LiveTrackingProvider extends ChangeNotifier {
     };
   }
 
+  /// Metres from the car to the drop-off: the phone's own GPS for the Ride
+  /// Partner, else the last position on the server. Null when unknown.
+  double? get metersToDropoff {
+    final t = _tracking;
+    final to = t?.destination.point;
+    if (t == null || to == null) return null;
+    final p = t.isDriver ? _driverPosition?.call() : null;
+    final from = p != null
+        ? GeoPoint(p.latitude, p.longitude)
+        : t.location?.point;
+    return from?.metersTo(to);
+  }
+
+  /// The car is within [RideTrackingApiConstants.dropoffRadiusMeters] of
+  /// the drop-off (or the distance can't be told). The "Dropped off" button
+  /// works anywhere; outside this radius the sheet shows the distance left
+  /// until it drops off by itself.
+  bool get canDropOff {
+    if (driverAction != DriverRideAction.complete) return false;
+    final m = metersToDropoff;
+    return m == null || m <= RideTrackingApiConstants.dropoffRadiusMeters;
+  }
+
+  /// Within 100 m of the drop-off with the kids in the car: drop off by
+  /// itself (once; the button stays for a retry).
+  Future<void> _autoDropOff() async {
+    if (_autoDropTried || _busyAction != null) return;
+    if (driverAction != DriverRideAction.complete) return;
+    final m = metersToDropoff;
+    if (m == null || m > RideTrackingApiConstants.dropoffRadiusMeters) return;
+    _autoDropTried = true;
+    _autoDroppedOff = await runDriverAction() == null;
+  }
+
+  bool _autoDroppedOff = false;
+
+  /// The ride was dropped off automatically (the screen says so).
+  bool get autoDroppedOff => _autoDroppedOff;
+
   /// Loads [requestId] and starts polling; null shows the empty state.
   Future<void> open(String? requestId) async {
     _requestId = requestId;
@@ -107,10 +154,22 @@ class LiveTrackingProvider extends ChangeNotifier {
     _paused = true;
     _poll?.cancel();
     _poll = null;
+    // Driver with the kids aboard: GPS keeps running in the background, so
+    // keep checking the 100 m drop-off on the phone (no polling).
+    if (driverAction == DriverRideAction.complete) {
+      _backgroundCheck ??= Timer.periodic(
+        RideTrackingApiConstants.locationInterval,
+        (_) => _autoDropOff(),
+      );
+    }
   }
+
+  Timer? _backgroundCheck;
 
   /// Back in the foreground: refresh now, then keep polling.
   void resume() {
+    _backgroundCheck?.cancel();
+    _backgroundCheck = null;
     if (!_paused) return;
     _paused = false;
     if (_tracking != null) unawaited(_load());
@@ -143,6 +202,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     );
     _notify();
     _schedule();
+    unawaited(_autoDropOff());
   }
 
   void _apply(RideTracking fresh, {required bool includedPath}) {
@@ -190,6 +250,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     final action = driverAction;
     final id = _requestId;
     if (action == null || id == null || _busyAction != null) return null;
+
     _busyAction = action;
     _notify();
     final Failure? failure = switch (action) {
@@ -241,6 +302,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     _disposed = true;
     _poll?.cancel();
     _poll = null;
+    _backgroundCheck?.cancel();
     super.dispose();
   }
 }

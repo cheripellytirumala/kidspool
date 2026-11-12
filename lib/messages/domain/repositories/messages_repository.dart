@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/failures.dart';
+import '../entities/ride_ask.dart';
 import '../entities/chat_person.dart';
 import '../entities/ride_chat.dart';
 import '../entities/ride_group.dart';
@@ -108,4 +109,16 @@ abstract interface class MessagesRepository {
   Future<Either<Failure, List<RideGroupMember>>> getGroupCandidates(
     String? groupId,
   );
+
+  // Ride asks (cards in group chats)
+
+  Future<Either<Failure, GroupMessage>> postRideAsk({
+    required String groupId,
+    required List<Map<String, dynamic>> rides,
+    required String summary,
+  });
+
+  Future<Either<Failure, List<RideAsk>>> getGroupRideAsks(String groupId);
+
+  Future<Either<Failure, Unit>> helpWithRideAsk(String askId);
 }

@@ -30,7 +30,9 @@ class HomeProvider extends ChangeNotifier {
     required GetFamiliesNearMe getFamiliesNearMe,
     GetMyRideGroups? getMyRideGroups,
     DateTime Function()? clock,
+    void Function(List<UpcomingRide> drives)? onDrivesLoaded,
   }) : _repository = repository,
+       _onDrivesLoaded = onDrivesLoaded,
        _getRideGroups = getMyRideGroups,
        _getFamiliesNearMe = getFamiliesNearMe,
        _account = account,
@@ -38,6 +40,9 @@ class HomeProvider extends ChangeNotifier {
        _clock = clock ?? DateTime.now {
     _readRole();
   }
+
+  /// Gets the upcoming drives after each load (ride reminders).
+  final void Function(List<UpcomingRide> drives)? _onDrivesLoaded;
 
   /// Ride mode is chosen on About you and can be changed on Profile.
   void _readRole() {
@@ -91,11 +96,27 @@ class HomeProvider extends ChangeNotifier {
   /// Loads the name, the rides and the bell dot. Call on open and
   /// pull-to-refresh. Drives, the ride's driver and notifications are
   /// optional: their failures only hide that part of the screen.
-  Future<void> load() async {
-    if (_status.isLoading) return;
+  /// [silent]: background refresh — the screen stays as is (no spinner)
+  /// and a failure keeps what's shown.
+  Future<void> load({bool silent = false}) async {
+    if (_status.isLoading || _silentLoading) return;
+    if (silent && !_status.isSuccess) return;
     _readRole(); // pick up a change made on Profile
-    _setStatus(ViewStatus.loading);
+    if (silent) {
+      _silentLoading = true;
+    } else {
+      _setStatus(ViewStatus.loading);
+    }
+    try {
+      await _load(silent: silent);
+    } finally {
+      _silentLoading = false;
+    }
+  }
 
+  bool _silentLoading = false;
+
+  Future<void> _load({required bool silent}) async {
     final groupsF = _getRideGroups?.call(const NoParams());
     final results = await (
       _account.getMyStatus(),
@@ -106,9 +127,13 @@ class HomeProvider extends ChangeNotifier {
     ).wait;
     results.$1.match((_) {}, (me) => _firstName = me.firstName);
     _drives = results.$3.getOrElse((_) => const []);
+    if (results.$3.isRight()) _onDrivesLoaded?.call(_drives);
     _hasUnseenNotifications = results.$4.getOrElse((_) => false);
     // Optional: a failure (or a server without the RPC) hides FAMILIES.
-    _families = results.$5.match((_) => const [], (data) => data.families);
+    _families = results.$5.match(
+      (_) => silent ? _families : const [],
+      (data) => data.families,
+    );
     // Optional: no groups (or no groups SQL) keeps the route group card.
     if (groupsF != null) {
       _latestGroup = (await groupsF).match(
@@ -128,7 +153,9 @@ class HomeProvider extends ChangeNotifier {
             featured.id,
           )).getOrElse((_) => const RideActivity());
 
-    if (failure != null && featured == null) {
+    if (failure != null && silent) {
+      notifyListeners(); // background refresh: keep the screen as it was
+    } else if (failure != null && featured == null) {
       _setStatus(ViewStatus.failure, failure: failure);
     } else {
       _setStatus(ViewStatus.success);
@@ -137,10 +164,15 @@ class HomeProvider extends ChangeNotifier {
 
   // ---------------------------------------------------------------- H3
 
-  /// The booked ride (or drive) shown on the H3 map card: one under way
-  /// first, otherwise the soonest. Null → the empty states (H1e / H3e).
+  /// The ride shown on the H3 map card: a kid's ride only once the driver
+  /// has started it (no map before that), or a drive the user gives (they
+  /// start it from the live screen). One under way first, otherwise the
+  /// soonest. Null → the other layouts (upcoming rides card).
   UpcomingRide? get featuredRide {
-    final booked = [..._rides.where((r) => r.isBooked), ..._drives];
+    final booked = [
+      ..._rides.where((r) => r.status == RideStatus.inProgress),
+      ..._drives,
+    ];
     if (booked.isEmpty) return null;
     booked.sort((a, b) {
       final live =

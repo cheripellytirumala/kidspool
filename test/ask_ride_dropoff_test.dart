@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:kidspool/ask_ride/core/constants/ask_ride_api_constants.dart';
+import 'package:kidspool/ask_ride/core/utils/ride_date_format.dart';
 import 'package:kidspool/ask_ride/data/data_sources/remote/ask_ride_remote_data_source.dart';
 import 'package:kidspool/ask_ride/data/repositories/ask_ride_repository_impl.dart';
 import 'package:kidspool/ask_ride/data/data_sources/local/ask_ride_local_data_source.dart';
@@ -60,6 +61,14 @@ const _swim = SavedPlace(
   zip: '94610',
 );
 
+const _lincolnAddress = DropOffAddress(
+  label: 'Lincoln Elementary',
+  addressLine1: '1 School Rd',
+  city: 'Oakland',
+  latitude: 37.79,
+  longitude: -122.26,
+);
+
 final _baseParams = CreateRideParams(
   kidIds: const ['k1'],
   pickupDate: DateTime(2026, 11, 5),
@@ -102,6 +111,35 @@ void main() {
         'repeatSchoolDays': false,
         'requireApproval': false,
       });
+    });
+
+    test('ride home: pickupAddress instead of pickupAddressId', () {
+      final params = AskRideRemoteDataSourceImpl.createRideParams(
+        CreateRideParams(
+          kidIds: const ['k1'],
+          pickupDate: DateTime(2026, 11, 5),
+          pickupTime: '15:00',
+          timeZone: 'America/Los_Angeles',
+          pickupAddressId: null,
+          pickupAddress: _lincolnAddress,
+          note: '',
+          dropoff: _swimAddress,
+        ),
+      );
+      expect(params.containsKey('pickupAddressId'), isFalse);
+      expect(params['pickupAddress']['label'], 'Lincoln Elementary');
+      expect(params['dropoffAddress']['label'], 'Bluewave Swim Club');
+    });
+
+    test('pickupAddress label fits the server (30 characters)', () {
+      final json = AskRideRemoteDataSourceImpl.pickupJson(
+        const DropOffAddress(
+          label: 'Hicksville Middle School and Upper Academy',
+          latitude: 1,
+          longitude: 2,
+        ),
+      );
+      expect((json['label'] as String).length, lessThanOrEqualTo(30));
     });
 
     test('custom drop-off adds dropoffAddress (pickupAddress shape)', () {
@@ -147,8 +185,8 @@ void main() {
       expect(e.message, AskRideApiConstants.dropoffNotSupportedMessage);
       expect(
         e.message,
-        "Drop-off at any place isn't set up on the server yet. "
-        "Pick your kid's school for now.",
+        "Rides home and drop-offs at any place aren't set up on the server "
+        "yet. Ask for a ride to your kid's school for now.",
       );
       expect(e.code, AskRideApiConstants.dropoffNotSupported);
     });
@@ -269,6 +307,253 @@ void main() {
       expect(provider.draft.dropOff, _swim);
     });
 
+    test(
+      'activities show for the selected kids and can be the drop-off',
+      () async {
+        await setUpProvider();
+        const swim = SavedPlace(
+          id: 'activity:g-swim',
+          name: 'Bluewave Swim Club',
+          address: '500 Lake Ave',
+          kind: PlaceKind.custom,
+          detail: 'Activity',
+          latitude: 37.81,
+          longitude: -122.25,
+          addressLine1: '500 Lake Ave',
+        );
+        final p = AskRideProvider(
+          getRideOptions: GetRideOptions(repo),
+          addSavedPlace: AddSavedPlace(repo),
+          repository: repo,
+          timeZone: _FixedTimeZone(),
+          activities: () => [
+            (place: swim, kidIds: {'k1'}),
+            (place: swim, kidIds: {'other-kid'}),
+          ],
+        );
+        await p.load();
+        p.setOnce(
+          date: DateTime.now().add(const Duration(days: 3)),
+          time: const RideTime(8, 30),
+        );
+        expect(p.activityPlaces, [swim]); // only k1's
+        p.setDropOff(swim);
+        expect(p.validationError, isNull);
+        expect(await p.submit(), isNull);
+        expect(repo.sent.single.dropoff?.label, 'Bluewave Swim Club');
+      },
+    );
+
+    test('kid without a school: "same school" fixes the ride', () async {
+      repo = _FakeRepo(
+        kids: [
+          const AskRideKid(
+            id: 'k1',
+            name: 'Emma',
+            schoolId: 's1',
+            schoolName: 'Lincoln Elementary',
+          ),
+          const AskRideKid(id: 'k2', name: 'Jessie'),
+        ],
+        places: const [_home],
+      );
+      provider = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+      );
+      await provider.load();
+      provider
+        ..setOnce(
+          date: DateTime.now().add(const Duration(days: 3)),
+          time: const RideTime(8, 30),
+        )
+        ..toggleKid('k2'); // Emma + Jessie
+      expect(provider.selectedKidsWithoutSchool.map((k) => k.name), ['Jessie']);
+      expect(provider.validationError, 'Pick kids who go to the same school.');
+      expect(provider.siblingSchool, _lincoln);
+
+      expect(
+        await provider.giveKidSchool(
+          provider.selectedKidsWithoutSchool.single,
+          _lincoln,
+        ),
+        isNull,
+      );
+      expect(repo.schoolsSet, {'k2': 's1'});
+      expect(provider.selectedKidsWithoutSchool, isEmpty);
+      expect(provider.draft.kidIds, ['k1', 'k2']);
+      expect(provider.draft.dropOff, _lincoln);
+      expect(provider.validationError, isNull);
+    });
+
+    test('Swap: school → home sends the school as pickupAddress', () async {
+      await setUpProvider();
+      provider.swapRoute();
+      expect(provider.isRideHome, isTrue);
+      expect(provider.draft.pickup, _lincoln);
+      expect(provider.draft.dropOff, _home);
+      expect(provider.validationError, isNull);
+      expect(await provider.submit(), isNull);
+      final sent = repo.sent.single;
+      expect(sent.pickupAddressId, isNull);
+      expect(sent.pickupAddress, _lincolnAddress);
+      expect(sent.dropoff?.latitude, _home.latitude);
+      expect(sent.dropoff?.label, _home.name);
+    });
+
+    test(
+      'Next with a group for the school: creates the ride, posts it there',
+      () async {
+        await setUpProvider();
+        final posted = <(String, String)>[];
+        String? searched;
+        final p = AskRideProvider(
+          getRideOptions: GetRideOptions(repo),
+          addSavedPlace: AddSavedPlace(repo),
+          repository: repo,
+          timeZone: _FixedTimeZone(),
+          findGroup: (school) async {
+            searched = school;
+            return const RideGroupTarget(id: 'g1', name: 'Home → Lincoln');
+          },
+          postToGroup: (id, text) async {
+            posted.add((id, text));
+            return null;
+          },
+        );
+        await p.load();
+        p.setOnce(
+          date: DateTime.now().add(const Duration(days: 3)),
+          time: const RideTime(8, 30),
+        );
+        expect(p.checkDraft(), isNull);
+        final (group, error) = await p.askInExistingGroup();
+        expect((group?.id, error), ('g1', null));
+        expect(searched, 'Lincoln Elementary');
+        expect(repo.sent, hasLength(1)); // the ride was created
+        expect(posted.single.$1, 'g1');
+        expect(posted.single.$2, startsWith('🚗 I asked for a ride'));
+      },
+    );
+
+    test('ride card: posted in the group, nothing created yet', () async {
+      await setUpProvider();
+      final posted = <(String, int, String)>[];
+      final p = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+        postAsk: (groupId, rides, summary) async {
+          posted.add((groupId, rides.length, summary));
+          return (true, null);
+        },
+      );
+      await p.load();
+      p.setOnce(
+        date: DateTime.now().add(const Duration(days: 3)),
+        time: const RideTime(8, 30),
+      );
+      expect(await p.askInGroup('g1'), isNull);
+      expect(repo.sent, isEmpty); // created only on "I can help"
+      expect(posted.single.$1, 'g1');
+      expect(posted.single.$2, 1);
+      expect(posted.single.$3, startsWith('🚗 Ride needed: Emma · '));
+      expect(posted.single.$3, endsWith('Can anyone help?'));
+    });
+
+    test('custom days: one ride card per day', () async {
+      await setUpProvider();
+      final posted = <(int, String)>[];
+      final p = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+        postAsk: (groupId, rides, summary) async {
+          posted.add((rides.length, summary));
+          return (true, null);
+        },
+      );
+      await p.load();
+      final now = DateTime.now();
+      final d1 = DateTime(now.year, now.month, now.day + 3);
+      final d2 = DateTime(now.year, now.month, now.day + 4);
+      p.setCustom(dates: {d1, d2}, time: const RideTime(8, 30));
+      expect(await p.askInGroup('g1'), isNull);
+      expect(repo.sent, isEmpty);
+      expect(posted.map((e) => e.$1), [1, 1]);
+      expect(posted[0].$2, contains(RideDateFormat.long(d1)));
+      expect(posted[1].$2, contains(RideDateFormat.long(d2)));
+    });
+
+    test('ride card SQL missing: creates the ride and posts text', () async {
+      await setUpProvider();
+      final texts = <String>[];
+      final p = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+        postAsk: (_, _, _) async => (false, 'not deployed'),
+        postToGroup: (_, text) async {
+          texts.add(text);
+          return null;
+        },
+      );
+      await p.load();
+      p.setOnce(
+        date: DateTime.now().add(const Duration(days: 3)),
+        time: const RideTime(8, 30),
+      );
+      expect(await p.askInGroup('g1'), isNull);
+      expect(repo.sent, hasLength(1));
+      expect(texts.single, startsWith('🚗 I asked for a ride'));
+    });
+
+    test('Next with no group: nothing is created (choose families)', () async {
+      await setUpProvider();
+      final p = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+        findGroup: (_) async => null,
+        postToGroup: (_, _) async => null,
+      );
+      await p.load();
+      expect(await p.askInExistingGroup(), (null, null));
+      expect(repo.sent, isEmpty);
+    });
+
+    test('chatMessage describes the ride for "+ Ride" from a chat', () async {
+      await setUpProvider();
+      final m = provider.chatMessage;
+      expect(m, startsWith('🚗 I asked for a ride: Emma · '));
+      expect(m, contains('Home · 24 Maple St → Lincoln Elementary'));
+      expect(m, endsWith('Can you help?'));
+    });
+
+    test('Swap twice goes back to home → school', () async {
+      await setUpProvider();
+      provider.swapRoute();
+      provider.swapRoute();
+      expect(provider.isRideHome, isFalse);
+      expect(provider.draft.pickup, _home);
+      expect(provider.draft.dropOff, _lincoln);
+    });
+
+    test('ride home: toggling kids keeps the school as the pick-up', () async {
+      await setUpProvider();
+      provider.swapRoute();
+      provider.toggleKid('k1');
+      provider.toggleKid('k1');
+      expect(provider.draft.pickup, _lincoln);
+      expect(provider.draft.dropOff, _home);
+    });
+
     test('drop-off search is biased near the pick-up', () async {
       await setUpProvider();
       expect(provider.searchNear, _home);
@@ -276,6 +561,17 @@ void main() {
   });
 
   group('SearchDropOffPlaces', () {
+    test('Text Search over quota: still finds places', () async {
+      final places = _FakePlaces()..overQuota = true;
+      final result = await SearchDropOffPlaces(places)(
+        const SearchDropOffPlacesParams(query: 'funland'),
+      );
+      final place = result.toNullable()!.single;
+      expect(place.name, 'Funland');
+      expect(place.id, 'custom:ChIJfun');
+      expect((place.latitude, place.longitude), (10.99, 76.97));
+    });
+
     test(
       'no includedType, biased near the pick-up, mapped to custom',
       () async {
@@ -434,6 +730,33 @@ class _FakeRepo implements AskRideRepository {
     required String label,
   }) async => Right(places);
 
+  /// kidId → schoolId set with "Same school".
+  final Map<String, String> schoolsSet = {};
+
+  @override
+  Future<Either<Failure, Unit>> setKidSchool(
+    String kidId,
+    String schoolId,
+  ) async {
+    schoolsSet[kidId] = schoolId;
+    final i = kids.indexWhere((k) => k.id == kidId);
+    if (i >= 0) {
+      final k = kids[i];
+      kids[i] = AskRideKid(
+        id: k.id,
+        name: k.name,
+        schoolId: schoolId,
+        schoolName: 'Lincoln Elementary',
+      );
+    }
+    return const Right(unit);
+  }
+
+  @override
+  Future<Either<Failure, DropOffAddress>> getSchoolAddress(
+    SavedPlace school,
+  ) async => const Right(_lincolnAddress);
+
   @override
   Future<Either<Failure, RideRequestResult>> createRideRequest(
     CreateRideParams params,
@@ -446,6 +769,8 @@ class _FakeRepo implements AskRideRepository {
 }
 
 class _FakePlaces implements PlacesRepository {
+  /// Text Search answers 429 (daily quota used up).
+  bool overQuota = false;
   String? query;
   String? includedType;
   (double?, double?)? near;
@@ -466,6 +791,9 @@ class _FakePlaces implements PlacesRepository {
     this.query = query;
     this.includedType = includedType;
     near = (nearLatitude, nearLongitude);
+    if (overQuota) {
+      return const Left(ServerFailure('Too many attempts.', statusCode: 429));
+    }
     return const Right([
       PlaceSearchResult(
         placeId: 'ChIJswim',
@@ -488,13 +816,30 @@ class _FakePlaces implements PlacesRepository {
     required String sessionToken,
     double? nearLatitude,
     double? nearLongitude,
-  }) async => const Right([]);
+  }) async => overQuota
+      ? const Right([
+          PlaceSuggestion(
+            placeId: 'ChIJfun',
+            primaryText: 'Funland',
+            secondaryText: 'Coimbatore',
+          ),
+        ])
+      : const Right([]);
 
   @override
   Future<Either<Failure, PickedAddress>> details(
     String placeId, {
     required String sessionToken,
-  }) async => const Left(UnexpectedFailure());
+  }) async => overQuota
+      ? const Right(
+          PickedAddress(
+            latitude: 10.99,
+            longitude: 76.97,
+            street: '22 Nanjundapuram Rd',
+            city: 'Coimbatore',
+          ),
+        )
+      : const Left(UnexpectedFailure());
 
   @override
   Future<Either<Failure, PickedAddress>> addressAt(

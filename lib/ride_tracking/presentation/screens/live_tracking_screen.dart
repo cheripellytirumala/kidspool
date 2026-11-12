@@ -206,6 +206,8 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
                       tracking: tracking,
                       driverAction: provider.driverAction,
                       busyAction: provider.busyAction,
+                      canDropOff: provider.canDropOff,
+                      metersToDropoff: provider.metersToDropoff,
                       onDriverAction: _onDriverAction,
                       onMessage: onMessage,
                       onCall: onCall,

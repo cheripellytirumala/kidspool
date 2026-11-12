@@ -16,6 +16,14 @@ abstract interface class AuthRemoteDataSource {
 
   Future<void> setMyRole(String role);
 
+  /// Saves the name; [startNow] approves a parent who skips the ID.
+  /// Does nothing (no error) while that SQL isn't on the server.
+  Future<void> saveProfileBasics({
+    required String firstName,
+    required String lastName,
+    required bool startNow,
+  });
+
   Future<void> addAddress(HomeAddress address);
 
   Future<void> submitIdentity(IdentitySubmission submission);
@@ -69,6 +77,29 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         );
       },
     );
+  }
+
+  @override
+  Future<void> saveProfileBasics({
+    required String firstName,
+    required String lastName,
+    required bool startNow,
+  }) async {
+    try {
+      await _apiClient.rpc<void>(
+        AuthApiConstants.setMyProfileBasics,
+        params: {
+          'firstName': firstName,
+          'lastName': lastName,
+          'startNow': startNow,
+        },
+        parser: (_) {},
+      );
+    } on ServerException catch (e) {
+      // Older server without the function: keep the old behaviour.
+      if (e.statusCode == 404 || e.data['code'] == 'PGRST202') return;
+      rethrow;
+    }
   }
 
   @override

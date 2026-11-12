@@ -1,6 +1,7 @@
 import Flutter
 import GoogleMaps
 import UIKit
+import UserNotifications
 
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
@@ -12,6 +13,9 @@ import UIKit
     if let key = AppDelegate.mapsApiKey {
       GMSServices.provideAPIKey(key)
     }
+    // S19 / S20: lets flutter_local_notifications (and firebase_messaging)
+    // handle notifications shown while the app is open and taps on them.
+    UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

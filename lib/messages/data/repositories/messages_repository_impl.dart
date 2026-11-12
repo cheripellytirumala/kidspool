@@ -4,9 +4,12 @@ import '../../../common/core/error/error_handler.dart';
 import '../../../common/core/error/exceptions.dart';
 import '../../../common/core/error/failures.dart';
 import '../../../common/core/network/auth_token_provider.dart';
+import '../../../common/core/utils/logger.dart';
 import '../../core/constants/messages_api_constants.dart';
+import '../data_sources/local/passed_requests_store.dart';
 import '../../domain/entities/chat_person.dart';
 import '../../domain/entities/ride_chat.dart';
+import '../../domain/entities/ride_ask.dart';
 import '../../domain/entities/ride_group.dart';
 import '../../domain/entities/ride_request.dart';
 import '../../domain/repositories/messages_repository.dart';
@@ -16,17 +19,25 @@ class MessagesRepositoryImpl implements MessagesRepository {
   MessagesRepositoryImpl({
     required MessagesRemoteDataSource remoteDataSource,
     required AuthTokenProvider tokenProvider,
+    PassedRequestsStore? passedStore,
   }) : _remote = remoteDataSource,
-       _tokens = tokenProvider;
+       _tokens = tokenProvider,
+       _passedStore = passedStore;
 
   static const String _tag = 'MessagesRepository';
 
   final MessagesRemoteDataSource _remote;
   final AuthTokenProvider _tokens;
 
-  /// Requests passed on with "Not this time" (this app run only, like the
-  /// previous app: there is no API for it).
-  final Set<String> _passed = {};
+  /// Requests passed on with "Not this time": saved on the device by
+  /// [_passedStore] (there is no server API for it), plus this app run.
+  final PassedRequestsStore? _passedStore;
+  final Set<String> _passedThisRun = {};
+
+  Set<String> get _passed => {
+    ..._passedThisRun,
+    ...?_passedStore?.read(myUserId),
+  };
 
   @override
   String? get myUserId => _tokens.session?.userId;
@@ -60,9 +71,10 @@ class MessagesRepositoryImpl implements MessagesRepository {
         for (final r in drives) {
           if (r.offered && r.isOpen) byId[r.id] = r;
         }
+        final passed = _passed;
         final incoming =
             byId.values
-                .where((r) => r.isOpen && !_passed.contains(r.id))
+                .where((r) => r.isOpen && !passed.contains(r.id))
                 .toList()
               ..sort((a, b) => a.pickupAt.compareTo(b.pickupAt));
         return RequestsInbox(
@@ -163,7 +175,16 @@ class MessagesRepositoryImpl implements MessagesRepository {
 
   @override
   Future<Either<Failure, Unit>> passRequest(String requestId) async {
-    _passed.add(requestId);
+    // Hidden on this device right away; the server copy keeps it hidden
+    // after a reinstall or on another phone. A failed server call is
+    // ignored: the device still remembers it.
+    _passedThisRun.add(requestId);
+    await _passedStore?.add(myUserId, requestId);
+    try {
+      await _remote.passRequest(requestId);
+    } on Object catch (e) {
+      AppLogger.warning('$_tag.passRequest: $e');
+    }
     return const Right(unit);
   }
 
@@ -241,6 +262,27 @@ class MessagesRepositoryImpl implements MessagesRepository {
       tag: _tag,
     );
   }
+
+  @override
+  Future<Either<Failure, GroupMessage>> postRideAsk({
+    required String groupId,
+    required List<Map<String, dynamic>> rides,
+    required String summary,
+  }) => ErrorHandler.guard(
+    () => _remote.postRideAsk(groupId, rides, summary.trim()),
+    tag: _tag,
+  );
+
+  @override
+  Future<Either<Failure, List<RideAsk>>> getGroupRideAsks(String groupId) =>
+      ErrorHandler.guard(() => _remote.getGroupRideAsks(groupId), tag: _tag);
+
+  @override
+  Future<Either<Failure, Unit>> helpWithRideAsk(String askId) =>
+      ErrorHandler.guard(() async {
+        await _remote.helpWithRideAsk(askId);
+        return unit;
+      }, tag: _tag);
 
   @override
   Future<Either<Failure, Unit>> markGroupRead(String groupId) =>

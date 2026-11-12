@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../add_kids/presentation/screens/where_kids_go_screen.dart'
+    show WhereKidsGoArgs;
+import '../../../add_kids/presentation/providers/kids_provider.dart';
 import '../../../home/presentation/screens/families_near_you_screen.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
@@ -33,6 +36,20 @@ import '../../domain/entities/saved_place.dart';
 /// One form covering the five Figma states: kids, route, "Just once"
 /// (Select day? sheet) or "Custom" (Which days? sheet), return trip, booster
 /// seat and a note. The draft lives in the singleton [AskRideProvider].
+/// Route arguments for Ask for a ride.
+class AskRideArgs {
+  const AskRideArgs({this.fromChat = false, this.groupId});
+
+  /// Opened from a group chat: Next posts the ride there as a card (the
+  /// request is created when a driver taps "I can help") and pops `true`.
+  final String? groupId;
+
+  /// Opened with "+ Ride" from a chat: once the ride is created the screen
+  /// pops back to the chat with the ride as a message ([String]) instead of
+  /// going on to Families near you.
+  final bool fromChat;
+}
+
 class AskRideDetailsScreen extends StatelessWidget {
   const AskRideDetailsScreen({super.key});
 
@@ -137,6 +154,28 @@ class _Form extends StatelessWidget {
             ),
         ],
       ),
+      // A kid added without a school (e.g. from Profile).
+      for (final kid in provider.selectedKidsWithoutSchool)
+        _NoSchoolCard(
+          kidName: kid.name,
+          school: provider.siblingSchool,
+          busy: provider.isSettingSchool,
+          onSameSchool: (school) async {
+            final error = await provider.giveKidSchool(kid, school);
+            if (error != null && context.mounted) {
+              showAppSnack(context, error);
+            }
+          },
+          onOtherSchool: () {
+            // Open the school step on this kid; Save comes back here.
+            sl<KidsProvider>().selectChild(kid.id);
+            Navigator.pushNamed(
+              context,
+              AppRoutes.whereKidsGo,
+              arguments: const WhereKidsGoArgs(returnOnSave: true),
+            ).then((_) => provider.load());
+          },
+        ),
       RouteCard(
         pickup: draft.pickup,
         dropOff: draft.dropOff,
@@ -146,8 +185,8 @@ class _Form extends StatelessWidget {
         ].join(' · '),
         onPickupTap: () => _pickPlace(context, pickup: true),
         onDropOffTap: () => _pickPlace(context, pickup: false),
-        // No "Swap": create_ride_request goes from an address to the kids'
-        // school or a picked place; the way back is the return trip below.
+        // Home → school, or school → home.
+        onSwap: provider.swapRoute,
       ),
       FrequencyOptionCard(
         title: 'Just once',
@@ -162,7 +201,7 @@ class _Form extends StatelessWidget {
         onTap: () => _pickCustom(context),
       ),
       ToggleRow(
-        label: 'Return trip (back home)',
+        label: 'Return trip',
         value: draft.returnTrip,
         onChanged: provider.setReturnTrip,
         toggle: AppToggle(
@@ -211,18 +250,21 @@ class _Form extends StatelessWidget {
   Future<void> _pickPlace(BuildContext context, {required bool pickup}) async {
     final provider = context.read<AskRideProvider>();
     final title = pickup ? 'Pick up from' : 'Drop off at';
+    // The home end lists saved addresses; the other end lists the kids'
+    // schools or any place from Google search (swapped on a ride home).
+    final homeEnd = pickup != provider.isRideHome;
+    final selected = pickup ? provider.draft.pickup : provider.draft.dropOff;
     final result = await showAskRideSheet<PlacePickerResult>(
       context,
-      pickup
+      homeEnd
           ? PlacePickerSheet(
               title: title,
               places: [
                 for (final place in provider.places)
                   if (place.kind == PlaceKind.home) place,
               ],
-              selected: provider.draft.pickup,
+              selected: selected,
             )
-          // Drop-off: the kids' schools, or any place from Google search.
           : ChangeNotifierProvider<DropOffSearchProvider>(
               create: (_) =>
                   sl<DropOffSearchProvider>()..setNear(provider.searchNear),
@@ -231,7 +273,9 @@ class _Form extends StatelessWidget {
                   for (final place in provider.places)
                     if (place.kind == PlaceKind.school) place,
                 ],
-                selected: provider.draft.dropOff,
+                selected: selected,
+                title: title,
+                activities: provider.activityPlaces,
                 emptyMessage:
                     'Add your child’s school first: Profile → your kid → '
                     'Add school or activity.',
@@ -245,7 +289,7 @@ class _Form extends StatelessWidget {
       case PlacePicked(:final place):
         pickup ? provider.setPickup(place) : provider.setDropOff(place);
       case CustomPlacePicked(:final place):
-        provider.setDropOff(place);
+        pickup ? provider.setPickup(place) : provider.setDropOff(place);
       case AddNewPlace():
         final picked = await MapAddressPickerScreen.open(
           context,
@@ -293,14 +337,37 @@ class _Form extends StatelessWidget {
   Future<void> _submit(BuildContext context) async {
     FocusScope.of(context).unfocus();
     final provider = context.read<AskRideProvider>();
+    final args = ModalRoute.settingsOf(context)?.arguments;
+    final fromChat = args is AskRideArgs && args.fromChat;
+    final groupId = args is AskRideArgs ? args.groupId : null;
+    if (groupId != null) {
+      final error = await provider.askInGroup(groupId);
+      if (!context.mounted) return;
+      if (error != null) return showAppSnack(context, error);
+      provider.reset();
+      Navigator.of(context).pop(true);
+      return;
+    }
+    if (!fromChat) {
+      // Check the form, then choose who to ask: existing chats or
+      // families (Say Hi / Start a group). Nothing is created here.
+      final problem = provider.checkDraft();
+      if (problem != null) return showAppSnack(context, problem);
+      Navigator.pushNamed(
+        context,
+        AppRoutes.familiesNearYou,
+        arguments: FamiliesNearYouScreen.selectArgument,
+      );
+      return;
+    }
+    // "+ Ride" from a chat: create it now and post it there.
     final error = await provider.submit();
     if (!context.mounted) return;
     if (error != null) return showAppSnack(context, error);
-    Navigator.pushNamed(
-      context,
-      AppRoutes.familiesNearYou,
-      arguments: FamiliesNearYouScreen.selectArgument,
-    );
+    // Back to the chat, which posts the ride; start fresh next time.
+    final message = provider.chatMessage;
+    provider.reset();
+    Navigator.of(context).pop(message);
   }
 }
 
@@ -319,6 +386,63 @@ class _ErrorState extends StatelessWidget {
           textAlign: TextAlign.center,
           style: AppTextStyles.body,
         ),
+      ),
+    );
+  }
+}
+
+/// "Jessie has no school yet": one tap gives them a sibling's school, or
+/// opens "Where your kids go" to pick another.
+class _NoSchoolCard extends StatelessWidget {
+  const _NoSchoolCard({
+    required this.kidName,
+    required this.school,
+    required this.busy,
+    required this.onSameSchool,
+    required this.onOtherSchool,
+  });
+
+  final String kidName;
+  final SavedPlace? school;
+  final bool busy;
+  final ValueChanged<SavedPlace> onSameSchool;
+  final VoidCallback onOtherSchool;
+
+  @override
+  Widget build(BuildContext context) {
+    final same = school;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.limeTint,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            same == null
+                ? '$kidName has no school yet. Add it to ask for a ride.'
+                : 'Does $kidName go to ${same.name} too?',
+            style: AppTextStyles.label,
+          ),
+          const SizedBox(height: 12),
+          if (same != null) ...[
+            AppButton(
+              label: 'Yes, ${same.name}',
+              isLoading: busy,
+              onPressed: busy ? null : () => onSameSchool(same),
+            ),
+            const SizedBox(height: 8),
+          ],
+          TextButton(
+            onPressed: busy ? null : onOtherSchool,
+            child: Text(
+              same == null ? 'Add $kidName’s school' : 'No, another school',
+              style: AppTextStyles.label,
+            ),
+          ),
+        ],
       ),
     );
   }

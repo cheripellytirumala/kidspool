@@ -10,4 +10,8 @@ abstract interface class RideLocationSharing {
   void start(String requestId);
 
   void stop();
+
+  /// The phone's latest GPS position while sharing (fresher than the
+  /// server's copy), or null.
+  ({double latitude, double longitude})? get lastPosition;
 }

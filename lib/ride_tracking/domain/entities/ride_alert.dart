@@ -2,6 +2,9 @@ import 'package:equatable/equatable.dart';
 
 /// Which lime card a ride notification shows as (S19 / S20).
 enum RideAlertKind {
+  /// A Ride Partner accepted (the ride is booked) → See ride.
+  accepted,
+
   /// S19 · "Ride started 🚗" → Track live.
   started,
 
@@ -13,12 +16,14 @@ enum RideAlertKind {
   /// Kinds follow the previous app's `NotificationKind` plus the backend's
   /// ride event types (`started`, `picked_up`, `dropped_off`, `completed`).
   static RideAlertKind? fromValue(String? kind) => switch (kind) {
+    'ride_confirmed' || 'confirmed' || 'offer_accepted' => accepted,
     'ride_started' || 'started' || 'picked_up' => started,
     'school' ||
     'safe_zone' ||
     'checked_in' ||
     'dropped_off' ||
     'arrived' ||
+    'ride_arrived' ||
     'completed' ||
     'ride_completed' => arrived,
     _ => null,

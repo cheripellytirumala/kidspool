@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../../common/core/network/auth_token_provider.dart';
+import '../../data/data_sources/local/kid_activities_store.dart';
 import '../../data/data_sources/local/kids_local_data_source.dart';
 import '../../data/data_sources/local/place_catalog.dart';
 import '../../data/data_sources/remote/kids_remote_data_source.dart';
@@ -36,12 +38,19 @@ void registerKidsDependencies(GetIt sl) {
     ..registerLazySingleton<ResolveSchoolId>(() => ResolveSchoolId(sl()))
     // Providers
     // Flow state shared by F06–F12: one instance for the whole flow.
+    ..registerLazySingleton<KidActivitiesStore>(
+      () => KidActivitiesStore(
+        sl(),
+        () => sl<AuthTokenProvider>().session?.userId,
+      ),
+    )
     ..registerLazySingleton<KidsProvider>(
       () => KidsProvider(
         repository: sl(),
         account: sl(),
         resolveSchoolId: sl(),
         catalog: sl(),
+        activitiesStore: sl(),
       ),
     )
     // Per-screen state: factory, so each screen gets fresh state.

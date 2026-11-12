@@ -8,6 +8,7 @@ import '../../../core/constants/kids_api_constants.dart';
 import '../../../domain/entities/child.dart';
 import '../../../domain/entities/geo_point.dart';
 import '../../../domain/entities/place.dart';
+import '../local/kid_activities_store.dart' show KidActivity;
 
 /// Throws only `AppException` subtypes; never returns raw JSON.
 abstract interface class KidsRemoteDataSource {
@@ -32,6 +33,12 @@ abstract interface class KidsRemoteDataSource {
 
   /// Default saved address (`get_my_addresses`), or `null`.
   Future<GeoPoint?> getHomeLocation();
+
+  /// Replaces the parent's activities on the server.
+  Future<void> setActivities(List<KidActivity> activities);
+
+  /// The parent's activities from the server.
+  Future<List<KidActivity>> getActivities();
 }
 
 /// [ServerException.code] when `school_from_place` isn't deployed.
@@ -217,4 +224,64 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
         .map((e) => Map<String, dynamic>.from(e))
         .toList(growable: false);
   }
+
+  @override
+  Future<void> setActivities(List<KidActivity> activities) =>
+      _apiClient.rpc<void>(
+        KidsApiConstants.setMyKidActivities,
+        params: {
+          'activities': [
+            for (final a in activities)
+              {
+                'placeKey': a.place.googlePlaceId ?? a.place.id,
+                'name': a.place.name,
+                'category': a.place.category.name,
+                'addressLine': a.place.addressLine,
+                'city': a.place.city,
+                'state': a.place.state,
+                'zip': a.place.zip,
+                'latitude': a.place.latitude,
+                'longitude': a.place.longitude,
+                'kidIds': a.childIds.toList(),
+              },
+          ],
+        },
+        parser: (_) {},
+      );
+
+  @override
+  Future<List<KidActivity>> getActivities() => _apiClient.rpc(
+    KidsApiConstants.getMyKidActivities,
+    parser: (json) => [
+      if (json is List)
+        for (final item in json.whereType<Map<String, dynamic>>())
+          if (item.readString('placeKey') case final key?)
+            (
+              place: Place(
+                id: key,
+                name: item.readString('name') ?? 'Activity',
+                category: PlaceCategory.values.firstWhere(
+                  (c) => c.name == item.readString('category'),
+                  orElse: () => PlaceCategory.activity,
+                ),
+                details: [
+                  ?item.readString('addressLine'),
+                  ?item.readString('city'),
+                ].join(', '),
+                googlePlaceId: key,
+                latitude: item.readDouble('latitude'),
+                longitude: item.readDouble('longitude'),
+                addressLine: item.readString('addressLine') ?? '',
+                city: item.readString('city') ?? '',
+                state: item.readString('state') ?? '',
+                zip: item.readString('zip') ?? '',
+              ),
+              childIds: {
+                if (item['kidIds'] case final List<dynamic> ids)
+                  for (final id in ids)
+                    if (id is String) id,
+              },
+            ),
+    ],
+  );
 }

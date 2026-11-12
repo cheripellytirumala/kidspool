@@ -51,10 +51,11 @@ abstract final class RideTrackingApiConstants {
 
   /// How often the live screen re-reads `get_ride_tracking` while visible
   /// (replaces the old app's Realtime channel).
-  static const Duration trackingPollInterval = Duration(seconds: 5);
+  static const Duration trackingPollInterval = Duration(seconds: 10);
 
-  /// The Ride Partner's position goes out at most this often (old app's
-  /// `RideLocationReporter.interval`).
+  /// The Ride Partner's position goes out every this often while the ride
+  /// is in progress (also when the car hasn't moved, so the parent's map
+  /// stays current).
   static const Duration locationInterval = Duration(seconds: 10);
 
   /// Minimum movement between GPS fixes from the position stream.
@@ -66,6 +67,10 @@ abstract final class RideTrackingApiConstants {
 
   /// Ride alerts older than this are not shown as banners.
   static const Duration alertFreshness = Duration(minutes: 3);
+
+  /// The Ride Partner can drop off (button) — and the ride drops off by
+  /// itself — once the car is within this distance of the drop-off.
+  static const double dropoffRadiusMeters = 100;
 
   /// The drop-off counts as "within 100 ft" of the school (geofence radius).
   static const double schoolZoneMeters = 30.48;

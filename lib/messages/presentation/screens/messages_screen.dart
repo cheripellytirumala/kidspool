@@ -1,3 +1,4 @@
+import '../../../common/presentation/state/live_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -28,7 +29,12 @@ class MessagesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<MessagesProvider>(
       create: (_) => sl<MessagesProvider>()..load(),
-      child: const _MessagesView(),
+      child: Builder(
+        builder: (context) => LiveRefreshListener(
+          onRefresh: () => context.read<MessagesProvider>().load(silent: true),
+          child: const _MessagesView(),
+        ),
+      ),
     );
   }
 }

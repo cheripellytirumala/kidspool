@@ -53,6 +53,20 @@ class AuthRepositoryImpl implements AuthRepository {
       });
 
   @override
+  Future<Either<Failure, Unit>> saveProfileBasics({
+    required String firstName,
+    required String lastName,
+    required bool startNow,
+  }) => ErrorHandler.guard(tag: 'Auth.basics', () async {
+    await _remote.saveProfileBasics(
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      startNow: startNow,
+    );
+    return unit;
+  });
+
+  @override
   Future<Either<Failure, Unit>> addHomeAddress(HomeAddress address) =>
       ErrorHandler.guard(tag: 'Auth.address', () async {
         await _remote.addAddress(address);

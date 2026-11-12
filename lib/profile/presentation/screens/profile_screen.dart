@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import '../../../auth/presentation/screens/about_you_screen.dart'
+    show AboutYouArgs;
 import '../../../add_kids/presentation/screens/add_child_screen.dart'
     show AddChildArgs;
 import '../../../common/core/constants/app_constants.dart';
@@ -254,14 +256,18 @@ class _ProfileActions {
     if (error != null && context.mounted) showAppSnack(context, error);
   }
 
-  void editDetails() => _push(AppRoutes.aboutYou);
+  void editDetails() => _push(
+    AppRoutes.aboutYou,
+    arguments: const AboutYouArgs(fromProfile: true),
+  );
 
   void scanLicense() => _push(AppRoutes.scanPhotoId);
 
   void editKid(String id) =>
       _push(AppRoutes.addChild, arguments: AddChildArgs(childId: id));
 
-  void addKid() => _push(AppRoutes.addChild, arguments: const AddChildArgs());
+  void addKid() =>
+      _push(AppRoutes.addChild, arguments: const AddChildArgs(askSchool: true));
 
   void addPlace() => _push(AppRoutes.whereKidsGo);
 

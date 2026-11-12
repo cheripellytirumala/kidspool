@@ -192,7 +192,7 @@ class AskRideActionButton extends StatelessWidget {
 }
 
 /// Surface pill row with a label and an [AppToggle]-style trailing widget
-/// ("Return trip (back home)", "One booster seat needed").
+/// ("Return trip", "One booster seat needed").
 class ToggleRow extends StatelessWidget {
   const ToggleRow({
     super.key,

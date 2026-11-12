@@ -1,3 +1,4 @@
+import '../../../common/presentation/state/live_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -32,7 +33,12 @@ class RidesScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider<RidesProvider>(
       create: (_) => sl<RidesProvider>()..load(),
-      child: const _RidesView(),
+      child: Builder(
+        builder: (context) => LiveRefreshListener(
+          onRefresh: () => context.read<RidesProvider>().load(silent: true),
+          child: const _RidesView(),
+        ),
+      ),
     );
   }
 }
@@ -216,6 +222,8 @@ class _RidesView extends StatelessWidget {
       RideRequestStatus.missed => ('Missed', RideBadgeTone.neutral),
     };
     final (label, action) = switch (ride.status) {
+      // Parent: no live map until the driver starts the ride.
+      RideRequestStatus.confirmed when ride.isMine => (null, null),
       RideRequestStatus.confirmed || RideRequestStatus.inProgress => (
         ride.isMine ? 'Track ride' : 'Open ride',
         () => actions.track(ride),

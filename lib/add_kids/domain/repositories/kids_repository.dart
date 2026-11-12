@@ -1,5 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
+import '../../data/data_sources/local/kid_activities_store.dart'
+    show KidActivity;
 import '../../../common/core/error/failures.dart';
 import '../entities/child.dart';
 import '../entities/geo_point.dart';
@@ -27,4 +29,9 @@ abstract interface class KidsRepository {
     required Set<String> kidIds,
     required String schoolId,
   });
+
+  /// Saves the parent's activities on the server (best effort).
+  Future<Either<Failure, Unit>> setActivities(List<KidActivity> activities);
+
+  Future<Either<Failure, List<KidActivity>>> getActivities();
 }

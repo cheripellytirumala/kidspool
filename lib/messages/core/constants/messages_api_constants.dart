@@ -35,6 +35,10 @@ abstract final class MessagesApiConstants {
   /// `withdraw_offer(offerId, scope)`.
   static const String withdrawOffer = 'withdraw_offer';
 
+  /// `pass_ride_request(requestId)` — "Not this time", saved on the server
+  /// (`docs/backend/2026-11-10_pass_ride_request.sql`).
+  static const String passRideRequest = 'pass_ride_request';
+
   /// `get_my_drives(scope)` → `{drives: [...], pendingOffers: [...]}`.
   static const String getMyDrives = 'get_my_drives';
 
@@ -73,6 +77,15 @@ abstract final class MessagesApiConstants {
 
   /// `send_ride_group_message(groupId, body)` → the message.
   static const String sendRideGroupMessage = 'send_ride_group_message';
+
+  /// Ride asks in groups (`docs/backend/2026-11-11_group_ride_asks.sql`):
+  /// the request is created only when a driver taps "I can help".
+  static const String postRideAsk = 'post_ride_ask';
+  static const String getGroupRideAsks = 'get_group_ride_asks';
+  static const String helpWithRideAsk = 'help_with_ride_ask';
+
+  /// Client code: the ride-ask SQL isn't on the server yet.
+  static const String rideAsksMissing = 'ride_asks_not_deployed';
 
   /// `mark_ride_group_read(groupId)`.
   static const String markRideGroupRead = 'mark_ride_group_read';

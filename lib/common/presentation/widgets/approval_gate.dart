@@ -12,7 +12,8 @@ import 'app_loader.dart';
 /// Guards screens that need a finished sign-up (add kids, home, rides).
 ///
 /// Checks `get_my_status` before showing [child]. Once the license has been
-/// sent (in review or approved) the parent carries on. If sign-up isn't
+/// sent (in review or approved) — or straight away for parents who only need
+/// rides, who don't send one — the parent carries on. If sign-up isn't
 /// finished, or the ID was rejected, it replaces the stack with the right
 /// onboarding step (About you, scan ID, or retake photos).
 class ApprovalGate extends StatefulWidget {
@@ -57,7 +58,7 @@ class _ApprovalGateState extends State<ApprovalGate> {
         _error = failure.message;
       }),
       (status) {
-        if (status.hasSubmittedId) {
+        if (OnboardingRoute.canUseApp(status)) {
           ApprovalGate._approved = true;
           setState(() => _checking = false);
           return;

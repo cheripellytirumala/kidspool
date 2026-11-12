@@ -10,9 +10,9 @@ import '../data_sources/remote/ride_tracking_remote_data_source.dart';
 import '../models/ride_fix.dart';
 
 /// Sends the Ride Partner's position with `update_ride_location` from
-/// `start_ride` until `complete_ride`, at most every
-/// [RideTrackingApiConstants.locationInterval] (10 s, as in the previous
-/// app). A move that came in sooner goes out on the next tick, so the
+/// `start_ride` until `complete_ride`, every
+/// [RideTrackingApiConstants.locationInterval] (10 s) — the last known fix
+/// again when the car hasn't moved. A move that came in sooner goes out on the next tick, so the
 /// parent's map never lags more than that. Foreground only: the app has no
 /// background-location setup.
 class RideLocationReporter implements RideLocationSharing {
@@ -31,7 +31,18 @@ class RideLocationReporter implements RideLocationSharing {
   StreamSubscription<RideFix>? _fixes;
   Timer? _flush;
   RideFix? _pending;
+  RideFix? _latest;
+
+  @override
+  ({double latitude, double longitude})? get lastPosition {
+    final fix = _latest;
+    return fix == null
+        ? null
+        : (latitude: fix.latitude, longitude: fix.longitude);
+  }
+
   DateTime? _lastSent;
+
   bool _sending = false;
 
   @override
@@ -46,6 +57,7 @@ class RideLocationReporter implements RideLocationSharing {
     _fixes = _location.fixes().listen(
       (fix) {
         _pending = fix;
+        _latest = fix;
         final last = _lastSent;
         if (last == null || DateTime.now().difference(last) >= interval) {
           _send();
@@ -53,6 +65,8 @@ class RideLocationReporter implements RideLocationSharing {
       },
       onError: (Object e) => AppLogger.debug('GPS error: $e', tag: 'Tracking'),
     );
+    // Every tick sends the newest fix (or the last one again when the car
+    // hasn't moved), so the parent's map updates every [interval].
     _flush = Timer.periodic(interval, (_) => _send());
   }
 
@@ -66,13 +80,16 @@ class RideLocationReporter implements RideLocationSharing {
     _fixes = null;
     _flush = null;
     _pending = null;
+    _latest = null;
     _lastSent = null;
     _requestId = null;
   }
 
   Future<void> _send() async {
     final id = _requestId;
-    final fix = _pending;
+    // Nothing new (car standing still): re-send the last fix so the parent
+    // still gets an update every [interval].
+    final fix = _pending ?? _latest;
     if (id == null || fix == null || _sending) return;
     _sending = true;
     _pending = null;

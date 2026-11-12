@@ -1,5 +1,7 @@
 import 'package:get_it/get_it.dart';
 
+import '../../domain/entities/upcoming_ride.dart';
+import '../../../notifications/core/services/ride_notifications.dart';
 import '../../data/data_sources/local/home_local_data_source.dart';
 import '../../data/data_sources/remote/home_remote_data_source.dart';
 import '../../data/repositories/home_repository_impl.dart';
@@ -37,6 +39,17 @@ void registerHomeDependencies(GetIt sl) {
         preferences: sl(),
         getFamiliesNearMe: sl(),
         getMyRideGroups: sl(),
+        // "You have a ride in 30 min" for booked drives not started yet.
+        onDrivesLoaded: (drives) => sl<RideNotifications>().syncDriveReminders([
+          for (final d in drives)
+            if (d.status == RideStatus.confirmed)
+              DriveReminder(
+                requestId: d.id,
+                pickupAt: d.pickupAt,
+                kids: d.kidsLabel,
+                destination: d.destinationName,
+              ),
+        ]),
       ),
     )
     // Per-screen state: fresh for every "Families near you" visit.
@@ -48,6 +61,11 @@ void registerHomeDependencies(GetIt sl) {
         requestIds: () => sl<AskRideProvider>().createdRequestIds,
         sendRideMessage: sl(),
         createRideGroup: sl(),
+        sendGroupMessage: sl(),
+        createRide: () => sl<AskRideProvider>().submit(),
+        rideMessage: () => sl<AskRideProvider>().chatMessage,
+        askInGroup: (groupId) => sl<AskRideProvider>().askInGroup(groupId),
+        getMyRideGroups: sl(),
       ),
     );
 }

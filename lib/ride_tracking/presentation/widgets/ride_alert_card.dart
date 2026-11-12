@@ -130,7 +130,11 @@ class RideAlertCard extends StatelessWidget {
                             const SizedBox(width: 8),
                             Flexible(
                               child: Text(
-                                _started ? 'Track live' : 'See ride summary',
+                                switch (alert.kind) {
+                                  RideAlertKind.accepted => 'See ride',
+                                  RideAlertKind.started => 'Track live',
+                                  RideAlertKind.arrived => 'See ride summary',
+                                },
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: RideTextStyles.alertButton,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
+import 'package:kidspool/add_kids/data/data_sources/local/kid_activities_store.dart';
 import 'package:kidspool/add_kids/data/data_sources/remote/kids_remote_data_source.dart';
 import 'package:kidspool/add_kids/domain/entities/child.dart';
 import 'package:kidspool/add_kids/domain/entities/geo_point.dart';
@@ -273,13 +274,45 @@ void main() {
       expect(places.queries.single, ('schools in 94110', 'school', 37.7));
       expect(result.toNullable()!.single.name, 'Lincoln Elementary School');
     });
+
+    test(
+      'Text Search over quota: falls back to autocomplete + details',
+      () async {
+        final places = _FakePlacesRepository(overQuota: true);
+        final result = await SearchKidPlaces(places)(
+          const SearchKidPlacesParams(
+            kind: PlaceKind.activity,
+            query: 'funland',
+          ),
+        );
+        final place = result.toNullable()!.single;
+        expect(place.name, 'Funland (Dayout)');
+        expect(place.googlePlaceId, 'ChIJfunland');
+        expect((place.latitude, place.longitude), (10.99, 76.97));
+        expect(place.city, 'Coimbatore');
+        expect(places.detailsAsked, ['ChIJfunland']);
+
+        // No text typed yet: ask for a name instead of an error.
+        final empty = await SearchKidPlaces(places)(
+          const SearchKidPlacesParams(kind: PlaceKind.school, query: ''),
+        );
+        expect(
+          empty.getLeft().toNullable()?.message,
+          'Type the school’s name to search.',
+        );
+      },
+    );
   });
 }
 
 class _FakePlacesRepository implements PlacesRepository {
-  _FakePlacesRepository({this.configured = true});
+  _FakePlacesRepository({this.configured = true, this.overQuota = false});
 
   final bool configured;
+
+  /// Text Search answers 429 (daily quota used up).
+  final bool overQuota;
+  final List<String> detailsAsked = [];
   final List<(String, String?, double?)> queries = [];
 
   @override
@@ -294,6 +327,14 @@ class _FakePlacesRepository implements PlacesRepository {
     double radiusMeters = 5000,
   }) async {
     queries.add((query, includedType, nearLatitude));
+    if (overQuota) {
+      return const Left(
+        ServerFailure(
+          'Too many attempts. Please wait a moment.',
+          statusCode: 429,
+        ),
+      );
+    }
     return Right([PlaceSearchResultModel.fromJson(_lincoln)!]);
   }
 
@@ -303,13 +344,32 @@ class _FakePlacesRepository implements PlacesRepository {
     required String sessionToken,
     double? nearLatitude,
     double? nearLongitude,
-  }) => throw UnimplementedError();
+  }) async => const Right([
+    PlaceSuggestion(
+      placeId: 'ChIJfunland',
+      primaryText: 'Funland (Dayout)',
+      secondaryText: 'Nanjundapuram, Coimbatore',
+    ),
+  ]);
 
   @override
   Future<Either<Failure, PickedAddress>> details(
     String placeId, {
     required String sessionToken,
-  }) => throw UnimplementedError();
+  }) async {
+    detailsAsked.add(placeId);
+    return const Right(
+      PickedAddress(
+        latitude: 10.99,
+        longitude: 76.97,
+        street: '22 Nanjundapuram Rd',
+        city: 'Coimbatore',
+        stateCode: 'TN',
+        zip: '641036',
+        formatted: '22 Nanjundapuram Rd, Coimbatore',
+      ),
+    );
+  }
 
   @override
   Future<Either<Failure, PickedAddress>> addressAt(double lat, double lng) =>
@@ -322,6 +382,15 @@ class _FakePlacesRepository implements PlacesRepository {
 
 class _FakeKidsRepository implements KidsRepository {
   final List<Place> resolved = [];
+
+  @override
+  Future<Either<Failure, Unit>> setActivities(
+    List<KidActivity> activities,
+  ) async => const Right(unit);
+
+  @override
+  Future<Either<Failure, List<KidActivity>>> getActivities() async =>
+      const Right([]);
 
   @override
   Future<Either<Failure, String>> schoolFromPlace(Place place) async {

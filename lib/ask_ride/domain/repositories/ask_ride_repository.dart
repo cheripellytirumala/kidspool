@@ -22,4 +22,10 @@ abstract interface class AskRideRepository {
   Future<Either<Failure, RideRequestResult>> createRideRequest(
     CreateRideParams params,
   );
+
+  /// Sets [schoolId] as [kidId]'s school (a kid added without one).
+  Future<Either<Failure, Unit>> setKidSchool(String kidId, String schoolId);
+
+  /// Where the school is, for a ride that picks up there (ride home).
+  Future<Either<Failure, DropOffAddress>> getSchoolAddress(SavedPlace school);
 }

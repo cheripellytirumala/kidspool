@@ -14,6 +14,9 @@ abstract interface class AskRideRemoteDataSource {
   Future<void> addAddress(PickedAddress address, {required String label});
 
   Future<RideRequestResult> createRideRequest(CreateRideParams params);
+
+  /// Address and coordinates of the school [schoolId] (`get_schools`).
+  Future<DropOffAddress> getSchoolAddress(String schoolId, String name);
 }
 
 class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
@@ -71,6 +74,36 @@ class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
   }
 
   @override
+  Future<DropOffAddress> getSchoolAddress(String schoolId, String name) {
+    return _apiClient.rpc(
+      AskRideApiConstants.getSchools,
+      params: {'search': name},
+      parser: (json) {
+        if (json is! List) throw const ParsingException();
+        for (final e in json.whereType<Map>()) {
+          final s = Map<String, dynamic>.from(e);
+          if (s.readString('id') != schoolId) continue;
+          final lat = s.readDouble('latitude');
+          final lng = s.readDouble('longitude');
+          if (lat == null || lng == null) break;
+          return DropOffAddress(
+            label: s.readString('name') ?? name,
+            addressLine1: s.readString('addressLine') ?? '',
+            city: s.readString('city') ?? '',
+            state: s.readString('state') ?? '',
+            zip: s.readString('zip') ?? '',
+            latitude: lat,
+            longitude: lng,
+          );
+        }
+        throw const ServerException(
+          AskRideApiConstants.schoolLocationMissingMessage,
+        );
+      },
+    );
+  }
+
+  @override
   Future<RideRequestResult> createRideRequest(CreateRideParams p) async {
     try {
       return await _apiClient.rpc(
@@ -86,7 +119,8 @@ class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
   }
 
   /// JSON body of `create_ride_request`. `dropoffAddress` is only sent for
-  /// a custom drop-off; a school ride sends exactly what it always did.
+  /// a custom drop-off or a ride home; a school ride sends exactly what it
+  /// always did. A ride home picks up at the school via `pickupAddress`.
   static Map<String, dynamic> createRideParams(CreateRideParams p) {
     final d = p.pickupDate;
     final note = p.note.trim();
@@ -99,7 +133,9 @@ class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
           '${d.day.toString().padLeft(2, '0')}',
       'pickupTime': p.pickupTime,
       'timeZone': p.timeZone,
-      'pickupAddressId': p.pickupAddressId,
+      if (p.pickupAddress == null) 'pickupAddressId': p.pickupAddressId,
+      if (p.pickupAddress != null)
+        'pickupAddress': pickupJson(p.pickupAddress!),
       'note': note.isEmpty ? null : note,
       'repeatSchoolDays': false,
       'requireApproval': false,
@@ -109,6 +145,15 @@ class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
 
   /// `{label, addressLine1, city, state, zip, latitude, longitude}`, trimmed
   /// to the server's column limits; empty parts are `null`.
+  /// `pickupAddress`: same shape, but the server allows a 30-character
+  /// label (e.g. a long school name on a ride home).
+  static Map<String, dynamic> pickupJson(DropOffAddress a) {
+    final json = dropoffJson(a);
+    final label = json['label'] as String;
+    if (label.length > 30) json['label'] = label.substring(0, 30).trim();
+    return json;
+  }
+
   static Map<String, dynamic> dropoffJson(DropOffAddress a) {
     String? text(String v, int max) {
       final t = v.trim();

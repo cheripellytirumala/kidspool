@@ -5,22 +5,33 @@ import 'package:flutter/foundation.dart';
 import '../../../common/core/usecase/usecase.dart';
 import '../../core/constants/ride_tracking_api_constants.dart';
 import '../../domain/entities/ride_alert.dart';
+import '../../domain/repositories/ride_alert_notifier.dart';
 import '../../domain/usecases/get_ride_alerts.dart';
 
 /// S19 / S20 in-app banners: polls `get_my_notifications` while the app is
 /// in the foreground and someone is signed in, and queues ride alerts that
 /// arrived since the last look.
+///
+/// Each new alert is also posted once through [RideAlertNotifier] (system
+/// notification), and a push received while the app is open triggers an
+/// immediate [check].
 class RideAlertsProvider extends ChangeNotifier {
   RideAlertsProvider({
     required GetRideAlerts getRideAlerts,
+    RideAlertNotifier? notifier,
     this.pollInterval = RideTrackingApiConstants.alertsPollInterval,
     DateTime Function()? clock,
   }) : _getRideAlerts = getRideAlerts,
-       _clock = clock ?? DateTime.now;
+       _notifier = notifier,
+       _clock = clock ?? DateTime.now {
+    _pushes = notifier?.pushReceived.listen((_) => check());
+  }
 
   final GetRideAlerts _getRideAlerts;
+  final RideAlertNotifier? _notifier;
   final Duration pollInterval;
   final DateTime Function() _clock;
+  StreamSubscription<void>? _pushes;
 
   final Set<String> _seen = {};
   final List<RideAlert> _queue = [];
@@ -79,6 +90,12 @@ class RideAlertsProvider extends ChangeNotifier {
     if (added.isEmpty) return;
     _queue.addAll(added);
     notifyListeners();
+    final notifier = _notifier;
+    if (notifier != null) {
+      for (final alert in added) {
+        unawaited(notifier.show(alert));
+      }
+    }
   }
 
   /// Hides [current] and moves on to the next queued alert.
@@ -91,6 +108,7 @@ class RideAlertsProvider extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    unawaited(_pushes?.cancel());
     stop();
     super.dispose();
   }

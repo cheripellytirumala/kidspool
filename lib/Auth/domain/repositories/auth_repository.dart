@@ -17,6 +17,14 @@ abstract interface class AuthRepository {
   /// Sets the profile role to `parent` (no-op when a role is already set).
   Future<Either<Failure, Unit>> setParentRole();
 
+  /// Saves the parent's name; [startNow] ("I need rides") approves them at
+  /// once so they can add kids without an ID.
+  Future<Either<Failure, Unit>> saveProfileBasics({
+    required String firstName,
+    required String lastName,
+    required bool startNow,
+  });
+
   Future<Either<Failure, Unit>> addHomeAddress(HomeAddress address);
 
   /// Uploads the selfie + ID photos; the profile moves to `pending_review`.

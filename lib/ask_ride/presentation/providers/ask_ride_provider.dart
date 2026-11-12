@@ -32,10 +32,54 @@ class AskRideProvider extends ChangeNotifier {
     required AddSavedPlace addSavedPlace,
     required AskRideRepository repository,
     required TimeZoneService timeZone,
+    Future<RideGroupTarget?> Function(String schoolName)? findGroup,
+    List<({SavedPlace place, Set<String> kidIds})> Function()? activities,
+    Future<String?> Function(String groupId, String text)? postToGroup,
+    Future<(bool deployed, String? error)> Function(
+      String groupId,
+      List<CreateRideParams> rides,
+      String summary,
+    )?
+    postAsk,
   }) : _getRideOptions = getRideOptions,
+       _postAsk = postAsk,
        _addSavedPlace = addSavedPlace,
        _repository = repository,
-       _timeZone = timeZone;
+       _timeZone = timeZone,
+       _findGroup = findGroup,
+       _activities = activities,
+       _postToGroup = postToGroup;
+
+  /// The kids' activities (kept on the device), as drop-off places.
+  final List<({SavedPlace place, Set<String> kidIds})> Function()? _activities;
+
+  /// Activities of the selected kids (any kid when none is selected), for
+  /// the "Drop off at" sheet.
+  List<SavedPlace> get activityPlaces {
+    final all = _activities?.call() ?? const [];
+    final selected = _draft.kidIds.toSet();
+    return [
+      for (final a in all)
+        if (a.place.hasCoordinates &&
+            (selected.isEmpty || a.kidIds.any(selected.contains)))
+          a.place,
+    ];
+  }
+
+  /// The user's ride group for a school, if they already have one.
+  final Future<RideGroupTarget?> Function(String schoolName)? _findGroup;
+
+  /// Posts a ride card in a group (`post_ride_ask`); `deployed` is false
+  /// while that SQL isn't on the server.
+  final Future<(bool deployed, String? error)> Function(
+    String groupId,
+    List<CreateRideParams> rides,
+    String summary,
+  )?
+  _postAsk;
+
+  /// Posts a message in a ride group; returns an error or null.
+  final Future<String?> Function(String groupId, String text)? _postToGroup;
 
   final GetRideOptions _getRideOptions;
   final AddSavedPlace _addSavedPlace;
@@ -116,15 +160,30 @@ class AskRideProvider extends ChangeNotifier {
     );
   }
 
-  bool _draftStillValid() =>
-      _draft.kidIds.every((id) => _kids.any((k) => k.id == id)) &&
-      (_draft.pickup == null ||
-          (_places.contains(_draft.pickup) &&
-              _draft.pickup!.kind == PlaceKind.home)) &&
-      (_draft.dropOff == null ||
-          _draft.dropOff!.isCustom ||
-          (_places.contains(_draft.dropOff) &&
-              _draft.dropOff!.kind == PlaceKind.school));
+  bool _draftStillValid() {
+    final home = isRideHome ? _draft.dropOff : _draft.pickup;
+    final away = isRideHome ? _draft.pickup : _draft.dropOff;
+    return _draft.kidIds.every((id) => _kids.any((k) => k.id == id)) &&
+        (home == null ||
+            (_places.contains(home) && home.kind == PlaceKind.home)) &&
+        (away == null ||
+            away.isCustom ||
+            (_places.contains(away) && away.kind == PlaceKind.school));
+  }
+
+  /// The ride goes from the school (or a picked place) back home — after
+  /// "Swap". Otherwise it goes from home to the school or a picked place.
+  bool get isRideHome {
+    final pickup = _draft.pickup;
+    final dropOff = _draft.dropOff;
+    if (pickup != null) return pickup.kind != PlaceKind.home;
+    return dropOff != null && dropOff.kind == PlaceKind.home;
+  }
+
+  /// Reverses the route: home → school becomes school → home and back.
+  void swapRoute() => _update(
+    _draft.copyWith(pickup: () => _draft.dropOff, dropOff: () => _draft.pickup),
+  );
 
   SavedPlace? _schoolPlace(String? schoolId) => schoolId == null
       ? null
@@ -138,6 +197,48 @@ class AskRideProvider extends ChangeNotifier {
   ];
 
   // ── Kids ────────────────────────────────────────────────────────────────
+
+  /// Selected kids with no school yet (added later from Profile): the ride
+  /// can't go to "their school" until one is set.
+  List<AskRideKid> get selectedKidsWithoutSchool => [
+    for (final k in _selectedKids)
+      if (k.schoolId == null) k,
+  ];
+
+  /// The school to offer them: a selected sibling's, else any kid's.
+  SavedPlace? get siblingSchool {
+    for (final k in [..._selectedKids, ..._kids]) {
+      final school = _schoolPlace(k.schoolId);
+      if (school != null) return school;
+    }
+    return null;
+  }
+
+  bool _isSettingSchool = false;
+  bool get isSettingSchool => _isSettingSchool;
+
+  /// "Same school": gives [kid] [school], reloads the kids and points the
+  /// ride at that school. Returns an error message, or null.
+  Future<String?> giveKidSchool(AskRideKid kid, SavedPlace school) async {
+    if (_isSettingSchool) return null;
+    _isSettingSchool = true;
+    notifyListeners();
+    final result = await _repository.setKidSchool(kid.id, school.id);
+    final failure = result.getLeft().toNullable();
+    if (failure == null) {
+      await load();
+      final ids = {for (final k in _selectedKids) k.schoolId};
+      final target = ids.length == 1 ? _schoolPlace(ids.first) : null;
+      if (target != null) {
+        _draft = isRideHome
+            ? _draft.copyWith(pickup: () => target)
+            : _draft.copyWith(dropOff: () => target);
+      }
+    }
+    _isSettingSchool = false;
+    notifyListeners();
+    return failure?.message;
+  }
 
   bool isKidSelected(String id) => _draft.kidIds.contains(id);
 
@@ -153,11 +254,15 @@ class AskRideProvider extends ChangeNotifier {
     ];
     final schoolIds = {for (final k in selected) k.schoolId};
     final school = schoolIds.length == 1 ? _schoolPlace(schoolIds.first) : null;
-    final keepCustom = _draft.dropOff?.isCustom ?? false;
+    final rideHome = isRideHome;
+    final away = rideHome ? _draft.pickup : _draft.dropOff;
+    final keepCustom = away?.isCustom ?? false;
+    final setSchool = school == null || keepCustom ? null : () => school;
     _update(
       _draft.copyWith(
         kidIds: ids,
-        dropOff: school == null || keepCustom ? null : () => school,
+        pickup: rideHome ? setSchool : null,
+        dropOff: rideHome ? null : setSchool,
         boosterSeat: selected.any((k) => k.needsBooster),
       ),
     );
@@ -256,6 +361,21 @@ class AskRideProvider extends ChangeNotifier {
     _ => 'Choose the days yourself',
   };
 
+  /// The ride just asked for, as a chat message ("+ Ride" from a chat):
+  /// `🚗 I asked for a ride: Casey · Saved → Lincoln Elementary ·
+  /// Wednesday, Nov 12 | 8:00 AM. Can you help?`
+  String get chatMessage {
+    final d = _draft;
+    final when = d.schedule is CustomSchedule ? customSummary : onceSummary;
+    final kids = [for (final k in _selectedKids) k.name].join(' & ');
+    final parts = [
+      if (kids.isNotEmpty) kids,
+      '${d.pickup?.name ?? 'Pick-up'} → ${d.dropOff?.name ?? 'Drop-off'}',
+      when,
+    ];
+    return '🚗 I asked for a ride: ${parts.join(' · ')}. Can you help?';
+  }
+
   /// "Nov 11", "Nov 11, Nov 13", "5 days, Nov 11 to Nov 20".
   static String _daysLabel(List<DateTime> dates) {
     if (dates.length <= 2) return dates.map(RideDateFormat.short).join(', ');
@@ -297,16 +417,23 @@ class AskRideProvider extends ChangeNotifier {
     if (isSamePlace(d.pickup!, d.dropOff!)) {
       return AskRideApiConstants.samePlaceMessage;
     }
-    if (d.pickup!.kind != PlaceKind.home || d.dropOff!.kind == PlaceKind.home) {
-      return 'Rides go from one of your addresses to school or a place you '
-          'pick.';
+    final rideHome = isRideHome;
+    final home = rideHome ? d.dropOff! : d.pickup!;
+    final away = rideHome ? d.pickup! : d.dropOff!;
+    if (home.kind != PlaceKind.home || away.kind == PlaceKind.home) {
+      return 'Rides go between one of your addresses and school or a place '
+          'you pick.';
     }
-    // A custom drop-off doesn't need the kids' school.
-    if (d.dropOff!.kind == PlaceKind.school) {
+    if (rideHome && !home.hasCoordinates) {
+      return 'This address has no map location. Pick another one.';
+    }
+    // A custom place doesn't need the kids' school.
+    if (away.kind == PlaceKind.school) {
       final schoolIds = {for (final k in _selectedKids) k.schoolId};
       if (schoolIds.length > 1) return 'Pick kids who go to the same school.';
-      if (schoolIds.first != d.dropOff!.id) {
-        return 'Drop-off must be ${_selectedKids.first.name}’s school.';
+      if (schoolIds.first != away.id) {
+        final end = rideHome ? 'Pick-up' : 'Drop-off';
+        return '$end must be ${_selectedKids.first.name}’s school.';
       }
     }
     if (d.kidIds.length > 4) return 'A ride can take up to 4 kids.';
@@ -335,6 +462,158 @@ class AskRideProvider extends ChangeNotifier {
   /// after the first submit attempt.
   bool get submitted => _submitted;
 
+  /// The school this ride goes to (or comes from, on a ride home); null
+  /// for a custom place.
+  SavedPlace? get rideSchool {
+    final away = isRideHome ? _draft.pickup : _draft.dropOff;
+    return away?.kind == PlaceKind.school ? away : null;
+  }
+
+  /// "Next" when the parent already has a ride group for this school:
+  /// creates the ride and posts it in that group. Returns the group to open
+  /// (null → no group yet: choose families instead), or an error.
+  Future<(RideGroupTarget? group, String? error)> askInExistingGroup() async {
+    final school = rideSchool;
+    final find = _findGroup;
+    final post = _postToGroup;
+    if (school == null || find == null || post == null || _isSending) {
+      return (null, null);
+    }
+    _isSending = true;
+    notifyListeners();
+    RideGroupTarget? group;
+    try {
+      group = await find(school.name);
+    } catch (_) {
+      group = null; // can't tell: fall back to choosing families
+    }
+    _isSending = false;
+    notifyListeners();
+    if (group == null) return (null, null);
+    // A card in the group; the request is created on "I can help".
+    final error = await askInGroup(group.id);
+    if (error != null) return (null, error);
+    return (group, null);
+  }
+
+  /// "Next: choose who to ask": checks the form without creating anything
+  /// (the request is made when the parent messages families). Returns the
+  /// first problem, or null. Also turns on the inline hints.
+  String? checkDraft() {
+    _submitted = true;
+    notifyListeners();
+    return validationError;
+  }
+
+  /// One `create_ride_request` call per day of the (valid) draft. Ride
+  /// home: picks up at the school (or picked place), drops off home.
+  Future<(List<CreateRideParams>?, String?)> _rideParams() async {
+    final d = _draft;
+    final timeZone = await _timeZone.current();
+    final time = d.pickupTime!;
+    final hhmm =
+        '${time.hour.toString().padLeft(2, '0')}:'
+        '${time.minute.toString().padLeft(2, '0')}';
+    final rideHome = isRideHome;
+    DropOffAddress? pickupAddress;
+    if (rideHome) {
+      final from = d.pickup!;
+      if (from.kind == PlaceKind.school) {
+        final school = await _repository.getSchoolAddress(from);
+        final failure = school.getLeft().toNullable();
+        if (failure != null) return (null, failure.message);
+        pickupAddress = school.getRight().toNullable();
+      } else {
+        pickupAddress = dropOffAddress(from);
+      }
+    }
+    return (
+      [
+        for (final date in d.schedule!.rideDates)
+          CreateRideParams(
+            kidIds: d.kidIds,
+            pickupDate: date,
+            pickupTime: hhmm,
+            timeZone: timeZone,
+            pickupAddressId: rideHome ? null : d.pickup!.id,
+            pickupAddress: pickupAddress,
+            note: _noteForDriver(d),
+            dropoff: rideHome
+                ? homeAddress(d.dropOff!)
+                : dropOffAddress(d.dropOff!),
+          ),
+      ],
+      null,
+    );
+  }
+
+  /// Posts the ride as a card in [groupId]: nothing is created until a
+  /// driver taps "I can help" there. Falls back to creating the request
+  /// and posting it as text while the ride-card SQL isn't on the server.
+  /// Returns an error message, or null.
+  Future<String?> askInGroup(String groupId) async {
+    _submitted = true;
+    notifyListeners();
+    final invalid = validationError;
+    if (invalid != null) return invalid;
+    final postAsk = _postAsk;
+    if (postAsk != null && !_isSending) {
+      _isSending = true;
+      notifyListeners();
+      try {
+        final (params, buildError) = await _rideParams();
+        if (buildError != null) return buildError;
+        // One card per day: each day gets its own "I can help" (and its
+        // own request once a driver takes it).
+        final dates = _draft.schedule!.rideDates;
+        var posted = 0;
+        for (final (i, date) in dates.indexed) {
+          final (deployed, error) = await postAsk(groupId, [
+            params![i],
+          ], askSummaryFor(date));
+          if (!deployed) {
+            if (posted == 0) break; // older server: fall back below
+            return null;
+          }
+          if (error != null) {
+            return posted == 0
+                ? error
+                : 'Posted $posted of ${dates.length} days. '
+                      '${RideDateFormat.short(date)}: $error';
+          }
+          posted++;
+        }
+        if (posted > 0) return null;
+      } finally {
+        _isSending = false;
+        notifyListeners();
+      }
+    }
+    // Older server: create now and post the ride as a message.
+    final error = await submit();
+    if (error != null) return error;
+    return await _postToGroup?.call(groupId, chatMessage);
+  }
+
+  /// One day's ride card: `🚗 Ride needed: Emma · Home → Doon Public
+  /// School · Monday, Nov 16 | 8:10 PM. Can anyone help?`
+  String askSummaryFor(DateTime date) {
+    final d = _draft;
+    final kids = [for (final k in _selectedKids) k.name].join(' & ');
+    final parts = [
+      if (kids.isNotEmpty) kids,
+      '${d.pickup?.name ?? 'Pick-up'} → ${d.dropOff?.name ?? 'Drop-off'}',
+      '${RideDateFormat.long(date)} | ${d.pickupTime?.format() ?? ''}',
+    ];
+    return '🚗 Ride needed: ${parts.join(' · ')}. Can anyone help?';
+  }
+
+  /// The ride card text: `🚗 Ride needed: Emma · Home → Doon Public School ·
+  /// Wednesday, Nov 11 | 8:00 PM. Can anyone help?`
+  String get askSummary => chatMessage
+      .replaceFirst('🚗 I asked for a ride: ', '🚗 Ride needed: ')
+      .replaceFirst('Can you help?', 'Can anyone help?');
+
   /// Validates the draft and creates the ride request(s). Returns an error
   /// message, or `null` when the parent can move on to choosing families.
   Future<String?> submit() async {
@@ -347,30 +626,16 @@ class AskRideProvider extends ChangeNotifier {
     _isSending = true;
     notifyListeners();
     try {
-      final d = _draft;
-      final timeZone = await _timeZone.current();
-      final time = d.pickupTime!;
-      final hhmm =
-          '${time.hour.toString().padLeft(2, '0')}:'
-          '${time.minute.toString().padLeft(2, '0')}';
-      final dates = d.schedule!.rideDates;
+      final (params, buildError) = await _rideParams();
+      if (buildError != null) return buildError;
+      final dates = _draft.schedule!.rideDates;
 
       var created = 0;
       var notified = 0;
       final ids = <String>[];
       _createdRequestIds = const [];
-      for (final date in dates) {
-        final result = await _repository.createRideRequest(
-          CreateRideParams(
-            kidIds: d.kidIds,
-            pickupDate: date,
-            pickupTime: hhmm,
-            timeZone: timeZone,
-            pickupAddressId: d.pickup!.id,
-            note: _noteForDriver(d),
-            dropoff: dropOffAddress(d.dropOff!),
-          ),
-        );
+      for (final (i, date) in dates.indexed) {
+        final result = await _repository.createRideRequest(params![i]);
         final failure = result.getLeft().toNullable();
         if (failure != null) {
           final day = RideDateFormat.short(date);
@@ -415,6 +680,19 @@ class AskRideProvider extends ChangeNotifier {
     );
   }
 
+  /// A saved home address as `dropoffAddress` (ride home).
+  static DropOffAddress? homeAddress(SavedPlace place) {
+    if (!place.hasCoordinates) return null;
+    final parts = place.address.split(', ');
+    return DropOffAddress(
+      label: place.name,
+      addressLine1: parts.first,
+      city: parts.length > 1 ? parts[1] : '',
+      latitude: place.latitude!,
+      longitude: place.longitude!,
+    );
+  }
+
   /// The backend only stores the one-way trip; the return trip and an
   /// extra booster request travel in the note for the driver.
   String _noteForDriver(RideRequest d) {
@@ -422,7 +700,7 @@ class AskRideProvider extends ChangeNotifier {
     final parts = [
       d.note.trim(),
       if (d.returnTrip && d.returnTime != null)
-        'Return trip home at ${d.returnTime!.format()}, please.',
+        'Return trip at ${d.returnTime!.format()}, please.',
       if (d.boosterSeat && !kidsNeedBooster) 'Booster seat needed.',
     ].where((p) => p.isNotEmpty).join(' ');
     return parts.length <= AskRideApiConstants.maxNoteLength
@@ -455,4 +733,12 @@ class AskRideProvider extends ChangeNotifier {
     _failure = failure;
     notifyListeners();
   }
+}
+
+/// A ride group to open after asking for a ride.
+class RideGroupTarget {
+  const RideGroupTarget({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }

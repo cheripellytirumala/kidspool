@@ -30,8 +30,12 @@
 	<true/>
 	<key>NSCameraUsageDescription</key>
 	<string>KidPool uses the camera to photograph your driver's license, your profile photo and your child's school ID card.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>location</string>
+	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>KidPool uses your location to fill in your home address.</string>
+	<string>KidPool uses your location to fill in your home address and, while you drive a ride, to show the parent where the car is (also in the background, until drop-off).</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>KidPool lets you choose photos of your license, yourself and your child from your library.</string>
 	<key>UIApplicationSceneManifest</key>

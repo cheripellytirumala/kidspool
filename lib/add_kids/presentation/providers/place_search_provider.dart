@@ -71,7 +71,20 @@ class PlaceSearchProvider extends ChangeNotifier {
     const NoParams(),
   ).then((r) => r.toNullable()).catchError((Object _) => null);
 
+  /// Results already fetched in this sheet, by kind + query: switching
+  /// tabs or retyping doesn't spend Google quota again.
+  final Map<String, List<Place>> _cache = {};
+
   Future<void> _run() async {
+    final cacheKey = '${_kind.name}|${_query.trim().toLowerCase()}';
+    if (_cache[cacheKey] case final cached?) {
+      ++_requestId;
+      _searching = false;
+      _errorMessage = null;
+      _results = cached;
+      _notify();
+      return;
+    }
     final id = ++_requestId;
     _searching = true;
     _errorMessage = null;
@@ -84,10 +97,16 @@ class PlaceSearchProvider extends ChangeNotifier {
     );
     if (id != _requestId || _disposed) return; // a newer search is running
     _searching = false;
-    result.match((failure) {
-      _errorMessage = failure.message;
-      _results = const [];
-    }, (places) => _results = places);
+    result.match(
+      (failure) {
+        _errorMessage = failure.message;
+        _results = const [];
+      },
+      (places) {
+        _results = places;
+        _cache[cacheKey] = places;
+      },
+    );
     _notify();
   }
 

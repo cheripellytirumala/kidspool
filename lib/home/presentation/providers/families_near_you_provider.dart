@@ -1,5 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+import '../../../common/core/usecase/usecase.dart';
+import '../../../messages/domain/usecases/get_my_ride_groups.dart';
+import '../../../messages/domain/entities/ride_group.dart';
 import '../../../common/core/error/failures.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../core/constants/home_api_constants.dart';
@@ -10,6 +13,7 @@ import '../../domain/entities/ride_summary.dart';
 import '../../domain/usecases/get_families_near_me.dart';
 import '../../../messages/core/constants/messages_api_constants.dart';
 import '../../../messages/domain/usecases/create_ride_group.dart';
+import '../../../messages/domain/usecases/send_group_message.dart';
 import '../../../messages/domain/usecases/send_ride_message.dart';
 
 /// F14 states: browsing families by place, or picking families to say hi to
@@ -53,8 +57,18 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     List<String> Function()? requestIds,
     SendRideMessage? sendRideMessage,
     CreateRideGroup? createRideGroup,
+    SendGroupMessage? sendGroupMessage,
+    Future<String?> Function()? createRide,
+    String Function()? rideMessage,
+    Future<String?> Function(String groupId)? askInGroup,
+    GetMyRideGroups? getMyRideGroups,
   }) : _getFamiliesNearMe = getFamiliesNearMe,
+       _getMyRideGroups = getMyRideGroups,
+       _askInGroup = askInGroup,
+       _createRide = createRide,
+       _rideMessage = rideMessage,
        _createRideGroup = createRideGroup,
+       _sendGroupMessage = sendGroupMessage,
        _account = account,
        _rideSummary = rideSummary,
        _requestIds = requestIds,
@@ -71,6 +85,19 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   final List<String> Function()? _requestIds;
   final SendRideMessage? _sendRideMessage;
   final CreateRideGroup? _createRideGroup;
+  final SendGroupMessage? _sendGroupMessage;
+
+  /// Creates the ride from "Ask for a ride" (returns an error or null). It
+  /// is only created when the parent messages families: "Say Hi" or
+  /// "Start a group" — not on "Next: choose who to ask".
+  final Future<String?> Function()? _createRide;
+
+  /// Posts the pending ride as a card in a group ("I can help" there
+  /// creates the request). Returns an error or null.
+  final Future<String?> Function(String groupId)? _askInGroup;
+
+  /// The ride as a chat message, posted in a group started from here.
+  final String Function()? _rideMessage;
   bool _isSending = false;
   bool _isCreatingGroup = false;
   String _myFirstName = '';
@@ -120,11 +147,45 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   bool get isUnavailable =>
       _failure?.code == HomeApiConstants.familiesNearMeMissing;
 
+  final GetMyRideGroups? _getMyRideGroups;
+  List<RideGroup> _groups = const [];
+  String? _sendingToGroupId;
+
+  /// "Your chats" (scenario 2): the parent's ride groups, most recent first,
+  /// shown after asking for a ride so it can go straight to one of them.
+  List<RideGroup> get groups => _startedInSelectMode ? _groups : const [];
+
+  /// The group the ride is being posted to.
+  String? get sendingToGroupId => _sendingToGroupId;
+
+  /// "Send ride" on one of [groups]: posts the pending ride there as a card
+  /// (the request is created when a driver taps "I can help"). Returns an
+  /// error, or null.
+  Future<String?> sendRideToGroup(RideGroup group) async {
+    final ask = _askInGroup;
+    if (ask == null || _sendingToGroupId != null) return null;
+    _sendingToGroupId = group.id;
+    notifyListeners();
+    final error = await ask(group.id);
+    _sendingToGroupId = null;
+    notifyListeners();
+    return error;
+  }
+
+  /// Loads "Your chats" (also part of [load]).
+  Future<void> loadGroups() async {
+    final get = _getMyRideGroups;
+    if (get == null) return;
+    final result = await get(const NoParams());
+    _groups = result.getOrElse((_) => _groups);
+  }
+
   /// Loads the families; call on open and pull-to-refresh.
   Future<void> load() async {
     if (_status.isLoading) return;
     _status = ViewStatus.loading;
     notifyListeners();
+    final groupsLoaded = loadGroups();
 
     final account = _account;
     if (account != null && _myFirstName.isEmpty) {
@@ -144,6 +205,7 @@ class FamiliesNearYouProvider extends ChangeNotifier {
         setFamilies(data.families, hasSchool: data.hasSchool);
       },
     );
+    await groupsLoaded;
     notifyListeners();
   }
 
@@ -168,9 +230,16 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   static List<KidPlace> placesOf(List<Family> families) {
     final names = <String, String>{};
     final counts = <String, int>{};
+    final activityIds = <String>{};
     for (final family in families) {
       for (final kid in family.kids) {
-        names.putIfAbsent(kid.schoolId, () => kid.schoolName);
+        if (kid.schoolId case final id?) {
+          names.putIfAbsent(id, () => kid.schoolName);
+        }
+      }
+      for (final a in family.activities) {
+        names.putIfAbsent(a.id, () => a.name);
+        activityIds.add(a.id);
       }
       for (final id in family.placeIds) {
         counts[id] = (counts[id] ?? 0) + 1;
@@ -185,8 +254,12 @@ class FamiliesNearYouProvider extends ChangeNotifier {
       for (final id in ids)
         KidPlace(
           id: id,
-          name: names[id]!.isEmpty ? 'School' : names[id]!,
-          kind: KidPlaceKind.school,
+          name: names[id]!.isEmpty
+              ? (activityIds.contains(id) ? 'Activity' : 'School')
+              : names[id]!,
+          kind: activityIds.contains(id)
+              ? KidPlaceKind.activity
+              : KidPlaceKind.school,
         ),
     ];
   }
@@ -231,13 +304,14 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   int countFor(KidPlace place) =>
       _families.where((f) => f.placeIds.contains(place.id)).length;
 
-  List<Family> get visibleFamilies => switch (_mode) {
-    FamiliesMode.browse =>
-      _placeId == null
-          ? _families
-          : _families.where((f) => f.placeIds.contains(_placeId)).toList(),
-    FamiliesMode.select => _families.where(_matchesFilter).toList(),
-  };
+  /// Families at the chosen place (F14 "All · n" / school / activity
+  /// chips, in both modes); in select mode also matching the filter.
+  List<Family> get visibleFamilies => [
+    for (final f in _families)
+      if ((_placeId == null || f.placeIds.contains(_placeId)) &&
+          (_mode == FamiliesMode.browse || _matchesFilter(f)))
+        f,
+  ];
 
   bool _matchesFilter(Family f) => switch (_filter) {
     FamilyFilter.all => true,
@@ -337,22 +411,49 @@ class FamiliesNearYouProvider extends ChangeNotifier {
 
   /// A ride request the message can be sent with (made on Ask for a ride).
   String? get _requestId => _requestIds?.call().firstOrNull;
-  bool get canDeliver => _requestId != null && _sendRideMessage != null;
 
-  /// Sends [message] to every selected parent in the ride's chat. Returns
-  /// how many got it, or an error when none did.
+  /// A ride is being asked for (select mode) but isn't created yet.
+  bool get _rideToCreate =>
+      _requestId == null &&
+      _createRide != null &&
+      _startedInSelectMode &&
+      ride != null;
+
+  bool get canDeliver =>
+      (_requestId != null || _rideToCreate) && _sendRideMessage != null;
+
+  /// Creates the pending ride, if any. Returns an error, or null.
+  Future<String?> _ensureRide() async {
+    final create = _createRide;
+    if (!_rideToCreate || create == null) return null;
+    _isSending = true;
+    notifyListeners();
+    final error = await create();
+    _isSending = false;
+    notifyListeners();
+    return error;
+  }
+
+  /// Sends [message] to every selected parent in the ride's chat (creating
+  /// the ride first when it isn't yet). Returns how many got it, or an
+  /// error when none did.
   Future<(int sent, String? error)> sendMessage() async {
+    if (_isSending || !canSend) return (0, null);
+    final rideError = await _ensureRide();
+    if (rideError != null) return (0, rideError);
     final requestId = _requestId;
     final send = _sendRideMessage;
     if (requestId == null || send == null) {
       return (0, 'Ask for a ride first — your message goes with the request.');
     }
-    if (_isSending || !canSend) return (0, null);
     _isSending = true;
     notifyListeners();
     final body = message;
+    // After asking for a ride: the ride is posted after the Hi.
+    final ride = _startedInSelectMode ? _rideMessage?.call() : null;
     var sent = 0;
     String? lastError;
+    final delivered = <String>[];
     for (final parentId in _selectedIds.toList()) {
       final result = await send(
         SendRideMessageParams(
@@ -361,14 +462,105 @@ class FamiliesNearYouProvider extends ChangeNotifier {
           body: body,
         ),
       );
-      result.match((f) => lastError = f.message, (_) => sent++);
+      final ok = result.match((f) {
+        lastError = f.message;
+        return false;
+      }, (_) => true);
+      if (!ok) continue;
+      sent++;
+      delivered.add(parentId);
+      if (ride != null) {
+        await send(
+          SendRideMessageParams(
+            requestId: requestId,
+            driverId: parentId,
+            body: ride,
+          ),
+        );
+      }
     }
+    _deliveredTo = List.unmodifiable(delivered);
     _isSending = false;
     notifyListeners();
     if (sent == 0) {
       return (0, lastError ?? 'Your message couldn’t be sent. Try again.');
     }
     return (sent, null);
+  }
+
+  List<String> _deliveredTo = const [];
+
+  /// Parents the last Say Hi reached (their chats now have the Hi and the
+  /// ride).
+  List<String> get deliveredTo => _deliveredTo;
+
+  /// The ride request the Hi went with.
+  String? get rideRequestId => _requestId;
+
+  /// The family with parent [id], if listed.
+  Family? familyById(String id) =>
+      _families.where((f) => f.id == id).firstOrNull;
+
+  /// "Say Hi" with no ride request yet: the Hi goes into a new ride group
+  /// with the selected families instead.
+  bool get saysHiInGroup => !canDeliver && _sendGroupMessage != null;
+
+  /// Starts a group with the selected parents (named [suggestedGroupName])
+  /// and posts [message] in it. Returns the group's id and name, or an error.
+  Future<(String? groupId, String name, String? error)> sayHiInGroup() async {
+    final name = suggestedGroupName;
+    final post = _sendGroupMessage;
+    if (post == null || _isSending || !canSend) return (null, name, null);
+    if (_selectedIds.length > maxGroupFamilies) {
+      return (
+        null,
+        name,
+        'Pick up to $maxGroupFamilies families to say hi in a group, or ask '
+            'for a ride first.',
+      );
+    }
+    final body = message;
+    final (groupId, error) = await startGroup(name);
+    if (groupId == null) return (null, name, error);
+    _isSending = true;
+    notifyListeners();
+    final sent = await post(
+      SendGroupMessageParams(groupId: groupId, body: body),
+    );
+    _isSending = false;
+    notifyListeners();
+    // The group exists either way; a failed Hi can be retyped in its chat.
+    return (groupId, name, sent.getLeft().toNullable()?.message);
+  }
+
+  /// "Start a group" from select mode: creates the group and posts the
+  /// pending ride in it as a card — the request is created when a driver
+  /// taps "I can help".
+  Future<(String? groupId, String? error)> startGroupWithRide(
+    String name,
+  ) async {
+    if (_isSending || _isCreatingGroup) return (null, null);
+    final ask = _askInGroup;
+    if (_rideToCreate && ask != null) {
+      final (groupId, error) = await startGroup(name);
+      if (groupId == null) return (null, error);
+      _isSending = true;
+      notifyListeners();
+      final askError = await ask(groupId);
+      _isSending = false;
+      notifyListeners();
+      // The group exists either way; the ride can be asked again there.
+      return (groupId, askError);
+    }
+    final rideError = await _ensureRide();
+    if (rideError != null) return (null, rideError);
+    final (groupId, error) = await startGroup(name);
+    final post = _sendGroupMessage;
+    final text = _rideMessage?.call();
+    if (groupId != null && _requestId != null && post != null && text != null) {
+      await post(SendGroupMessageParams(groupId: groupId, body: text));
+    }
+    return (groupId, error);
   }
 
   // Start a group

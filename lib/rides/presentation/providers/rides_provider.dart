@@ -72,9 +72,13 @@ class RidesProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> load() async {
-    _loading = true;
-    _notify();
+  /// [silent]: background refresh, no spinner.
+  Future<void> load({bool silent = false}) async {
+    if (silent && _loading) return;
+    if (!silent) {
+      _loading = true;
+      _notify();
+    }
     await Future.wait([
       _loadRequests(),
       _loadRides(RidesTab.upcoming, MessagesApiConstants.scopeUpcoming),

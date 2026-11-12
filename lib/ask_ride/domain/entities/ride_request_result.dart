@@ -9,6 +9,7 @@ class CreateRideParams extends Equatable {
     required this.timeZone,
     required this.pickupAddressId,
     required this.note,
+    this.pickupAddress,
     this.dropoff,
   });
 
@@ -22,8 +23,13 @@ class CreateRideParams extends Equatable {
 
   /// IANA name, e.g. `America/Los_Angeles`.
   final String timeZone;
-  final String pickupAddressId;
+
+  /// Saved pick-up address; `null` when [pickupAddress] is sent instead.
+  final String? pickupAddressId;
   final String note;
+
+  /// One-off pick-up (`pickupAddress`), e.g. the school on a ride home.
+  final DropOffAddress? pickupAddress;
 
   /// Custom drop-off (`dropoffAddress`); `null` → the kids' school.
   final DropOffAddress? dropoff;
@@ -36,6 +42,7 @@ class CreateRideParams extends Equatable {
     timeZone,
     pickupAddressId,
     note,
+    pickupAddress,
     dropoff,
   ];
 }
