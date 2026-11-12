@@ -7,9 +7,15 @@ class FamilyKid {
   });
 
   final String firstName;
-  final String schoolId;
+
+  /// Null when the kid only shares an activity with the user's kids.
+  final String? schoolId;
   final String schoolName;
 }
+
+/// An activity (Funland, swim club…) a family's kids share with the
+/// user's kids. [id] is `activity:<place key>`.
+typedef FamilyActivity = ({String id, String name});
 
 /// A nearby family whose kids go to the same schools as the user's kids
 /// (`get_families_near_me`). No photo: the avatar shows [initials].
@@ -21,7 +27,11 @@ class Family {
     required this.kids,
     this.distanceMiles,
     this.givesRides = false,
+    this.activities = const [],
   });
+
+  /// Activities shared with the user's kids.
+  final List<FamilyActivity> activities;
 
   final String id;
 
@@ -43,13 +53,17 @@ class Family {
   /// No driver approval: the family is looking for rides.
   bool get needsRides => !givesRides;
 
-  /// Ids of the schools this family shares with the user.
-  Set<String> get placeIds => {for (final k in kids) k.schoolId};
+  /// Ids of the schools and activities this family shares with the user.
+  Set<String> get placeIds => {
+    for (final k in kids) ?k.schoolId,
+    for (final a in activities) a.id,
+  };
 
-  /// School names in kid order, without duplicates.
+  /// School names (then shared activities) in kid order, no duplicates.
   List<String> get schoolNames => {
     for (final k in kids)
       if (k.schoolName.isNotEmpty) k.schoolName,
+    for (final a in activities) a.name,
   }.toList(growable: false);
 
   /// "Mia", "Mia & Leo", "Mia, Leo & Ava".

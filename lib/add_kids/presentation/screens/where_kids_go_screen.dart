@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
+import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/kids_provider.dart';
@@ -18,6 +19,15 @@ import '../widgets/place_search_sheet.dart';
 ///   (849:14061).
 /// - After Save the page shows F11 (849:13790): the kid's places, "Also:"
 ///   pills, trash buttons and Save → All set.
+/// Route arguments for [WhereKidsGoScreen].
+class WhereKidsGoArgs {
+  const WhereKidsGoArgs({this.returnOnSave = false});
+
+  /// Opened for one kid outside sign-up (Profile, Ask for a ride): Save
+  /// goes back instead of on to "All set".
+  final bool returnOnSave;
+}
+
 class WhereKidsGoScreen extends StatelessWidget {
   const WhereKidsGoScreen({super.key});
 
@@ -45,7 +55,16 @@ class _WhereKidsGoView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kids = context.watch<KidsProvider>();
-    final hasPlaces = kids.anyPlaces;
+    final args = ModalRoute.settingsOf(context)?.arguments;
+    final returnOnSave = args is WhereKidsGoArgs && args.returnOnSave;
+    // For one kid: Save once that kid has a school (rides go to a
+    // school; activities are only kept on this phone).
+    final active = kids.activeChild;
+    final needsSchool =
+        returnOnSave && active != null && active.schoolId == null;
+    final hasPlaces = returnOnSave && active != null
+        ? !needsSchool
+        : kids.anyPlaces;
 
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
@@ -55,11 +74,19 @@ class _WhereKidsGoView extends StatelessWidget {
         titleGap: 4,
         bottom: AppButton(
           label: hasPlaces ? 'Save' : 'Continue',
-          onPressed: hasPlaces
-              ? () => Navigator.of(context).pushNamed(AppRoutes.allSet)
-              : null,
+          onPressed: !hasPlaces
+              ? null
+              : returnOnSave
+              ? () => Navigator.of(context).pop(true)
+              : () => Navigator.of(context).pushNamed(AppRoutes.allSet),
         ),
         children: [
+          if (needsSchool)
+            Text(
+              'Add ${active.firstName}’s school (School tab) to ask for '
+              'rides — an activity alone isn’t enough.',
+              style: AppTextStyles.body,
+            ),
           KidsPlacesBoard(
             kids: kids,
             showDone: true,

@@ -1,3 +1,5 @@
+import '../../../ask_ride/presentation/providers/ask_ride_provider.dart';
+import '../../../common/core/router/open_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +13,9 @@ import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
+import '../../../messages/domain/entities/ride_group.dart';
+import '../../../messages/presentation/widgets/group_chat_widgets.dart'
+    show GroupAvatar;
 import '../../../messages/presentation/widgets/group_name_dialog.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
@@ -118,9 +123,36 @@ class _FamiliesView extends StatelessWidget {
                                 ride: ride,
                                 onEdit: () => _editRide(context, provider),
                               ),
+                            // Already chatting: send the ride straight there.
+                            if (provider.groups.isNotEmpty) ...[
+                              const SizedBox(height: 16),
+                              Text(
+                                'SEND TO A CHAT YOU HAVE',
+                                style: HomeTextStyles.labelM.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              for (final g in provider.groups.take(5)) ...[
+                                const SizedBox(height: 8),
+                                _GroupSendRow(
+                                  group: g,
+                                  sending: provider.sendingToGroupId == g.id,
+                                  onSend: () =>
+                                      _sendRideToGroup(context, provider, g),
+                                ),
+                              ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'OR SAY HI TO FAMILIES',
+                                style: HomeTextStyles.labelM.copyWith(
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
                             if (provider.families.isNotEmpty) ...[
                               const SizedBox(height: 12),
-                              const _FilterRow(),
+                              // F14: All and each school / activity.
+                              const _PlaceSwitch(),
                               const SizedBox(height: 12),
                               _SelectAllRow(
                                 checked: provider.allVisibleSelected,
@@ -183,6 +215,19 @@ class _FamiliesView extends StatelessWidget {
     );
   }
 
+  /// "Send ride" on a chat the parent already has: posts the ride card
+  /// there and opens it (Back → Messages).
+  Future<void> _sendRideToGroup(
+    BuildContext context,
+    FamiliesNearYouProvider provider,
+    RideGroup group,
+  ) async {
+    final error = await provider.sendRideToGroup(group);
+    if (!context.mounted) return;
+    if (error != null) return showAppSnack(context, error);
+    _openGroup(context, provider, group.id, group.name);
+  }
+
   /// Names the group, creates it with the selected parents and opens its
   /// chat.
   Future<void> _startGroup(
@@ -200,18 +245,33 @@ class _FamiliesView extends StatelessWidget {
       initial: provider.suggestedGroupName,
     );
     if (name == null || !context.mounted) return;
-    final (groupId, error) = await provider.startGroup(name);
+    final (groupId, error) = await provider.startGroupWithRide(name);
     if (!context.mounted) return;
     if (groupId == null) {
       if (error != null) showAppSnack(context, error);
       return;
     }
     if (!provider.startedInSelectMode) provider.cancelSelection();
-    Navigator.pushNamed(
-      context,
-      AppRoutes.groupChat,
-      arguments: GroupChatArgs(groupId: groupId, name: name),
-    );
+    _openGroup(context, provider, groupId, name);
+  }
+
+  /// After asking for a ride, the chat opens over the Messages tab (Back →
+  /// Messages); browsing families, it just opens on top.
+  void _openGroup(
+    BuildContext context,
+    FamiliesNearYouProvider provider,
+    String groupId,
+    String name,
+  ) {
+    final args = GroupChatArgs(groupId: groupId, name: name);
+    final navigator = Navigator.of(context);
+    if (provider.startedInSelectMode) {
+      // The ask-for-a-ride flow ends here: start the next one fresh.
+      sl<AskRideProvider>().reset();
+      openChatOverMessages(navigator, AppRoutes.groupChat, arguments: args);
+    } else {
+      navigator.pushNamed(AppRoutes.groupChat, arguments: args);
+    }
   }
 
   void _editRide(BuildContext context, FamiliesNearYouProvider provider) {
@@ -228,6 +288,20 @@ class _FamiliesView extends StatelessWidget {
     FamiliesNearYouProvider provider,
   ) async {
     final navigator = Navigator.of(context);
+    // No ride request yet: the Hi starts a group with these families.
+    if (provider.saysHiInGroup) {
+      final (groupId, name, error) = await provider.sayHiInGroup();
+      if (!context.mounted) return;
+      navigator.pop(); // close the sheet
+      if (groupId == null) {
+        if (error != null) showAppSnack(context, error);
+        return;
+      }
+      if (error != null) showAppSnack(context, error);
+      if (!provider.startedInSelectMode) provider.cancelSelection();
+      _openGroup(context, provider, groupId, name);
+      return;
+    }
     final (sent, error) = await provider.sendMessage();
     if (!context.mounted) return;
     if (error != null) {
@@ -236,6 +310,30 @@ class _FamiliesView extends StatelessWidget {
     }
     if (sent == 0) return; // already sending
     navigator.pop(); // close the sheet
+    if (provider.startedInSelectMode) {
+      // The Hi and the ride are in the chat(s): open the chat (one parent)
+      // or Messages (several), with Messages underneath.
+      final to = provider.deliveredTo;
+      final requestId = provider.rideRequestId;
+      sl<AskRideProvider>().reset();
+      if (to.length == 1 && requestId != null) {
+        final family = provider.familyById(to.single);
+        openChatOverMessages(
+          navigator,
+          AppRoutes.rideChat,
+          arguments: RideChatArgs(
+            requestId: requestId,
+            driverId: to.single,
+            iAmDriver: false,
+            otherName: family?.parentName,
+            otherInitials: family?.initials,
+          ),
+        );
+      } else {
+        goToMessages(navigator);
+      }
+      return;
+    }
     // F20 reads the number of parents messaged from the route arguments.
     navigator.pushNamed(AppRoutes.messageSent, arguments: sent);
   }
@@ -301,25 +399,6 @@ class _EmptyCard extends StatelessWidget {
           ],
         ],
       ),
-    );
-  }
-}
-
-class _FilterRow extends StatelessWidget {
-  const _FilterRow();
-
-  @override
-  Widget build(BuildContext context) {
-    final provider = context.watch<FamiliesNearYouProvider>();
-    return _ChipScroller(
-      children: [
-        for (final filter in FamilyFilter.values)
-          HomePillChip.filter(
-            label: filter.label,
-            selected: provider.filter == filter,
-            onTap: () => provider.setFilter(filter),
-          ),
-      ],
     );
   }
 }
@@ -483,6 +562,71 @@ class _PillAction extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A ride group the parent is already in, with "Send ride".
+class _GroupSendRow extends StatelessWidget {
+  const _GroupSendRow({
+    required this.group,
+    required this.sending,
+    required this.onSend,
+  });
+
+  final RideGroup group;
+  final bool sending;
+  final VoidCallback onSend;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppDimens.radiusRow),
+      ),
+      child: Row(
+        children: [
+          const GroupAvatar(size: 44),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  group.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: HomeTextStyles.labelL,
+                ),
+                Text(group.membersLabel, style: HomeTextStyles.bodyM),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: sending ? null : onSend,
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.ink,
+              foregroundColor: AppColors.lime,
+              shape: const StadiumBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            child: sending
+                ? const SizedBox.square(
+                    dimension: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(
+                    'Send ride',
+                    style: HomeTextStyles.labelM.copyWith(
+                      color: AppColors.lime,
+                    ),
+                  ),
+          ),
+        ],
       ),
     );
   }

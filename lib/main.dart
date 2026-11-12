@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'common/presentation/state/live_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -7,6 +10,7 @@ import 'common/core/router/app_router.dart';
 import 'common/core/router/app_routes.dart';
 import 'common/presentation/theme/app_theme.dart';
 import 'common/presentation/widgets/extra_top_inset.dart';
+import 'notifications/core/services/ride_notifications.dart';
 import 'onboarding/presentation/providers/app_version_provider.dart';
 import 'ride_tracking/presentation/widgets/ride_alerts_host.dart';
 
@@ -16,6 +20,11 @@ final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initDependencies();
+  // S19 / S20 system notifications + push (push stays off without Firebase
+  // config). Not awaited: never delays the first frame.
+  unawaited(sl<RideNotifications>().init(navigatorKey: rootNavigatorKey));
+  // Keeps tabs and the Messages badge current while the app is open.
+  LiveRefresh.instance.start();
   runApp(const KidsPoolApp());
 }
 

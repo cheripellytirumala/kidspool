@@ -25,6 +25,15 @@ end
 
 require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
 
+# ML Kit has no arm64 simulator slice, so the simulator app was built x86_64
+# and ran under Rosetta, where the iOS photo picker freezes (iOS 18 and
+# older simulators) and iOS 26+ simulators can't run it. This google_mlkit
+# helper relabels ML Kit's arm64 slice per build (simulator or device).
+require File.expand_path(
+  '.symlinks/plugins/google_mlkit_commons/ios/scripts/apple_silicon_simulator',
+  __dir__,
+)
+
 flutter_ios_podfile_setup
 
 target 'Runner' do
@@ -40,4 +49,7 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
   end
+
+  # Build the simulator app as arm64 (see the require above).
+  mlkit_apple_silicon_simulator_patch(installer)
 end

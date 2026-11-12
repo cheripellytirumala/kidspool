@@ -167,13 +167,15 @@ class ApiClient {
   }
 
   /// Some endpoints reply with a JSON string body (wrong content-type).
+  /// A function returning `text` arrives already decoded (e.g. `approved`):
+  /// that isn't JSON, so it is passed on as is.
   dynamic _decode(dynamic data) {
     if (data is String) {
       if (data.trim().isEmpty) return null;
       try {
         return jsonDecode(data);
       } on FormatException {
-        throw const ParsingException();
+        return data;
       }
     }
     return data;

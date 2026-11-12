@@ -32,9 +32,11 @@ abstract final class RideAlertModel {
       id: id,
       kind: kind,
       title: title == null || title.isEmpty
-          ? (kind == RideAlertKind.started
-                ? 'Ride started 🚗'
-                : 'Arrived at school ✅')
+          ? switch (kind) {
+              RideAlertKind.accepted => 'Your ride is booked ✅',
+              RideAlertKind.started => 'Ride started 🚗',
+              RideAlertKind.arrived => 'Arrived at school ✅',
+            }
           : title,
       body: body == null || body.isEmpty ? null : body,
       requestId: requestId,

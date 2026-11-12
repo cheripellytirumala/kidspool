@@ -11,6 +11,7 @@ import 'package:kidspool/home/data/models/family_model.dart';
 import 'package:kidspool/home/data/repositories/home_repository_impl.dart';
 import 'package:kidspool/home/domain/entities/family.dart';
 import 'package:kidspool/home/domain/usecases/get_families_near_me.dart';
+import 'package:kidspool/home/domain/entities/kid_place.dart';
 import 'package:kidspool/home/presentation/providers/families_near_you_provider.dart';
 import 'package:kidspool/messages/domain/entities/ride_chat.dart';
 import 'package:kidspool/messages/domain/usecases/send_ride_message.dart';
@@ -102,6 +103,33 @@ Family _family(
 
 void main() {
   group('FamilyModel.fromJson', () {
+    test('activity-only family: kid without school, activity chip', () {
+      final row =
+          _row(
+              kids: [
+                {'firstName': 'Ava', 'schoolId': null, 'schoolName': null},
+              ],
+            )
+            ..['activities'] = [
+              {'id': 'activity:g-funland', 'name': 'Funland'},
+            ];
+      final f = FamilyModel.fromJson(row)!;
+      expect(f.childLabel, 'Ava');
+      expect(f.placeIds, {'activity:g-funland'});
+      expect(f.placeName, 'Funland');
+      final places = FamiliesNearYouProvider.placesOf([
+        f,
+        FamilyModel.fromJson(_row(id: 'p2'))!,
+      ]);
+      expect(
+        places.map((p) => (p.name, p.kind)),
+        containsAll([
+          ('Funland', KidPlaceKind.activity),
+          ('Lincoln Elementary', KidPlaceKind.school),
+        ]),
+      );
+    });
+
     test('maps name, initials, kids, distance and givesRides', () {
       final f = FamilyModel.fromJson(
         _row(
@@ -167,17 +195,18 @@ void main() {
       expect(f.initials, 'J');
     });
 
-    test('skips rows without an id and kids without a school', () {
+    test('skips rows without an id; a kid without a school adds no chip', () {
       expect(FamilyModel.fromJson(_row(id: '')), isNull);
       final f = FamilyModel.fromJson(
         _row(
           kids: [
-            {'firstName': 'Mia', 'schoolId': null, 'schoolName': 'x'},
+            {'firstName': 'Mia', 'schoolId': null, 'schoolName': ''},
+            {'firstName': '', 'schoolId': null, 'schoolName': ''},
           ],
         ),
       )!;
-      expect(f.kids, isEmpty);
-      expect(f.childLabel, '');
+      expect(f.kids.map((k) => k.firstName), ['Mia']);
+      expect(f.placeIds, isEmpty);
     });
 
     test('parseFamilies keeps order and rejects non-lists', () {

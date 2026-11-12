@@ -14,11 +14,17 @@ class AccountRepositoryImpl implements AccountRepository {
   const AccountRepositoryImpl({
     required ApiClient apiClient,
     required AuthTokenProvider tokenProvider,
+    Future<void> Function()? beforeSignOut,
   }) : _api = apiClient,
-       _tokens = tokenProvider;
+       _tokens = tokenProvider,
+       _beforeSignOut = beforeSignOut;
 
   final ApiClient _api;
   final AuthTokenProvider _tokens;
+
+  /// Runs while the session is still valid (e.g. unregistering this
+  /// device's push token). Its errors never block signing out.
+  final Future<void> Function()? _beforeSignOut;
 
   @override
   bool get isSignedIn => _tokens.hasSession;
@@ -30,9 +36,14 @@ class AccountRepositoryImpl implements AccountRepository {
   );
 
   @override
-  Future<void> signOut() {
+  Future<void> signOut() async {
+    try {
+      await _beforeSignOut?.call();
+    } catch (_) {
+      // Best effort.
+    }
     // The next account must not see this one's unread count.
     NavBadges.instance.clear();
-    return _tokens.clear();
+    await _tokens.clear();
   }
 }

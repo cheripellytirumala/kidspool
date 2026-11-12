@@ -1,3 +1,4 @@
+import '../../../common/core/router/open_chat.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -122,8 +123,7 @@ class _MessageSentView extends StatelessWidget {
                 AskRideActionButton(
                   label: 'Go to Messages',
                   icon: AskRideAssets.messageButton,
-                  // No Messages route exists yet; Home hosts the inbox entry.
-                  onPressed: () => _goHome(context),
+                  onPressed: () => _goToMessages(context),
                 ),
                 const SizedBox(height: 16),
                 AskRideActionButton(
@@ -138,6 +138,11 @@ class _MessageSentView extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _goToMessages(BuildContext context) {
+    context.read<AskRideProvider>().reset();
+    goToMessages(Navigator.of(context));
   }
 
   void _goHome(BuildContext context) {

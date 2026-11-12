@@ -5,6 +5,7 @@ import '../../../common/core/error/failures.dart';
 import '../../../common/core/usecase/usecase.dart';
 import '../../../common/domain/entities/place_search_result.dart';
 import '../../../common/domain/repositories/places_repository.dart';
+import '../../../common/domain/usecases/search_places_with_fallback.dart';
 import '../entities/saved_place.dart';
 
 /// "Drop off at" · Search location: any place, address or zip code from
@@ -29,8 +30,11 @@ class SearchDropOffPlaces
         DeviceFailure('Place search isn’t set up on this build.'),
       );
     }
-    final result = await _places.searchText(
-      query,
+    // Falls back to Autocomplete + Details when Text Search is over quota.
+    final result = await searchPlacesWithFallback(
+      _places,
+      textQuery: query,
+      typed: query,
       nearLatitude: params.nearLatitude,
       nearLongitude: params.nearLongitude,
       radiusMeters: nearRadiusMeters,

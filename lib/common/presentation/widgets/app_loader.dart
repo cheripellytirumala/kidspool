@@ -120,8 +120,8 @@ class _AppLoaderState extends State<AppLoader>
   }
 }
 
-/// Shows a centered [AppLoader] over [child] on a transparent background
-/// while [isLoading] is true. The page stays visible underneath, but touches
+/// Shows a centered [AppLoader] over [child] while [isLoading] is true, on
+/// a dim backdrop. The page stays visible (dimmed) underneath and touches
 /// are blocked so actions can't be repeated.
 class AppLoadingOverlay extends StatelessWidget {
   const AppLoadingOverlay({
@@ -141,6 +141,9 @@ class AppLoadingOverlay extends StatelessWidget {
   /// Use on dark screens (camera, splash) so the message pill matches.
   final bool dark;
 
+  /// Dim behind the loader on every screen.
+  static const Color scrimColor = Color(0x59000000); // black 35%
+
   @override
   Widget build(BuildContext context) {
     return Stack(
@@ -154,8 +157,8 @@ class AppLoadingOverlay extends StatelessWidget {
               duration: const Duration(milliseconds: 180),
               child: isLoading
                   ? ColoredBox(
-                      // Transparent, but still hit-testable to block taps.
-                      color: Colors.transparent,
+                      // Dims the page and blocks taps while working.
+                      color: scrimColor,
                       child: Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,

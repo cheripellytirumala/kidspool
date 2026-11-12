@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../../common/core/di/injection_container.dart';
-import '../../../common/core/router/app_routes.dart';
+import '../../core/utils/ride_alert_payload.dart';
 import '../../domain/entities/ride_alert.dart';
 import '../providers/ride_alerts_provider.dart';
 import 'ride_alert_card.dart';
@@ -115,14 +115,12 @@ class _RideAlertsHostState extends State<RideAlertsHost>
   }
 
   void _open(RideAlert alert) {
-    final id = alert.requestId;
+    final payload = RideAlertPayload.fromAlert(alert);
     unawaited(_hide());
-    if (id == null) return;
+    if (payload == null) return;
     widget.navigatorKey.currentState?.pushNamed(
-      alert.kind == RideAlertKind.started
-          ? AppRoutes.liveTracking
-          : AppRoutes.rideCompleted,
-      arguments: RideArgs(id),
+      payload.route,
+      arguments: payload.arguments,
     );
   }
 

@@ -14,6 +14,7 @@ import '../../core/constants/kids_styles.dart';
 import '../../domain/entities/child.dart';
 import '../providers/add_child_form_provider.dart';
 import '../providers/kids_provider.dart';
+import 'where_kids_go_screen.dart' show WhereKidsGoArgs;
 import '../widgets/dashed_add_button.dart';
 import '../widgets/kid_avatar.dart';
 import '../widgets/kid_field_tile.dart';
@@ -26,9 +27,13 @@ import '../../../common/presentation/widgets/app_loader.dart';
 /// [childId], or add a new child when it is null. Saving then returns to
 /// the previous screen instead of pushing F07.
 class AddChildArgs {
-  const AddChildArgs({this.childId});
+  const AddChildArgs({this.childId, this.askSchool = false});
 
   final String? childId;
+
+  /// Added from Profile: once saved, a kid with no school goes on to
+  /// "Where do your kids go?" for it, then back.
+  final bool askSchool;
 }
 
 /// F06 · Add a child.
@@ -88,6 +93,20 @@ class _AddChildViewState extends State<_AddChildView> {
 
   void _goNext() {
     if (_returnOnSave) {
+      final kids = context.read<KidsProvider>();
+      final savedId = context.read<AddChildFormProvider>().editingId;
+      final saved = savedId == null ? null : kids.childById(savedId);
+      if ((widget.args?.askSchool ?? false) &&
+          saved != null &&
+          saved.schoolId == null) {
+        // New kid without a school: pick it now, then back to Profile.
+        kids.selectChild(saved.id);
+        Navigator.of(context).pushReplacementNamed(
+          AppRoutes.whereKidsGo,
+          arguments: const WhereKidsGoArgs(returnOnSave: true),
+        );
+        return;
+      }
       Navigator.of(context).pop();
     } else {
       Navigator.of(context).pushNamed(AppRoutes.yourKids);
@@ -160,8 +179,8 @@ class _AddChildViewState extends State<_AddChildView> {
     return Material(
       type: MaterialType.transparency,
       child: AppLoadingOverlay(
-        isLoading: form.isSaving || kids.isLoading,
-        message: 'Saving…',
+        isLoading: form.isSaving || kids.isLoading || form.isPreparingPhoto,
+        message: form.isPreparingPhoto ? 'Preparing photo…' : 'Saving…',
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: KidsScaffold(

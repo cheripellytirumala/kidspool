@@ -30,6 +30,11 @@ abstract final class KidsApiConstants {
   /// multipart: kidId + only the fields to change.
   static const String updateKid = 'update-kid';
 
+  /// Kids' activities on the server
+  /// (`docs/backend/2026-11-11_kid_activities.sql`).
+  static const String setMyKidActivities = 'set_my_kid_activities';
+  static const String getMyKidActivities = 'get_my_kid_activities';
+
   /// JSON: `{kidId}`.
   static const String deleteKid = 'delete-kid';
 

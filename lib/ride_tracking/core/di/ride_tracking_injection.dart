@@ -6,6 +6,7 @@ import '../../data/data_sources/remote/ride_tracking_remote_data_source.dart';
 import '../../data/repositories/ride_alerts_repository_impl.dart';
 import '../../data/repositories/ride_tracking_repository_impl.dart';
 import '../../data/services/ride_location_reporter.dart';
+import '../../domain/repositories/ride_alert_notifier.dart';
 import '../../domain/repositories/ride_alerts_repository.dart';
 import '../../domain/repositories/ride_location_sharing.dart';
 import '../../domain/repositories/ride_tracking_repository.dart';
@@ -75,12 +76,17 @@ void registerRideTrackingDependencies(GetIt sl) {
         triggerSos: sl(),
         startSharing: sl(),
         stopSharing: sl(),
+        driverPosition: () => sl<RideLocationSharing>().lastPosition,
       ),
     )
     ..registerFactory<RideCompletedProvider>(
       () => RideCompletedProvider(getRideTracking: sl(), sayThankYou: sl()),
     )
     ..registerFactory<RideAlertsProvider>(
-      () => RideAlertsProvider(getRideAlerts: sl()),
+      () => RideAlertsProvider(
+        getRideAlerts: sl(),
+        // System notifications (registered by the Notifications group).
+        notifier: sl.isRegistered<RideAlertNotifier>() ? sl() : null,
+      ),
     );
 }

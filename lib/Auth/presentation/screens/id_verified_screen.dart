@@ -44,7 +44,12 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AuthFlowProvider>().readLicense();
+      if (!mounted) return;
+      final flow = context.read<AuthFlowProvider>();
+      // The name is checked against the license: restore it if the app
+      // was restarted mid sign-up.
+      flow.restoreFromProfile();
+      flow.readLicense();
     });
   }
 
@@ -67,23 +72,24 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
     final id = flow.scannedId;
     final firstName = flow.firstName.trim();
     final uploaded = id?.source == IdSource.gallery;
+    final doc = flow.idType.inSentence; // "driver’s license", "passport"…
 
     final title = uploaded
-        ? 'Please check your license${firstName.isEmpty ? '' : ', $firstName'}'
+        ? 'Please check your $doc${firstName.isEmpty ? '' : ', $firstName'}'
         : firstName.isEmpty
         ? 'Is this you?'
         : 'Is this you, $firstName?';
     final subtitle = uploaded
         ? 'Please check the photos are sharp and your name matches your '
-              'driver’s license. We’ll review them shortly.'
+              '$doc. We’ll review them shortly.'
         : 'Please check the photos are sharp and your name matches your '
-              'driver’s license.';
+              '$doc.';
 
     return Scaffold(
       backgroundColor: AppColors.screen,
       body: AppLoadingOverlay(
         isLoading: flow.isSubmittingId || flow.isReadingLicense,
-        message: flow.isSubmittingId ? 'Sending…' : 'Reading your license…',
+        message: flow.isSubmittingId ? 'Sending…' : 'Reading your $doc…',
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,7 +133,10 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
                         ],
                       ] else
                         Text(
-                          'Take a photo of both sides of your license first.',
+                          flow.idNeedsBack
+                              ? 'Take a photo of both sides of your $doc '
+                                    'first.'
+                              : 'Take a photo of your $doc first.',
                           style: AppTextStyles.body,
                         ),
                     ],
@@ -175,7 +184,8 @@ class _LicenseNotice extends StatelessWidget {
       return _Notice(
         error: true,
         text:
-            'We couldn’t read the name on your license. Please retake a '
+            'We couldn’t read the name on your '
+            '${flow.idType.inSentence}. Please retake a '
             'sharp photo of the front, with no glare.',
         action: 'Retake photos',
         onAction: () {

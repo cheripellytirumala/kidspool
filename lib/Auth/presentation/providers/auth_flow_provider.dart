@@ -10,6 +10,7 @@ import '../../core/constants/auth_api_constants.dart';
 import '../../data/data_sources/local/license_reader.dart';
 import '../../domain/entities/auth_requests.dart';
 import '../../domain/entities/license_details.dart';
+import '../../domain/entities/id_document_type.dart';
 import '../../domain/entities/ride_role.dart';
 import '../../domain/entities/scanned_id.dart';
 import '../../domain/repositories/auth_repository.dart';
@@ -27,13 +28,19 @@ class AuthFlowProvider extends ChangeNotifier {
     required PhotoPicker photos,
     required SharedPreferences preferences,
     required LicenseReader licenseReader,
-  }) : _repository = repository,
+    Future<SavedProfile?> Function()? savedProfile,
+  }) : _savedProfile = savedProfile,
+       _repository = repository,
        _location = location,
        _photos = photos,
        _preferences = preferences,
        _licenseReader = licenseReader;
 
   final AuthRepository _repository;
+
+  /// The signed-in user's verified number from their profile, for when the
+  /// flow is opened without going through the OTP step (e.g. Edit details).
+  final Future<SavedProfile?> Function()? _savedProfile;
   final LicenseReader _licenseReader;
   final LocationService _location;
   final PhotoPicker _photos;
@@ -57,6 +64,41 @@ class AuthFlowProvider extends ChangeNotifier {
   /// "+1 (415) 555-0142".
   String get internationalPhone =>
       _phoneDigits.isEmpty ? '' : '+1 ${formatNationalPhone(_phoneDigits)}';
+
+  /// Fills the verified phone and the name from the saved profile when
+  /// they're empty — the flow lives in memory, so after an app restart (or
+  /// when opened from Profile) they would otherwise be blank, and the ID
+  /// check would compare the license with an empty name.
+  Future<void> restoreFromProfile() async {
+    if (_phoneDigits.isNotEmpty &&
+        _firstName.trim().isNotEmpty &&
+        _lastName.trim().isNotEmpty) {
+      return;
+    }
+    final saved = await _savedProfile?.call();
+    if (saved == null) return;
+    var changed = false;
+    if (_phoneDigits.isEmpty && saved.phone != null) {
+      var digits = saved.phone!.replaceAll(RegExp(r'\D'), '');
+      // Stored as E.164 (+1XXXXXXXXXX): keep the national number.
+      if (digits.length == phoneLength + 1 && digits.startsWith('1')) {
+        digits = digits.substring(1);
+      }
+      if (digits.length == phoneLength) {
+        _phoneDigits = digits;
+        changed = true;
+      }
+    }
+    if (_firstName.trim().isEmpty && saved.firstName.trim().isNotEmpty) {
+      _firstName = saved.firstName.trim();
+      changed = true;
+    }
+    if (_lastName.trim().isEmpty && saved.lastName.trim().isNotEmpty) {
+      _lastName = saved.lastName.trim();
+      changed = true;
+    }
+    if (changed) notifyListeners();
+  }
 
   void setPhoneDigits(String digits) {
     final clean = digits.replaceAll(RegExp(r'\D'), '');
@@ -98,7 +140,13 @@ class AuthFlowProvider extends ChangeNotifier {
   String _city = '';
   String _stateCode = '';
   bool _isDefaultAddress = true;
-  RideRole? _role = RideRole.both;
+  // The choice saved on About you / Profile, so the ID step (e.g. opened
+  // from Profile) knows whether this parent drives.
+  late RideRole? _role =
+      _preferences.getString(AppConstants.cacheKeyRideRole) ==
+          RideRole.seeker.name
+      ? RideRole.seeker
+      : RideRole.both;
   bool _isGuardian = false;
   bool _agreedToTerms = false;
   String? _selfiePath;
@@ -177,17 +225,28 @@ class AuthFlowProvider extends ChangeNotifier {
 
   /// Takes the profile photo (front camera) or picks one.
   Future<String?> pickSelfie({required bool fromCamera}) async {
+    if (_isPreparingPhoto) return null;
+    // The picker resizes/converts the photo before it returns: show a loader
+    // meanwhile so the screen doesn't look frozen.
+    _update(() => _isPreparingPhoto = true);
     try {
       final path = await _photos.pick(
         fromCamera: fromCamera,
         frontCamera: true,
       );
-      if (path != null) _update(() => _selfiePath = path);
+      if (path != null) _selfiePath = path;
       return null;
     } on DeviceException catch (e) {
       return e.message;
+    } finally {
+      _update(() => _isPreparingPhoto = false);
     }
   }
+
+  bool _isPreparingPhoto = false;
+
+  /// A profile photo is being taken / prepared.
+  bool get isPreparingPhoto => _isPreparingPhoto;
 
   /// Saves the role and home address (S04 "Continue"). Returns an error
   /// message, or `null` on success.
@@ -198,6 +257,16 @@ class AuthFlowProvider extends ChangeNotifier {
       final roleResult = await _repository.setParentRole();
       final roleError = roleResult.getLeft().toNullable();
       if (roleError != null) return roleError.message;
+
+      // Save the name; "I need rides" parents are approved right away (no
+      // ID review for now) so they can add their kids.
+      final basics = await _repository.saveProfileBasics(
+        firstName: _firstName,
+        lastName: _lastName,
+        startNow: _role == RideRole.seeker,
+      );
+      final basicsError = basics.getLeft().toNullable();
+      if (basicsError != null) return basicsError.message;
 
       if (!_addressSaved) {
         final coordinates =
@@ -244,9 +313,38 @@ class AuthFlowProvider extends ChangeNotifier {
   IdSource _idSource = IdSource.camera;
   bool _isSubmittingId = false;
 
+  IdDocumentType _idType = IdDocumentType.driversLicense;
+
   String? get idFrontPath => _idFrontPath;
   String? get idBackPath => _idBackPath;
-  bool get hasIdPhotos => _idFrontPath != null && _idBackPath != null;
+
+  /// Parents who offer rides need a driver's license; parents who only need
+  /// rides may use any accepted photo ID.
+  List<IdDocumentType> get allowedIdTypes => _role == RideRole.seeker
+      ? IdDocumentType.values
+      : const [IdDocumentType.driversLicense];
+
+  /// The ID being scanned (always a driver's license for drivers).
+  IdDocumentType get idType =>
+      allowedIdTypes.contains(_idType) ? _idType : allowedIdTypes.first;
+
+  bool get idNeedsBack => idType.requiresBack;
+
+  bool get hasIdPhotos =>
+      _idFrontPath != null && (!idNeedsBack || _idBackPath != null);
+
+  /// Picks another ID type; photos of the previous one are dropped.
+  void setIdType(IdDocumentType type) {
+    if (type == idType || !allowedIdTypes.contains(type)) return;
+    _update(() {
+      _idType = type;
+      _idFrontPath = null;
+      _idBackPath = null;
+      _license = null;
+      _licenseReadFor = null;
+    });
+  }
+
   bool get isSubmittingId => _isSubmittingId;
 
   /// Takes or picks the photo of one side of the license. Returns an error
@@ -289,7 +387,7 @@ class AuthFlowProvider extends ChangeNotifier {
       fullName: name,
       location: location,
       frontPath: front,
-      backPath: _idBackPath,
+      backPath: idNeedsBack ? _idBackPath : null,
       selfiePath: _selfiePath,
     );
   }
@@ -299,8 +397,10 @@ class AuthFlowProvider extends ChangeNotifier {
   Future<String?> submitIdentity() async {
     final front = _idFrontPath;
     final selfie = _selfiePath;
-    if (front == null || _idBackPath == null) {
-      return 'Take a photo of both sides of your license.';
+    if (front == null || (idNeedsBack && _idBackPath == null)) {
+      return idNeedsBack
+          ? 'Take a photo of both sides of your ${idType.inSentence}.'
+          : 'Take a photo of your ${idType.inSentence}.';
     }
     if (_firstName.trim().isEmpty || _lastName.trim().isEmpty) {
       return 'Add your first and last name on the previous step.';
@@ -312,10 +412,10 @@ class AuthFlowProvider extends ChangeNotifier {
       IdentitySubmission(
         firstName: _firstName,
         lastName: _lastName,
-        idType: AuthApiConstants.idTypeDriversLicense,
+        idType: idType.code,
         selfiePath: selfie,
         idFrontPath: front,
-        idBackPath: _idBackPath,
+        idBackPath: idNeedsBack ? _idBackPath : null,
       ),
     );
     _update(() => _isSubmittingId = false);
@@ -437,3 +537,6 @@ enum LicenseNameCheck {
   /// No name could be read from the photos.
   unreadable,
 }
+
+/// Name and phone saved on the user's profile (`profiles`).
+typedef SavedProfile = ({String firstName, String lastName, String? phone});

@@ -62,7 +62,9 @@ class MessagesProvider extends ChangeNotifier {
     required String? Function() myUserId,
     GetMyRideGroups? getMyRideGroups,
     void Function(int count)? onBadgeChanged,
+    bool Function(RideChat chat)? isChatHidden,
   }) : _onBadgeChanged = onBadgeChanged,
+       _isChatHidden = isChatHidden,
        _getGroups = getMyRideGroups,
        _getInbox = getRequestsInbox,
        _getChats = getMyChats,
@@ -83,6 +85,11 @@ class MessagesProvider extends ChangeNotifier {
 
   /// Receives the bottom-nav Messages count after each change.
   final void Function(int count)? _onBadgeChanged;
+
+  /// Chats the user deleted ("Delete chat"), until someone writes again.
+  final bool Function(RideChat chat)? _isChatHidden;
+
+  bool _hidden(RideChat chat) => _isChatHidden?.call(chat) ?? false;
 
   MessagesTab _tab = MessagesTab.chats;
   String _query = '';
@@ -120,7 +127,7 @@ class MessagesProvider extends ChangeNotifier {
 
   /// Badge on the Chats tab: chats and groups with unread messages.
   int get chatsBadge =>
-      _chats.where((c) => c.hasUnread).length +
+      _chats.where((c) => c.hasUnread && !_hidden(c)).length +
       _groups.where((g) => g.hasUnread).length;
 
   /// The user's ride groups, newest first (unfiltered).
@@ -169,6 +176,7 @@ class MessagesProvider extends ChangeNotifier {
       byKey.putIfAbsent('${c.requestId}|${c.driverId}', () => c);
     }
     final list = byKey.values
+        .where((c) => !_hidden(c))
         .where((c) => _matches([c.other.firstName, c.lastMessage]))
         .toList();
     list.sort((a, b) {
@@ -237,16 +245,24 @@ class MessagesProvider extends ChangeNotifier {
   }
 
   /// Loads both tabs.
-  Future<void> load() =>
-      Future.wait([loadRequests(), loadChats(), loadGroups()]);
+  /// [silent]: background refresh, the lists stay on screen (no spinner).
+  Future<void> load({bool silent = false}) => Future.wait([
+    loadRequests(silent: silent),
+    loadChats(silent: silent),
+    loadGroups(),
+  ]);
 
   Future<void> refresh() => load();
 
-  Future<void> loadRequests() async {
-    _requestsStatus = ViewStatus.loading;
-    _notify();
+  Future<void> loadRequests({bool silent = false}) async {
+    if (!silent) {
+      _requestsStatus = ViewStatus.loading;
+      _notify();
+    }
     final result = await _getInbox(const NoParams());
     if (_disposed) return;
+    // A failed background refresh keeps what's on screen.
+    if (silent && result.isLeft()) return;
     result.match(
       (failure) {
         _requestsStatus = ViewStatus.failure;
@@ -261,12 +277,15 @@ class MessagesProvider extends ChangeNotifier {
     _notify();
   }
 
-  Future<void> loadChats() async {
+  Future<void> loadChats({bool silent = false}) async {
     if (_chatMissing) return;
-    _chatsStatus = ViewStatus.loading;
-    _notify();
+    if (!silent) {
+      _chatsStatus = ViewStatus.loading;
+      _notify();
+    }
     final result = await _getChats(const NoParams());
     if (_disposed) return;
+    if (silent && result.isLeft()) return;
     result.match(
       (failure) {
         if (failure.code == MessagesApiConstants.chatMissing) {

@@ -1,3 +1,5 @@
+import '../../../add_kids/presentation/providers/kids_provider.dart';
+import '../../../common/presentation/state/live_refresh.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -13,10 +15,12 @@ import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
 import '../../../messages/presentation/screens/ride_request_detail_screen.dart';
+import '../../../notifications/core/services/ride_notifications.dart';
 import '../../../profile/domain/usecases/sign_out.dart';
 import '../../../profile/presentation/widgets/profile_sheets.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
+import '../../domain/entities/upcoming_ride.dart' show RideStatus;
 import '../../domain/entities/home_role.dart';
 import '../providers/home_provider.dart';
 import '../widgets/ask_ride_action_card.dart';
@@ -42,9 +46,18 @@ class HomeScreen extends StatelessWidget {
     final provider = sl<HomeProvider>();
     // Refresh name + upcoming rides whenever Home is (re)built as a route.
     Future.microtask(provider.load);
+    // Signed in and on Home: ask for notification permission (once), register
+    // for push, open a ride from a tapped notification.
+    Future.microtask(sl<RideNotifications>().onHomeShown);
+    // Brings this phone's kids' activities in sync with the server (once
+    // per session), so families can be matched by activity.
+    Future.microtask(sl<KidsProvider>().load);
     return ChangeNotifierProvider<HomeProvider>.value(
       value: provider,
-      child: const _HomeView(),
+      child: LiveRefreshListener(
+        onRefresh: () => provider.load(silent: true),
+        child: const _HomeView(),
+      ),
     );
   }
 }
@@ -61,13 +74,12 @@ class _HomeView extends StatelessWidget {
         AppRoutes.askRide,
       ).then((_) => provider.load());
 
-  /// A booked ride opens live tracking; one still asking parents has no
-  /// driver to track yet, so it opens its request (A7a), which offers
-  /// "Open live ride" once a driver confirms.
+  /// A ride the driver has started opens live tracking; before that (still
+  /// asking, or booked but not started) it opens its request (A7a).
   void _openNextRide(BuildContext context, HomeProvider provider) {
     final ride = provider.nextRide;
     if (ride == null) return;
-    final route = ride.isBooked
+    final route = ride.status == RideStatus.inProgress
         ? Navigator.pushNamed(
             context,
             AppRoutes.liveTracking,

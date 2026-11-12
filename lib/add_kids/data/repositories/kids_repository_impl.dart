@@ -1,5 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 
+import '../data_sources/local/kid_activities_store.dart' show KidActivity;
 import '../../../common/core/error/error_handler.dart';
 import '../../../common/core/error/failures.dart';
 import '../../../common/core/utils/json_parser.dart';
@@ -77,6 +78,17 @@ class KidsRepositoryImpl implements KidsRepository {
     }
     return unit;
   });
+
+  @override
+  Future<Either<Failure, Unit>> setActivities(List<KidActivity> activities) =>
+      ErrorHandler.guard(tag: 'Kids.setActivities', () async {
+        await _remote.setActivities(activities);
+        return unit;
+      });
+
+  @override
+  Future<Either<Failure, List<KidActivity>>> getActivities() =>
+      ErrorHandler.guard(tag: 'Kids.getActivities', _remote.getActivities);
 
   static Child _child(Map<String, dynamic> json, Map<String, String> urls) {
     final school = json['school'];

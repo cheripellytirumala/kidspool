@@ -61,6 +61,17 @@ class AskRideRepositoryImpl implements AskRideRepository {
   );
 
   @override
+  Future<Either<Failure, Unit>> setKidSchool(String kidId, String schoolId) =>
+      _kids.assignSchool(kidIds: {kidId}, schoolId: schoolId);
+
+  @override
+  Future<Either<Failure, DropOffAddress>> getSchoolAddress(SavedPlace school) =>
+      ErrorHandler.guard(
+        () => _remote.getSchoolAddress(school.id, school.name),
+        tag: 'AskRide.school',
+      );
+
+  @override
   Future<Either<Failure, List<SavedPlace>>> addSavedPlace(
     PickedAddress address, {
     required String label,

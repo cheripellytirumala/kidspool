@@ -26,6 +26,15 @@ import '../widgets/profile_photo_button.dart';
 import '../widgets/switch_tile.dart';
 import '../widgets/verified_phone_tile.dart';
 
+/// Route arguments for [AboutYouScreen].
+class AboutYouArgs {
+  const AboutYouArgs({this.fromProfile = false});
+
+  /// Opened from Profile → "Edit my details": shows a back button and,
+  /// once saved, returns to Profile instead of continuing sign-up.
+  final bool fromProfile;
+}
+
 /// S04 · About you — Figma nodes 1018:7939 ("I can offer and request rides"
 /// selected) and 1018:8075 ("I need rides" selected). Both frames are the
 /// two states of the role picker on this one screen.
@@ -34,15 +43,19 @@ class AboutYouScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final fromProfile = args is AboutYouArgs && args.fromProfile;
     return ChangeNotifierProvider<AuthFlowProvider>.value(
       value: sl<AuthFlowProvider>(),
-      child: const _AboutYouBody(),
+      child: _AboutYouBody(fromProfile: fromProfile),
     );
   }
 }
 
 class _AboutYouBody extends StatefulWidget {
-  const _AboutYouBody();
+  const _AboutYouBody({required this.fromProfile});
+
+  final bool fromProfile;
 
   @override
   State<_AboutYouBody> createState() => _AboutYouBodyState();
@@ -72,6 +85,18 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
   late final TextEditingController _stateCode = TextEditingController(
     text: _flow.stateCode,
   );
+
+  @override
+  void initState() {
+    super.initState();
+    // Show the verified number (and saved name) even when About you is
+    // opened later, e.g. after an app restart.
+    _flow.restoreFromProfile().then((_) {
+      if (!mounted) return;
+      if (_firstName.text.isEmpty) _firstName.text = _flow.firstName;
+      if (_lastName.text.isEmpty) _lastName.text = _flow.lastName;
+    });
+  }
 
   @override
   void dispose() {
@@ -122,7 +147,20 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
     final error = await _flow.submitProfile();
     if (!mounted) return;
     if (error != null) return showAppSnack(context, error);
-    Navigator.pushNamed(context, AppRoutes.scanPhotoId);
+    // Editing from Profile: saved, so go back there.
+    if (widget.fromProfile) {
+      showAppSnack(context, 'Your details are saved');
+      Navigator.pop(context, true);
+      return;
+    }
+    // Only parents who offer rides scan their driver's license; parents who
+    // only need rides go straight to adding their kids.
+    Navigator.pushNamed(
+      context,
+      _flow.role == RideRole.seeker
+          ? AppRoutes.addChild
+          : AppRoutes.scanPhotoId,
+    );
   }
 
   @override
@@ -133,8 +171,12 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
     return Material(
       type: MaterialType.transparency,
       child: AppLoadingOverlay(
-        isLoading: flow.isSaving || flow.isLocating,
-        message: flow.isSaving ? 'Saving…' : 'Finding your location…',
+        isLoading: flow.isSaving || flow.isLocating || flow.isPreparingPhoto,
+        message: flow.isSaving
+            ? 'Saving…'
+            : flow.isPreparingPhoto
+            ? 'Preparing photo…'
+            : 'Finding your location…',
         child: _buildForm(flow),
       ),
     );
@@ -143,6 +185,7 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
   Widget _buildForm(AuthFlowProvider flow) {
     return AppScreen(
       title: 'About you',
+      showBack: widget.fromProfile,
       children: [
         Row(
           children: [
@@ -250,7 +293,9 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
           value: flow.isDefaultAddress,
           onChanged: flow.setDefaultAddress,
         ),
-        VerifiedPhoneTile(phone: flow.internationalPhone),
+        // Read-only: the number verified by OTP (or from the profile).
+        if (flow.internationalPhone.isNotEmpty)
+          VerifiedPhoneTile(phone: flow.internationalPhone),
         const AppSectionLabel('I want to'),
         AppSelectCard(
           title: 'I need rides',
@@ -277,7 +322,6 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
         AppCheckboxRow(
           value: flow.isGuardian,
           label: 'I’m a parent or legal guardian, 18 or older',
-          underline: true,
           onChanged: flow.setGuardian,
         ),
         AppCheckboxRow(
@@ -293,11 +337,11 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
         const SizedBox(height: 10),
         if (flow.selfiePath == null)
           Text(
-            'Add a photo of yourself — we compare it with your ID.',
+            'Add a photo of yourself so other parents can recognise you.',
             style: AppTextStyles.caption,
           ),
         AppButton(
-          label: 'Continue',
+          label: widget.fromProfile ? 'Save' : 'Continue',
           isLoading: flow.isSaving,
           onPressed: flow.isProfileComplete ? _continue : null,
         ),

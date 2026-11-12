@@ -5,6 +5,7 @@ import '../../../common/core/error/failures.dart';
 import '../../../common/core/usecase/usecase.dart';
 import '../../../common/domain/entities/place_search_result.dart';
 import '../../../common/domain/repositories/places_repository.dart';
+import '../../../common/domain/usecases/search_places_with_fallback.dart';
 import '../entities/geo_point.dart';
 import '../entities/place.dart';
 import '../entities/place_search_query.dart';
@@ -32,13 +33,26 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
         ),
       );
     }
-    final result = await _places.searchText(
-      PlaceSearchQuery.build(params.kind, params.query),
+    final result = await searchPlacesWithFallback(
+      _places,
+      textQuery: PlaceSearchQuery.build(params.kind, params.query),
+      typed: params.query,
       includedType: PlaceSearchQuery.includedType(params.kind),
       nearLatitude: params.near?.latitude,
       nearLongitude: params.near?.longitude,
       radiusMeters: nearRadiusMeters,
     );
+    // Over quota with nothing typed yet: ask for a name.
+    if (result.getLeft().toNullable()?.statusCode == 429 &&
+        params.query.trim().length < 2) {
+      return Left(
+        DeviceFailure(
+          params.kind == PlaceKind.school
+              ? 'Type the school’s name to search.'
+              : 'Type the activity’s name to search.',
+        ),
+      );
+    }
     return result.map(
       (places) => [for (final p in places) toPlace(p, params.kind)],
     );

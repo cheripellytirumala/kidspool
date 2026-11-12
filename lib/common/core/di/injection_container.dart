@@ -12,6 +12,7 @@ import '../../../home/core/di/home_injection.dart';
 import '../../../add_kids/core/di/kids_injection.dart';
 import '../../../messages/core/di/messages_injection.dart';
 import '../../../notifications/core/di/notifications_injection.dart';
+import '../../../notifications/core/services/ride_notifications.dart';
 import '../../../onboarding/core/di/onboarding_injection.dart';
 import '../../../profile/core/di/profile_injection.dart';
 import '../../../rides/core/di/rides_injection.dart';
@@ -80,7 +81,14 @@ Future<void> _registerCore(EnvConfig env) async {
     ..registerLazySingleton<TimeZoneService>(TimeZoneService.new)
     // Signed-in account (get_my_status), shared by every feature
     ..registerLazySingleton<AccountRepository>(
-      () => AccountRepositoryImpl(apiClient: sl(), tokenProvider: sl()),
+      () => AccountRepositoryImpl(
+        apiClient: sl(),
+        tokenProvider: sl(),
+        // Unregister this device's push token while the session is valid.
+        beforeSignOut: () => sl.isRegistered<RideNotifications>()
+            ? sl<RideNotifications>().onSignOut()
+            : Future<void>.value(),
+      ),
     );
 }
 

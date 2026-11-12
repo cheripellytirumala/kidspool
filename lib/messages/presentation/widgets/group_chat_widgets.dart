@@ -7,6 +7,7 @@ import '../../core/constants/messages_styles.dart';
 import '../../core/utils/messages_format.dart';
 import '../../domain/entities/chat_person.dart';
 import '../../domain/entities/ride_chat.dart';
+import '../../domain/entities/ride_ask.dart';
 import '../../domain/entities/ride_group.dart';
 import 'chat_widgets.dart';
 import 'messages_common.dart';
@@ -40,11 +41,15 @@ class GroupChatHeader extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onInfo,
+    this.onMore,
   });
 
   final String title;
   final String? subtitle;
   final VoidCallback? onInfo;
+
+  /// ⋮ "More" (leave group…); hidden when null.
+  final VoidCallback? onMore;
 
   @override
   Widget build(BuildContext context) {
@@ -111,6 +116,10 @@ class GroupChatHeader extends StatelessWidget {
                 ),
               ),
             ),
+          ],
+          if (onMore != null) ...[
+            const SizedBox(width: 8),
+            ChatMoreButton(onPressed: onMore!),
           ],
         ],
       ),
@@ -316,6 +325,148 @@ class _CountedAvatar extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Thin bar above the group's message box: "Not interested? Leave group".
+class LeaveGroupBar extends StatelessWidget {
+  const LeaveGroupBar({super.key, required this.onLeave});
+
+  final VoidCallback onLeave;
+
+  @override
+  Widget build(BuildContext context) {
+    return ColoredBox(
+      color: AppColors.screen,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Not interested in this group?',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: MessagesStyles.labelS,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onLeave,
+              style: TextButton.styleFrom(
+                foregroundColor: MessagesStyles.sos,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                minimumSize: const Size(44, 40),
+              ),
+              icon: const Icon(Icons.logout_rounded, size: 18),
+              label: Text(
+                'Leave group',
+                style: MessagesStyles.labelM.copyWith(
+                  color: MessagesStyles.sos,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Under a ride card in a group chat: "I can help" for drivers, or where
+/// the ride stands. The request is only created when a driver taps it.
+class RideAskFooter extends StatelessWidget {
+  const RideAskFooter({
+    super.key,
+    required this.ask,
+    required this.mine,
+    required this.busy,
+    required this.onHelp,
+    this.onTrack,
+  });
+
+  /// Opens live tracking for the booked ride (the parent who asked).
+  final VoidCallback? onTrack;
+
+  final RideAsk ask;
+
+  /// The card is on the right (the signed-in parent posted it).
+  final bool mine;
+  final bool busy;
+  final VoidCallback onHelp;
+
+  String? get _status => switch (ask.status) {
+    RideAskStatus.taken when ask.rideStatus == 'completed' => 'Ride done ✅',
+    RideAskStatus.taken when ask.isHelper && ask.rideStarted =>
+      'You’re driving this ride · on the way',
+    RideAskStatus.taken when ask.isHelper =>
+      'You’re driving this ride · start it from Rides',
+    RideAskStatus.taken when ask.isMine && ask.rideStarted =>
+      '${ask.helperName ?? 'A parent'} started the ride',
+    RideAskStatus.taken when ask.isMine =>
+      '${ask.helperName ?? 'A parent'} is driving · booked',
+    RideAskStatus.taken => '${ask.helperName ?? 'A parent'} is driving',
+    RideAskStatus.cancelled => 'No longer needed',
+    RideAskStatus.open when ask.isMine => 'Waiting for a parent to help',
+    RideAskStatus.open => null,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final status = _status;
+    return Padding(
+      padding: EdgeInsets.only(left: mine ? 0 : 56, top: 6),
+      child: Align(
+        alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+        child: ask.canHelp
+            ? FilledButton.icon(
+                onPressed: busy ? null : onHelp,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.ink,
+                  foregroundColor: AppColors.lime,
+                  shape: const StadiumBorder(),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 12,
+                  ),
+                ),
+                icon: busy
+                    ? const SizedBox.square(
+                        dimension: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.volunteer_activism_rounded, size: 18),
+                label: Text(
+                  'I can help',
+                  style: MessagesStyles.labelM.copyWith(color: AppColors.lime),
+                ),
+              )
+            : status == null
+            ? const SizedBox.shrink()
+            // Track only once the driver has started the ride.
+            : ask.isMine &&
+                  ask.status == RideAskStatus.taken &&
+                  ask.rideStarted &&
+                  onTrack != null
+            ? Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(status, style: MessagesStyles.labelS),
+                  const SizedBox(height: 6),
+                  FilledButton.icon(
+                    onPressed: onTrack,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.lime,
+                      foregroundColor: AppColors.ink,
+                      shape: const StadiumBorder(),
+                    ),
+                    icon: const Icon(Icons.map_rounded, size: 18),
+                    label: Text('Track ride', style: MessagesStyles.labelM),
+                  ),
+                ],
+              )
+            : Text(status, style: MessagesStyles.labelS),
       ),
     );
   }

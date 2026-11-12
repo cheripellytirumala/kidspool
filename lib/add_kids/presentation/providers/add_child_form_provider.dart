@@ -124,19 +124,29 @@ class AddChildFormProvider extends ChangeNotifier {
 
   /// Picks the kid's photo. Returns an error message or `null`.
   Future<String?> pickPhoto({required bool fromCamera}) async {
+    if (_isPreparingPhoto) return null;
+    _isPreparingPhoto = true;
+    notifyListeners();
     try {
       final path = await _photos.pick(fromCamera: fromCamera);
       if (path != null) {
-        _change(() {
-          _newPhotoPath = path;
-          _photo = path;
-        });
+        _newPhotoPath = path;
+        _photo = path;
+        _dirty = true;
       }
       return null;
     } on DeviceException catch (e) {
       return e.message;
+    } finally {
+      _isPreparingPhoto = false;
+      notifyListeners();
     }
   }
+
+  bool _isPreparingPhoto = false;
+
+  /// The kid's photo is being taken / prepared (shows a loader).
+  bool get isPreparingPhoto => _isPreparingPhoto;
 
   /// Picks the school ID card photo. Returns an error message or `null`.
   Future<String?> pickSchoolIdCard({required bool fromCamera}) async {

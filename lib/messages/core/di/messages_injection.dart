@@ -26,6 +26,7 @@ import '../../domain/usecases/offer_ride.dart';
 import '../../domain/usecases/pass_ride_request.dart';
 import '../../domain/usecases/rename_ride_group.dart';
 import '../../domain/usecases/respond_to_offer.dart';
+import '../../domain/usecases/ride_asks.dart';
 import '../../domain/usecases/send_group_message.dart';
 import '../../domain/usecases/send_ride_message.dart';
 import '../../domain/usecases/set_group_muted.dart';
@@ -37,17 +38,24 @@ import '../../presentation/providers/ride_chat_provider.dart';
 import '../../presentation/providers/ride_groups_provider.dart';
 import '../../presentation/providers/ride_group_info_provider.dart';
 import '../../presentation/providers/ride_request_detail_provider.dart';
+import '../../data/data_sources/local/hidden_chats_store.dart';
+import '../../data/data_sources/local/passed_requests_store.dart';
 
 /// Registers everything owned by the Messages group.
 /// Called from `lib/common/core/di/injection_container.dart`.
 void registerMessagesDependencies(GetIt sl) {
   sl
     // Data
+    ..registerLazySingleton<HiddenChatsStore>(() => HiddenChatsStore(sl()))
     ..registerLazySingleton<MessagesRemoteDataSource>(
       () => MessagesRemoteDataSourceImpl(sl()),
     )
     ..registerLazySingleton<MessagesRepository>(
-      () => MessagesRepositoryImpl(remoteDataSource: sl(), tokenProvider: sl()),
+      () => MessagesRepositoryImpl(
+        remoteDataSource: sl(),
+        tokenProvider: sl(),
+        passedStore: PassedRequestsStore(sl()),
+      ),
     )
     // Use cases
     ..registerLazySingleton<GetRequestsInbox>(() => GetRequestsInbox(sl()))
@@ -76,6 +84,9 @@ void registerMessagesDependencies(GetIt sl) {
     ..registerLazySingleton<RenameRideGroup>(() => RenameRideGroup(sl()))
     ..registerLazySingleton<SetGroupMuted>(() => SetGroupMuted(sl()))
     ..registerLazySingleton<GetGroupCandidates>(() => GetGroupCandidates(sl()))
+    ..registerLazySingleton<PostRideAsk>(() => PostRideAsk(sl()))
+    ..registerLazySingleton<GetGroupRideAsks>(() => GetGroupRideAsks(sl()))
+    ..registerLazySingleton<HelpWithRideAsk>(() => HelpWithRideAsk(sl()))
     // Providers: one per screen.
     ..registerFactory<MessagesProvider>(
       () => MessagesProvider(
@@ -88,6 +99,7 @@ void registerMessagesDependencies(GetIt sl) {
         myUserId: () => sl<GetRideMessages>().myUserId,
         getMyRideGroups: sl(),
         onBadgeChanged: NavBadges.instance.setMessages,
+        isChatHidden: sl<HiddenChatsStore>().isHidden,
       ),
     )
     ..registerLazySingleton<MessagesBadgeCounter>(
@@ -95,6 +107,7 @@ void registerMessagesDependencies(GetIt sl) {
         getRequestsInbox: sl(),
         getMyChats: sl(),
         getMyRideGroups: sl(),
+        isChatHidden: sl<HiddenChatsStore>().isHidden,
       ),
     )
     ..registerFactory<RideRequestDetailProvider>(
@@ -140,6 +153,9 @@ void registerMessagesDependencies(GetIt sl) {
         getGroupMessages: sl(),
         sendGroupMessage: sl(),
         markGroupRead: sl(),
+        getRequestsInbox: sl(),
+        getGroupRideAsks: sl(),
+        helpWithRideAsk: sl(),
       ),
     )
     ..registerFactory<GroupInfoProvider>(

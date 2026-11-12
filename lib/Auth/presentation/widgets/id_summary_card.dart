@@ -74,12 +74,9 @@ class IdSummaryCard extends StatelessWidget {
                         height: 56,
                         fit: BoxFit.cover,
                       )
-                    : Image.asset(
-                        AuthAssets.idPortrait,
-                        width: 56,
-                        height: 56,
-                        fit: BoxFit.cover,
-                      ),
+                    // No profile photo (e.g. after an app restart): the
+                    // parent's initials, never a sample face.
+                    : _InitialsAvatar(name: name),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -217,6 +214,35 @@ class _Photo extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 56px circle with the parent's initials, used when there's no photo.
+class _InitialsAvatar extends StatelessWidget {
+  const _InitialsAvatar({required this.name});
+
+  final String name;
+
+  @override
+  Widget build(BuildContext context) {
+    final initials = name
+        .split(RegExp(r'\s+'))
+        .where((p) => p.isNotEmpty)
+        .take(2)
+        .map((p) => p[0].toUpperCase())
+        .join();
+    return Container(
+      width: 56,
+      height: 56,
+      alignment: Alignment.center,
+      color: AppColors.lime,
+      child: initials.isEmpty
+          ? const Icon(Icons.person_rounded, color: AppColors.ink)
+          : Text(
+              initials,
+              style: AppTextStyles.title.copyWith(color: AppColors.ink),
+            ),
     );
   }
 }

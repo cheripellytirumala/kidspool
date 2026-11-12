@@ -62,6 +62,9 @@ class RideGroupDetails extends Equatable {
 
   int get memberCount => members.length;
 
+  /// Whether the signed-in parent is the group's admin (its creator).
+  bool get iAmOwner => members.any((m) => m.isMe && m.isOwner);
+
   /// Families that can still be added.
   int get remainingSlots =>
       (maxMembers - members.length).clamp(0, maxMembers).toInt();

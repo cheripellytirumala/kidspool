@@ -4,6 +4,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kidspool/messages/domain/usecases/ride_asks.dart';
+import 'package:kidspool/messages/domain/entities/ride_ask.dart';
+import 'package:kidspool/messages/domain/usecases/send_ride_message.dart';
+import 'package:kidspool/home/domain/entities/ride_summary.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:kidspool/common/core/di/injection_container.dart';
 import 'package:kidspool/common/core/error/exceptions.dart';
@@ -88,6 +92,67 @@ class _GroupsRepository implements MessagesRepository {
   (String, List<String>, String?)? created;
   final List<GroupMessage> sent = [];
 
+  /// The user's own ride requests ("+ Ride").
+  List<RideRequest> mine = const [];
+
+  /// 1-to-1 ride chat messages sent: (requestId, driverId, body).
+  final List<(String, String, String)> chatSent = [];
+
+  @override
+  Future<Either<Failure, ChatMessage>> sendMessage({
+    required String requestId,
+    required String driverId,
+    required String body,
+  }) async {
+    chatSent.add((requestId, driverId, body));
+    return Right(
+      ChatMessage(
+        id: 'c${chatSent.length}',
+        senderId: _me,
+        body: body,
+        createdAt: DateTime.now(),
+      ),
+    );
+  }
+
+  /// Ride cards in the group, and the ones "I can help" was tapped on.
+  List<RideAsk> asks = const [];
+  final List<String> helped = [];
+
+  @override
+  Future<Either<Failure, List<RideAsk>>> getGroupRideAsks(
+    String groupId,
+  ) async => Right(asks);
+
+  /// Another parent already took it (stale card).
+  bool takenElsewhere = false;
+
+  @override
+  Future<Either<Failure, Unit>> helpWithRideAsk(String askId) async {
+    if (takenElsewhere) {
+      return const Left(
+        ServerFailure(
+          'Another parent already offered to drive this ride.',
+          code: 'already_taken',
+        ),
+      );
+    }
+    helped.add(askId);
+    asks = [
+      for (final a in asks)
+        a.id == askId
+            ? RideAsk(
+                id: a.id,
+                messageId: a.messageId,
+                isMine: a.isMine,
+                status: RideAskStatus.taken,
+                helperName: 'Vivek',
+              )
+            : a,
+    ];
+    return const Right(unit);
+  }
+
   RideGroupDetails details = const RideGroupDetails(
     id: 'g1',
     name: 'Home → Lincoln parents',
@@ -138,7 +203,7 @@ class _GroupsRepository implements MessagesRepository {
 
   @override
   Future<Either<Failure, RequestsInbox>> getRequestsInbox() async =>
-      Right(RequestsInbox(incoming: [_incoming]));
+      Right(RequestsInbox(mine: mine, incoming: [_incoming]));
 
   @override
   Future<Either<Failure, List<RideChat>>> getMyChats() async => Right([
@@ -398,6 +463,43 @@ void main() {
     await loader.load();
   });
 
+  test('iAmOwner: only the admin (owner + me)', () {
+    RideGroupDetails details(List<RideGroupMember> m) =>
+        RideGroupDetails(id: 'g', name: 'G', members: m);
+    const me = RideGroupMember(id: 'me', firstName: 'Vivek', initials: 'V');
+    const admin = RideGroupMember(
+      id: 'a',
+      firstName: 'Ava',
+      initials: 'A',
+      isOwner: true,
+    );
+    expect(
+      details(const [
+        admin,
+        RideGroupMember(
+          id: 'me',
+          firstName: 'Vivek',
+          initials: 'V',
+          isMe: true,
+        ),
+      ]).iAmOwner,
+      isFalse,
+    );
+    expect(
+      details(const [
+        RideGroupMember(
+          id: 'me',
+          firstName: 'Vivek',
+          initials: 'V',
+          isMe: true,
+          isOwner: true,
+        ),
+        me,
+      ]).iAmOwner,
+      isTrue,
+    );
+  });
+
   group('JSON parsing', () {
     test('get_my_ride_groups rows, newest first, bad rows skipped', () {
       final groups = RideGroupModel.groupsFromJson([
@@ -495,6 +597,15 @@ void main() {
   });
 
   group('remote data source', () {
+    test('Not this time: pass_ride_request, ignored until deployed', () async {
+      final deployed = _FakeApi({MessagesApiConstants.passRideRequest: null});
+      await MessagesRemoteDataSourceImpl(deployed).passRequest('r1');
+      expect(deployed.calls.single.$1, MessagesApiConstants.passRideRequest);
+      expect(deployed.calls.single.$2, {'requestId': 'r1'});
+      // Missing function (SQL not applied): no error, the device keeps it.
+      await MessagesRemoteDataSourceImpl(_FakeApi({})).passRequest('r1');
+    });
+
     test('sends camelCase params and parses results', () async {
       final api = _FakeApi({
         MessagesApiConstants.createRideGroup: {'id': 'g9'},
@@ -580,6 +691,128 @@ void main() {
   });
 
   group('GroupChatProvider', () {
+    test('stale card: "I can help" says it is already taken', () async {
+      final repo = _GroupsRepository()..takenElsewhere = true;
+      final p = GroupChatProvider(
+        getRideGroup: GetRideGroup(repo),
+        getGroupMessages: GetGroupMessages(repo),
+        sendGroupMessage: SendGroupMessage(repo),
+        markGroupRead: MarkGroupRead(repo),
+        getGroupRideAsks: GetGroupRideAsks(repo),
+        helpWithRideAsk: HelpWithRideAsk(repo),
+      );
+      await p.open(_args);
+      final result = await p.help(
+        const RideAsk(
+          id: 'ask-2',
+          messageId: 'x',
+          isMine: false,
+          status: RideAskStatus.open,
+          canHelp: true,
+        ),
+      );
+      expect(result.taken, isTrue);
+      expect(repo.helped, isEmpty);
+      p.dispose();
+    });
+
+    test('ride card visibility and Track after start', () {
+      RideAsk ask({
+        RideAskStatus status = RideAskStatus.taken,
+        bool mine = false,
+        bool helper = false,
+        String? ride,
+      }) => RideAsk(
+        id: 'a',
+        messageId: 'm',
+        isMine: mine,
+        status: status,
+        isHelper: helper,
+        rideStatus: ride,
+      );
+      expect(ask(status: RideAskStatus.open).hiddenForMe, isFalse);
+      expect(ask().hiddenForMe, isTrue); // others: gone once taken
+      expect(ask(mine: true).hiddenForMe, isFalse);
+      expect(ask(helper: true).hiddenForMe, isFalse);
+      expect(ask(mine: true, ride: 'confirmed').rideStarted, isFalse);
+      expect(ask(mine: true, ride: 'in_progress').rideStarted, isTrue);
+    });
+
+    test('ride card: "I can help" on the right message, then taken', () async {
+      final repo = _GroupsRepository();
+      final p = GroupChatProvider(
+        getRideGroup: GetRideGroup(repo),
+        getGroupMessages: GetGroupMessages(repo),
+        sendGroupMessage: SendGroupMessage(repo),
+        markGroupRead: MarkGroupRead(repo),
+        getGroupRideAsks: GetGroupRideAsks(repo),
+        helpWithRideAsk: HelpWithRideAsk(repo),
+      );
+      await p.open(_args);
+      final card = p.messages.last;
+      repo.asks = [
+        RideAsk(
+          id: 'ask-1',
+          messageId: card.id,
+          isMine: false,
+          status: RideAskStatus.open,
+          canHelp: true,
+        ),
+      ];
+      await p.refreshMessages();
+      expect(p.askFor(card)?.canHelp, isTrue);
+      expect(p.askFor(p.messages.first), isNull);
+
+      final result = await p.help(p.askFor(card)!);
+      expect((result.error, result.taken), (null, false));
+      expect(repo.helped, ['ask-1']);
+      expect(p.askFor(card)?.status, RideAskStatus.taken);
+      expect(p.askFor(card)?.canHelp, isFalse);
+      // Taken, and this parent isn't the one driving: the card is gone.
+      expect(p.isHidden(card), isTrue);
+      p.dispose();
+    });
+
+    test(
+      '+ Ride: only open, upcoming own rides, soonest first; shares',
+      () async {
+        final repo = _GroupsRepository();
+        RideRequest ride(String id, Duration from, RideRequestStatus s) =>
+            RideRequest(
+              id: id,
+              isMine: true,
+              status: s,
+              pickupAt: _now.add(from),
+              pickupLabel: 'Home',
+              destinationName: 'Lincoln Elementary',
+              kids: const [ChatKid(firstName: 'Casey')],
+            );
+        repo.mine = [
+          ride('later', const Duration(days: 3), RideRequestStatus.open),
+          ride('past', const Duration(hours: -2), RideRequestStatus.open),
+          ride('booked', const Duration(days: 1), RideRequestStatus.confirmed),
+          ride('soon', const Duration(days: 1), RideRequestStatus.open),
+        ];
+        final p = GroupChatProvider(
+          getRideGroup: GetRideGroup(repo),
+          getGroupMessages: GetGroupMessages(repo),
+          sendGroupMessage: SendGroupMessage(repo),
+          markGroupRead: MarkGroupRead(repo),
+          getRequestsInbox: GetRequestsInbox(repo),
+        );
+        await p.open(_args);
+        final rides = await p.myOpenRides();
+        expect(rides.map((r) => r.id), ['soon', 'later']);
+        expect(
+          GroupChatProvider.rideSummary(rides.first),
+          startsWith('Casey · Home → Lincoln Elementary · '),
+        );
+        expect(await p.shareRide(rides.first), isNull);
+        expect(repo.sent.last.body, startsWith('🚗 Ride needed: Casey'));
+        p.dispose();
+      },
+    );
+
     test('opens, marks read, parses system lines and sends', () async {
       final repo = _GroupsRepository();
       final p = _chatProvider(repo);
@@ -662,6 +895,8 @@ void main() {
         expect(find.text('Home → Lincoln parents'), findsOneWidget);
         expect(find.text('3 members'), findsOneWidget);
         expect(find.text('Ava created the group'), findsOneWidget);
+        // Leave option right above the message box.
+        expect(find.text('Leave group'), findsOneWidget);
         expect(find.text('Ben'), findsOneWidget);
         expect(find.text('BC'), findsOneWidget);
         final calls = repo.messageCalls;
@@ -748,6 +983,165 @@ void main() {
       expect(tester.takeException(), isNull);
       await _dispose(tester);
     });
+  });
+
+  test('F14 place chips also narrow the list in select mode', () {
+    final p =
+        FamiliesNearYouProvider(getFamiliesNearMe: GetFamiliesNearMe(_NoHome()))
+          ..setFamilies([
+            _family('ava', 'lincoln', 'Lincoln Elementary'),
+            _family('ben', 'lincoln', 'Lincoln Elementary'),
+            _family('dev', 'paul', 'St Paul'),
+          ]);
+    p.beginSelection(p.families.first);
+    expect(p.visibleFamilies, hasLength(3));
+    p.selectPlace('paul');
+    expect(p.visibleFamilies.map((f) => f.id), ['dev']);
+    p.toggleAllVisible();
+    expect(p.isSelected(p.families[2]), isTrue);
+    expect(p.isSelected(p.families[1]), isFalse);
+    expect(p.suggestedGroupName, 'Home → St Paul');
+  });
+
+  group('ride is created on Say Hi / Start a group, not on Next', () {
+    const summary = RideSummary(
+      childName: 'Casey',
+      from: 'Home',
+      to: 'Lincoln Elementary',
+      schedule: 'Wed 8:00 AM',
+    );
+    late List<String> ids;
+    late int creates;
+    FamiliesNearYouProvider make(
+      _GroupsRepository repo, {
+      String? createError,
+    }) {
+      ids = [];
+      creates = 0;
+      return FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(_NoHome()),
+          rideSummary: () => summary,
+          requestIds: () => ids,
+          sendRideMessage: SendRideMessage(repo),
+          createRideGroup: CreateRideGroup(repo),
+          sendGroupMessage: SendGroupMessage(repo),
+          createRide: () async {
+            creates++;
+            if (createError == null) ids = ['req-1'];
+            return createError;
+          },
+          rideMessage: () => '🚗 I asked for a ride: Casey',
+        )
+        ..setFamilies([
+          _family('ava', 'lincoln', 'Lincoln Elementary'),
+          _family('ben', 'lincoln', 'Lincoln Elementary'),
+        ])
+        ..startInSelectMode();
+    }
+
+    test(
+      'Start a group creates the ride, then posts it in the group',
+      () async {
+        final repo = _GroupsRepository();
+        final p = make(repo);
+        expect(p.canDeliver, isTrue); // the Hi will go with the new ride
+        final (id, error) = await p.startGroupWithRide('Home → Lincoln');
+        expect((id, error), ('new-group', null));
+        expect(creates, 1);
+        expect(repo.sent.single.body, '🚗 I asked for a ride: Casey');
+      },
+    );
+
+    test('a failed ride creation stops Say Hi with its error', () async {
+      final p = make(_GroupsRepository(), createError: 'Pick-up too soon');
+      expect(await p.sendMessage(), (0, 'Pick-up too soon'));
+      expect(creates, 1);
+    });
+  });
+
+  group('after Next: your chats and Say Hi', () {
+    const summary = RideSummary(
+      childName: 'Emma',
+      from: 'Home',
+      to: 'Doon Public School',
+      schedule: 'Wed 8:00 PM',
+    );
+    late List<String> ids;
+    late List<String> askedIn;
+    FamiliesNearYouProvider make(_GroupsRepository repo) {
+      ids = [];
+      askedIn = [];
+      return FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(_NoHome()),
+          rideSummary: () => summary,
+          requestIds: () => ids,
+          sendRideMessage: SendRideMessage(repo),
+          createRideGroup: CreateRideGroup(repo),
+          sendGroupMessage: SendGroupMessage(repo),
+          getMyRideGroups: GetMyRideGroups(repo),
+          createRide: () async {
+            ids = ['req-9'];
+            return null;
+          },
+          rideMessage: () => '🚗 I asked for a ride: Emma',
+          askInGroup: (groupId) async {
+            askedIn.add(groupId);
+            return null;
+          },
+        )
+        ..setFamilies([
+          _family('ava', 'doon', 'Doon Public School'),
+          _family('ben', 'doon', 'Doon Public School'),
+        ])
+        ..startInSelectMode();
+    }
+
+    test('lists my groups and sends the ride card to the one picked', () async {
+      final repo = _GroupsRepository();
+      final p = make(repo);
+      await p.loadGroups();
+      expect(p.groups, hasLength(2));
+      expect(await p.sendRideToGroup(p.groups.first), isNull);
+      expect(askedIn, [p.groups.first.id]);
+    });
+
+    test('Say Hi to one parent: Hi, then the ride, in that chat', () async {
+      final repo = _GroupsRepository();
+      final p = make(repo);
+      p.toggle(p.families[1]); // only ava stays selected
+      expect(await p.sendMessage(), (1, null));
+      expect(p.deliveredTo, ['ava']);
+      expect(p.rideRequestId, 'req-9');
+      expect(repo.chatSent.map((m) => m.$3), [
+        p.message,
+        '🚗 I asked for a ride: Emma',
+      ]);
+      expect(
+        repo.chatSent.every((m) => m.$1 == 'req-9' && m.$2 == 'ava'),
+        isTrue,
+      );
+    });
+  });
+
+  test('Say Hi with no ride: makes a group and posts the Hi', () async {
+    final repo = _GroupsRepository();
+    final p =
+        FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(_NoHome()),
+          createRideGroup: CreateRideGroup(repo),
+          sendGroupMessage: SendGroupMessage(repo),
+        )..setFamilies([
+          _family('ava', 'lincoln', 'Lincoln Elementary'),
+          _family('ben', 'lincoln', 'Lincoln Elementary'),
+        ]);
+    p.beginSelection(p.families[0]);
+    p.toggle(p.families[1]);
+    expect(p.canDeliver, isFalse);
+    expect(p.saysHiInGroup, isTrue);
+    final (id, name, error) = await p.sayHiInGroup();
+    expect((id, name, error), ('new-group', 'Home → Lincoln Elementary', null));
+    expect(repo.created?.$2, ['ava', 'ben']);
+    expect(repo.sent.single.body, p.message);
   });
 
   group('Start a group (Families near you)', () {

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../../../../common/core/error/exceptions.dart';
@@ -57,12 +58,46 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
       );
     }
     yield* Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
-      ),
+      locationSettings: rideSettings(defaultTargetPlatform),
     ).map(_toFix);
   }
+
+  /// GPS settings while a ride is in progress. They keep working with the
+  /// app in the background or the screen locked, for the ride only (the
+  /// stream stops at drop-off / cancel):
+  /// * iOS: background location updates, blue location indicator in the
+  ///   status bar, no automatic pausing (needs UIBackgroundModes/location);
+  /// * Android: a foreground service with an ongoing "sharing your
+  ///   location" notification.
+  static LocationSettings rideSettings(TargetPlatform platform) =>
+      switch (platform) {
+        TargetPlatform.iOS => AppleSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
+          activityType: ActivityType.automotiveNavigation,
+          pauseLocationUpdatesAutomatically: false,
+          showBackgroundLocationIndicator: true,
+          allowBackgroundLocationUpdates: true,
+        ),
+        TargetPlatform.android => AndroidSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
+          intervalDuration: RideTrackingApiConstants.locationInterval,
+          foregroundNotificationConfig: const ForegroundNotificationConfig(
+            notificationTitle: 'KidPool is sharing your location',
+            notificationText:
+                'Only during this ride, so the parent can follow it. '
+                'Stops at drop-off.',
+            notificationChannelName: 'Ride location',
+            enableWakeLock: true,
+            setOngoing: true,
+          ),
+        ),
+        _ => const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
+        ),
+      };
 
   Future<bool> _ensurePermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) return false;

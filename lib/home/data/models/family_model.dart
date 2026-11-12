@@ -30,15 +30,23 @@ abstract final class FamilyModel {
           ? distance.toDouble()
           : double.tryParse(distance?.toString() ?? ''),
       givesRides: json['givesRides'] == true,
+      activities: [
+        if (json['activities'] case final List<dynamic> list)
+          for (final a in list.whereType<Map<String, dynamic>>())
+            if (a.readString('id') case final id? when id.isNotEmpty)
+              (id: id, name: (a.readString('name') ?? '').trim()),
+      ],
     );
   }
 
   static FamilyKid? _kid(Map<String, dynamic> json) {
     final schoolId = json.readString('schoolId');
-    if (schoolId == null || schoolId.isEmpty) return null;
+    final first = (json.readString('firstName') ?? '').trim();
+    // A kid only sharing an activity has no (shared) school.
+    if ((schoolId == null || schoolId.isEmpty) && first.isEmpty) return null;
     return FamilyKid(
-      firstName: (json.readString('firstName') ?? '').trim(),
-      schoolId: schoolId,
+      firstName: first,
+      schoolId: schoolId == null || schoolId.isEmpty ? null : schoolId,
       schoolName: (json.readString('schoolName') ?? '').trim(),
     );
   }

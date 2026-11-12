@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/ride_tracking_api_constants.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/widgets/app_button.dart';
@@ -22,7 +23,13 @@ class LiveTrackingSheet extends StatelessWidget {
     required this.onDriverAction,
     required this.onMessage,
     required this.onCall,
+    this.canDropOff = true,
+    this.metersToDropoff,
   });
+
+  /// Within 100 m of the drop-off (no distance hint then).
+  final bool canDropOff;
+  final double? metersToDropoff;
 
   final RideTracking tracking;
   final DriverRideAction? driverAction;
@@ -72,6 +79,14 @@ class LiveTrackingSheet extends StatelessWidget {
           _PersonRow(tracking: tracking, onMessage: onMessage, onCall: onCall),
           if (action != null) ...[
             const SizedBox(height: 16),
+            if (action == DriverRideAction.complete && !canDropOff) ...[
+              Text(
+                _dropoffHint(metersToDropoff),
+                textAlign: TextAlign.center,
+                style: RideTextStyles.labelS,
+              ),
+              const SizedBox(height: 8),
+            ],
             AppButton(
               label: _actionLabel(action, tracking),
               isLoading: busyAction != null,
@@ -81,6 +96,17 @@ class LiveTrackingSheet extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// "Drops off automatically within 100 m · 350 m to go".
+  static String _dropoffHint(double? meters) {
+    final radius = RideTrackingApiConstants.dropoffRadiusMeters.round();
+    final left = meters == null
+        ? ''
+        : meters >= 1000
+        ? ' · ${(meters / 1000).toStringAsFixed(1)} km to go'
+        : ' · ${meters.round()} m to go';
+    return 'Drops off automatically within $radius m$left';
   }
 
   static String _actionLabel(DriverRideAction action, RideTracking t) =>

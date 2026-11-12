@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../common/presentation/state/view_state.dart';
 import '../../../common/domain/repositories/account_repository.dart';
+import '../../data/data_sources/local/kid_activities_store.dart';
 import '../../data/data_sources/local/place_catalog.dart';
 import '../../domain/entities/child.dart';
 import '../../domain/entities/place.dart';
@@ -24,7 +27,9 @@ class KidsProvider extends ChangeNotifier {
     required AccountRepository account,
     required ResolveSchoolId resolveSchoolId,
     PlaceCatalog catalog = const PlaceCatalog(),
-  }) : _repository = repository,
+    KidActivitiesStore? activitiesStore,
+  }) : _activitiesStore = activitiesStore,
+       _repository = repository,
        _account = account,
        _resolveSchoolId = resolveSchoolId,
        _catalog = catalog;
@@ -33,6 +38,58 @@ class KidsProvider extends ChangeNotifier {
   final AccountRepository _account;
   final ResolveSchoolId _resolveSchoolId;
   final PlaceCatalog _catalog;
+
+  /// Keeps activities on the device across app restarts.
+  final KidActivitiesStore? _activitiesStore;
+  bool _activitiesRestored = false;
+
+  /// Activities from the device (once, after sign-in); a new phone gets
+  /// them from the server.
+  void _restoreActivities() {
+    final store = _activitiesStore;
+    if (store == null || _activitiesRestored) return;
+    _activitiesRestored = true;
+    final local = store.read();
+    _addActivities(local);
+    if (local.isEmpty) {
+      unawaited(_restoreFromServer());
+    } else {
+      // Saved on this phone before they synced: send them up once.
+      unawaited(_repository.setActivities(local));
+    }
+  }
+
+  void _addActivities(List<KidActivity> list) {
+    for (final a in list) {
+      _activityPlaces[a.place.id] = a.place;
+      if (!_activities.any((s) => s.placeId == a.place.id)) {
+        _activities.add(Schedule(placeId: a.place.id, childIds: a.childIds));
+      }
+    }
+  }
+
+  Future<void> _restoreFromServer() async {
+    final result = await _repository.getActivities();
+    final list = result.getOrElse((_) => const []);
+    if (list.isEmpty) return;
+    _addActivities(list);
+    await _activitiesStore?.write(list);
+    notifyListeners();
+  }
+
+  /// Saves activities on the device.
+  void _saveActivities() {
+    final store = _activitiesStore;
+    if (store == null) return;
+    final list = <KidActivity>[
+      for (final s in _activities)
+        if (placeById(s.placeId) case final place?)
+          (place: place, childIds: s.childIds),
+    ];
+    store.write(list);
+    // Also on the server, so other families can be matched by activity.
+    unawaited(_repository.setActivities(list));
+  }
 
   ViewStatus _status = ViewStatus.initial;
   String? _errorMessage;
@@ -67,6 +124,7 @@ class KidsProvider extends ChangeNotifier {
   /// Loads the kids (and the parent's name once). Safe to call on every
   /// screen open; set [force] to reload after a change.
   Future<void> load({bool force = false}) async {
+    _restoreActivities();
     if (_status.isLoading || (_status.isSuccess && !force)) return;
     _status = ViewStatus.loading;
     _errorMessage = null;
@@ -147,6 +205,7 @@ class KidsProvider extends ChangeNotifier {
       for (final schedule in List.of(_activities)) {
         _removeFromActivity(schedule.placeId, id);
       }
+      _saveActivities();
       notifyListeners();
       return null;
     });
@@ -288,6 +347,7 @@ class KidsProvider extends ChangeNotifier {
           childIds: {...childIds},
         );
       }
+      _saveActivities();
     }
     _pendingPlace = null;
     notifyListeners();
@@ -301,6 +361,7 @@ class KidsProvider extends ChangeNotifier {
       return 'Every child needs a school. Pick another school to change it.';
     }
     _removeFromActivity(placeId, childId);
+    _saveActivities();
     notifyListeners();
     return null;
   }

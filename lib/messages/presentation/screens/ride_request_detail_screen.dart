@@ -466,7 +466,15 @@ class _MineBody extends StatelessWidget {
         ],
         const Spacer(),
         const SizedBox(height: 12),
-        if (request.status.isBooked)
+        // The parent's live map opens once the driver starts the ride.
+        if (request.status == RideRequestStatus.confirmed)
+          Text(
+            'Booked. Live tracking opens when your Ride Partner starts the '
+            'ride.',
+            textAlign: TextAlign.center,
+            style: AppTextStyles.body,
+          ),
+        if (request.status == RideRequestStatus.inProgress)
           AppButton(
             label: 'Open live ride',
             onPressed: () => Navigator.of(context).pushNamed(
