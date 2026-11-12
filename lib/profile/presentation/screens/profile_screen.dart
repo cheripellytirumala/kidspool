@@ -6,6 +6,10 @@ import '../../../auth/presentation/screens/about_you_screen.dart'
     show AboutYouArgs;
 import '../../../add_kids/presentation/screens/add_child_screen.dart'
     show AddChildArgs;
+import '../../../add_kids/core/constants/kids_assets.dart';
+import '../../../add_kids/data/data_sources/local/kid_activities_store.dart';
+import '../../../add_kids/presentation/screens/where_kids_go_screen.dart'
+    show WhereKidsGoArgs;
 import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
@@ -151,7 +155,6 @@ class _ProfileView extends StatelessWidget {
           expanded: provider.isExpanded(kid.id),
           onToggle: () => provider.toggleKid(kid.id),
           onEdit: () => actions.editKid(kid.id),
-          onAddPlace: actions.addPlace,
         ),
       if (overview.kidsError != null)
         ProfileSectionError(
@@ -162,6 +165,20 @@ class _ProfileView extends StatelessWidget {
         label: overview.kids.isEmpty ? 'Add your child' : 'Add a child',
         onTap: actions.addKid,
       ),
+
+      // Schools & activities (kept apart from the kid cards)
+      const ProfileSectionLabel('Schools & activities'),
+      for (final place in _kidPlaces(overview))
+        ProfileRow(
+          icon: AppIcon(
+            place.isSchool ? ProfileAssets.school16 : KidsAssets.ball16,
+            size: 20,
+          ),
+          title: place.name,
+          subtitle: '${place.isSchool ? 'School' : 'Activity'} · ${place.kids}',
+          onTap: actions.addPlace,
+        ),
+      ProfileAddRow(label: 'Add school or activity', onTap: actions.addPlace),
 
       // Driving
       const ProfileSectionLabel('Driving'),
@@ -240,6 +257,37 @@ class _ProfileView extends StatelessWidget {
   }
 }
 
+/// A school or activity row: its name and which kids go there.
+typedef _KidPlace = ({String name, bool isSchool, String kids});
+
+/// Schools (from the kids) first, then activities saved for them.
+List<_KidPlace> _kidPlaces(ProfileOverview overview) {
+  final names = {
+    for (final k in overview.kids)
+      if (k.firstName.isNotEmpty) k.id: k.firstName,
+  };
+  String kidsOf(Iterable<String> ids) =>
+      [for (final id in ids) ?names[id]].join(' & ');
+
+  final schools = <String, ({String name, List<String> kidIds})>{};
+  for (final k in overview.kids) {
+    final name = k.schoolName;
+    if (name == null || name.isEmpty) continue;
+    final key = k.schoolId ?? name;
+    schools.putIfAbsent(key, () => (name: name, kidIds: [])).kidIds.add(k.id);
+  }
+  final activities = sl.isRegistered<KidActivitiesStore>()
+      ? sl<KidActivitiesStore>().read()
+      : const <KidActivity>[];
+  return [
+    for (final s in schools.values)
+      (name: s.name, isSchool: true, kids: kidsOf(s.kidIds)),
+    for (final a in activities)
+      if (kidsOf(a.childIds) case final kids when kids.isNotEmpty)
+        (name: a.place.name, isSchool: false, kids: kids),
+  ];
+}
+
 /// Navigation and confirmations triggered from the profile.
 class _ProfileActions {
   const _ProfileActions(this.context, this.provider);
@@ -269,7 +317,11 @@ class _ProfileActions {
   void addKid() =>
       _push(AppRoutes.addChild, arguments: const AddChildArgs(askSchool: true));
 
-  void addPlace() => _push(AppRoutes.whereKidsGo);
+  /// "Where do your kids go?"; Save comes back here (not to "All set").
+  void addPlace() => _push(
+    AppRoutes.whereKidsGo,
+    arguments: const WhereKidsGoArgs(returnOnSave: true),
+  );
 
   Future<void> changeRideMode(RideMode current) async {
     final mode = await showRideModeSheet(context, current);

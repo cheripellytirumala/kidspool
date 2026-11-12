@@ -47,7 +47,7 @@ class LocationService {
       );
     }
 
-    final Position position;
+    Position? position;
     try {
       position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
@@ -56,7 +56,18 @@ class LocationService {
         ),
       );
     } on Exception catch (_) {
-      throw const DeviceException('We couldn’t find your location.');
+      // No fresh fix (weak signal, or a simulator without a location):
+      // use the last one the phone knows.
+      try {
+        position = await Geolocator.getLastKnownPosition();
+      } on Exception catch (_) {
+        position = null;
+      }
+    }
+    if (position == null) {
+      throw const DeviceException(
+        'We couldn’t find your location. Search your address or move the pin.',
+      );
     }
 
     try {

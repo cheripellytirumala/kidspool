@@ -8,6 +8,9 @@ val localProperties = Properties().apply {
 }
 val mapsApiKey: String =
     localProperties.getProperty("MAPS_API_KEY") ?: System.getenv("MAPS_API_KEY") ?: ""
+// Optional separate key for Places search (PLACES_API_KEY); empty = map key.
+val placesApiKey: String =
+    localProperties.getProperty("PLACES_API_KEY") ?: System.getenv("PLACES_API_KEY") ?: ""
 
 plugins {
     id("com.android.application")
@@ -42,6 +45,7 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         manifestPlaceholders["mapsApiKey"] = mapsApiKey
+        manifestPlaceholders["placesApiKey"] = placesApiKey
     }
 
     buildTypes {

@@ -12,7 +12,7 @@ import 'profile_avatar.dart';
 ///
 /// Collapsed — Figma 960:8073 "Kid · Emma": photo, age · grade, places.
 /// Expanded — Figma 961:7601 "Kid · Emma": the kid's places as white rows
-/// plus "Add school or activity" and "Edit".
+/// plus "Edit".
 class KidProfileCard extends StatelessWidget {
   const KidProfileCard({
     super.key,
@@ -20,14 +20,12 @@ class KidProfileCard extends StatelessWidget {
     required this.expanded,
     required this.onToggle,
     required this.onEdit,
-    required this.onAddPlace,
   });
 
   final Child kid;
   final bool expanded;
   final VoidCallback onToggle;
   final VoidCallback onEdit;
-  final VoidCallback onAddPlace;
 
   String get _name =>
       [kid.firstName, kid.lastName].where((p) => p.trim().isNotEmpty).join(' ');
@@ -167,28 +165,8 @@ class KidProfileCard extends StatelessWidget {
             _PlaceRow(name: school, detail: 'School'),
           ],
           const SizedBox(height: 8),
-          Row(
-            children: [
-              Flexible(
-                child: _InlineAction(
-                  label: 'Add school or activity',
-                  onTap: onAddPlace,
-                  leading: Container(
-                    width: 26,
-                    height: 26,
-                    decoration: const BoxDecoration(
-                      color: AppColors.ink,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: const AppIcon(ProfileAssets.plus14, size: 14),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _InlineAction(label: 'Edit', onTap: onEdit),
-            ],
-          ),
+          // Schools & activities have their own Profile section.
+          _InlineAction(label: 'Edit', onTap: onEdit),
         ],
       ),
     );
@@ -251,11 +229,10 @@ class _PlaceRow extends StatelessWidget {
 }
 
 class _InlineAction extends StatelessWidget {
-  const _InlineAction({required this.label, required this.onTap, this.leading});
+  const _InlineAction({required this.label, required this.onTap});
 
   final String label;
   final VoidCallback onTap;
-  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +250,6 @@ class _InlineAction extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (leading != null) ...[leading!, const SizedBox(width: 8)],
                 Flexible(
                   child: Text(
                     label,

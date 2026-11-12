@@ -4,6 +4,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../core/constants/ask_ride_assets.dart';
 import '../../core/utils/ride_date_format.dart';
+import '../../domain/entities/ride_lead_time.dart';
 import '../../domain/entities/ride_schedule.dart';
 import '../../domain/entities/ride_time.dart';
 import 'ask_ride_common.dart';
@@ -33,11 +34,17 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
   late DateTime _month = _date ?? _today();
   late RideTime? _time = widget.initialTime;
 
-  bool get _canFinish => _date != null && _time != null;
+  /// "Ask at least 2 hours ahead" while the pick-up is too soon.
+  String? get _tooSoon => _date == null || _time == null
+      ? null
+      : RideLeadTime.tooSoonMessage([_date!], _time!);
+
+  bool get _canFinish => _date != null && _time != null && _tooSoon == null;
 
   @override
   Widget build(BuildContext context) {
     final date = _date;
+    final tooSoon = _tooSoon;
     return AskRideSheet(
       title: 'Select day?',
       footer: _DoneButton(
@@ -64,6 +71,7 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
           value: _time,
           onChanged: (t) => setState(() => _time = t),
         ),
+        if (tooSoon != null) _TooSoonHint(tooSoon),
       ],
     );
   }
@@ -98,7 +106,10 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
     DateTime.saturday,
   ];
 
-  bool get _canFinish => _dates.isNotEmpty && _time != null;
+  String? get _tooSoon =>
+      _time == null ? null : RideLeadTime.tooSoonMessage(_dates, _time!);
+
+  bool get _canFinish => _dates.isNotEmpty && _time != null && _tooSoon == null;
 
   void _onDayTap(DateTime day) {
     final d = RideDateFormat.dateOnly(day);
@@ -135,6 +146,7 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final tooSoon = _tooSoon;
     return AskRideSheet(
       title: 'Which days?',
       footer: _DoneButton(
@@ -170,6 +182,33 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
           label: 'Pick up at',
           value: _time,
           onChanged: (t) => setState(() => _time = t),
+        ),
+        if (tooSoon != null) _TooSoonHint(tooSoon),
+      ],
+    );
+  }
+}
+
+/// Red line under the time: the pick-up is less than 2 hours away.
+class _TooSoonHint extends StatelessWidget {
+  const _TooSoonHint(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Icon(Icons.schedule_rounded, size: 18, color: AppColors.danger),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message,
+            style: AskRideTextStyles.fieldCaption.copyWith(
+              color: AppColors.danger,
+            ),
+          ),
         ),
       ],
     );

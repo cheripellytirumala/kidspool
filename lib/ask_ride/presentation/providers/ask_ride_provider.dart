@@ -7,6 +7,7 @@ import '../../core/utils/ride_date_format.dart';
 import '../../domain/entities/ask_ride_kid.dart';
 import '../../domain/entities/ride_request.dart';
 import '../../domain/entities/ride_schedule.dart';
+import '../../domain/entities/ride_lead_time.dart';
 import '../../domain/entities/ride_time.dart';
 import '../../domain/entities/saved_place.dart';
 import '../../domain/repositories/ask_ride_repository.dart';
@@ -41,7 +42,9 @@ class AskRideProvider extends ChangeNotifier {
       String summary,
     )?
     postAsk,
+    DateTime Function()? now,
   }) : _getRideOptions = getRideOptions,
+       _now = now ?? DateTime.now,
        _postAsk = postAsk,
        _addSavedPlace = addSavedPlace,
        _repository = repository,
@@ -85,6 +88,9 @@ class AskRideProvider extends ChangeNotifier {
   final AddSavedPlace _addSavedPlace;
   final AskRideRepository _repository;
   final TimeZoneService _timeZone;
+
+  /// Current time, for the 2-hour lead-time rule (fixed in tests).
+  final DateTime Function() _now;
 
   /// Safety cap for "Custom" schedules (one request per day).
   static const int maxRideDays = 20;
@@ -446,6 +452,12 @@ class AskRideProvider extends ChangeNotifier {
       return 'Choose at most $maxRideDays days at a time.';
     }
     if (d.pickupTime == null) return 'Type a pick-up time.';
+    final tooSoon = RideLeadTime.tooSoonMessage(
+      schedule.rideDates,
+      d.pickupTime!,
+      now: _now(),
+    );
+    if (tooSoon != null) return tooSoon;
     if (d.returnTrip) {
       final back = d.returnTime;
       if (back == null) return 'Type a time for the return trip.';
