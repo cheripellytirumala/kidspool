@@ -38,8 +38,10 @@ class _Adapter implements HttpClientAdapter {
 void main() {
   test('get_schools rows become saved school places', () async {
     final remote = KidsRemoteDataSourceImpl(
-      ApiClient(Dio(BaseOptions(baseUrl: 'https://x.test/'))
-        ..httpClientAdapter = _Adapter()),
+      ApiClient(
+        Dio(BaseOptions(baseUrl: 'https://x.test/'))
+          ..httpClientAdapter = _Adapter(),
+      ),
     );
     final places = await remote.searchSavedPlaces(
       PlaceKind.school,

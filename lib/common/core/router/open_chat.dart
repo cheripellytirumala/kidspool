@@ -18,3 +18,12 @@ void openChatOverMessages(
 /// Clears the flow and shows the Messages tab.
 void goToMessages(NavigatorState navigator) =>
     navigator.pushNamedAndRemoveUntil(AppRoutes.messages, (_) => false);
+
+/// Opens a ride ([route] + [arguments]) from a tapped notification with
+/// only Home underneath: Back goes Home instead of walking through
+/// earlier ride pages, chats or summaries left on the stack.
+void openOverHome(NavigatorState navigator, String route, {Object? arguments}) {
+  navigator
+    ..pushNamedAndRemoveUntil(AppRoutes.home, (_) => false)
+    ..pushNamed(route, arguments: arguments);
+}

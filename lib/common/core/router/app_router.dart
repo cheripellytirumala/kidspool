@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../presentation/widgets/back_to_home_scope.dart';
+
 import '../../../ask_ride/presentation/screens/ask_ride_details_screen.dart';
 import '../../../ask_ride/presentation/screens/message_sent_screen.dart';
 import '../../../auth/presentation/screens/about_you_screen.dart';
@@ -93,14 +95,55 @@ abstract final class AppRouter {
     AppRoutes.rideCompleted,
   };
 
+  /// Back from these goes straight to the tab underneath (the dashboard),
+  /// skipping any ride pages opened on top of each other.
+  static const Set<String> _rideScreens = {
+    AppRoutes.rideRequestDetail,
+    AppRoutes.liveTracking,
+    AppRoutes.rideCompleted,
+  };
+
+  /// Bottom-nav tabs: switching replaces the whole stack.
+  static const Set<String> _tabs = {
+    AppRoutes.home,
+    AppRoutes.messages,
+    AppRoutes.rides,
+    AppRoutes.profile,
+  };
+
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
-    final builder = _routes[settings.name];
+    final name = settings.name;
+    final builder = _routes[name];
     if (builder == null) return null;
-    return MaterialPageRoute<dynamic>(
-      settings: settings,
-      builder: _needsApproval.contains(settings.name)
-          ? (context) => ApprovalGate(child: builder(context))
-          : builder,
-    );
+    final gated = _needsApproval.contains(name);
+    // Signed-in screens except Home: Back on an otherwise empty stack goes
+    // Home (see BackToHomeScope).
+    final backToHome =
+        name != AppRoutes.home && (gated || name == AppRoutes.profile);
+    Widget build(BuildContext context) {
+      Widget page = builder(context);
+      if (gated) page = ApprovalGate(child: page);
+      if (backToHome) {
+        page = BackToHomeScope(
+          popToRoot: _rideScreens.contains(name),
+          child: page,
+        );
+      }
+      return page;
+    }
+
+    // Tabs swap in place (quick fade) instead of sliding in like a new
+    // page, so switching tabs doesn't look like a growing stack.
+    if (_tabs.contains(name)) {
+      return PageRouteBuilder<dynamic>(
+        settings: settings,
+        transitionDuration: const Duration(milliseconds: 150),
+        reverseTransitionDuration: const Duration(milliseconds: 150),
+        pageBuilder: (context, _, _) => build(context),
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+      );
+    }
+    return MaterialPageRoute<dynamic>(settings: settings, builder: build);
   }
 }

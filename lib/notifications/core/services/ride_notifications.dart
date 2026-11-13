@@ -12,6 +12,7 @@ import '../../domain/repositories/push_tokens_repository.dart';
 import '../constants/notifications_api_constants.dart';
 import 'local_notifications.dart';
 import 'push_messaging.dart';
+import '../../../common/core/router/open_chat.dart';
 
 /// S19 / S20 outside the app: local system notifications (always) and
 /// Firebase push (once Firebase is configured).
@@ -197,7 +198,7 @@ class RideNotifications implements RideAlertNotifier {
       _pending = payload;
       return;
     }
-    navigator.pushNamed(payload.route, arguments: payload.arguments);
+    openOverHome(navigator, payload.route, arguments: payload.arguments);
   }
 
   void _openData(Map<String, dynamic> data) {

@@ -7,6 +7,7 @@ import '../../core/utils/ride_alert_payload.dart';
 import '../../domain/entities/ride_alert.dart';
 import '../providers/ride_alerts_provider.dart';
 import 'ride_alert_card.dart';
+import '../../../common/core/router/open_chat.dart';
 
 /// Wraps the app and slides the S19 / S20 lime ride alerts in from the top
 /// when `get_my_notifications` has new ones (in-app stand-in for push).
@@ -118,10 +119,9 @@ class _RideAlertsHostState extends State<RideAlertsHost>
     final payload = RideAlertPayload.fromAlert(alert);
     unawaited(_hide());
     if (payload == null) return;
-    widget.navigatorKey.currentState?.pushNamed(
-      payload.route,
-      arguments: payload.arguments,
-    );
+    final navigator = widget.navigatorKey.currentState;
+    if (navigator == null) return;
+    openOverHome(navigator, payload.route, arguments: payload.arguments);
   }
 
   @override
