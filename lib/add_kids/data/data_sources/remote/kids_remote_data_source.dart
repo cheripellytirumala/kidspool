@@ -39,6 +39,11 @@ abstract interface class KidsRemoteDataSource {
 
   /// The parent's activities from the server.
   Future<List<KidActivity>> getActivities();
+
+  /// Schools and activity places KidPool already knows matching [query]
+  /// (all when empty). No Google call. Activities: empty list while that
+  /// SQL isn't on the server.
+  Future<List<Place>> searchSavedPlaces(PlaceKind kind, String query);
 }
 
 /// [ServerException.code] when `school_from_place` isn't deployed.
@@ -284,4 +289,74 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
             ),
     ],
   );
+
+  @override
+  Future<List<Place>> searchSavedPlaces(PlaceKind kind, String query) async {
+    final search = query.trim().isEmpty ? null : query.trim();
+    if (kind == PlaceKind.school) {
+      return _apiClient.rpc(
+        KidsApiConstants.getSchools,
+        params: {'search': search},
+        parser: (json) => [
+          if (json is List)
+            for (final m in json.whereType<Map<String, dynamic>>())
+              ?_savedPlace(m, id: m.readString('id'), school: true),
+        ],
+      );
+    }
+    try {
+      return await _apiClient.rpc(
+        KidsApiConstants.searchActivityPlaces,
+        params: {'search': search},
+        parser: (json) => [
+          if (json is List)
+            for (final m in json.whereType<Map<String, dynamic>>())
+              ?_savedPlace(m, id: m.readString('placeKey'), school: false),
+        ],
+      );
+    } on ServerException catch (e) {
+      // SQL not applied yet: no saved activities to offer.
+      if (e.statusCode == 404 || e.data['code'] == 'PGRST202') return const [];
+      rethrow;
+    }
+  }
+
+  static Place? _savedPlace(
+    Map<String, dynamic> m, {
+    required String? id,
+    required bool school,
+  }) {
+    final name = m.readString('name');
+    final lat = m.readDouble('latitude');
+    final lng = m.readDouble('longitude');
+    if (id == null || name == null || lat == null || lng == null) return null;
+    final line = m.readString('addressLine') ?? '';
+    final city = m.readString('city') ?? '';
+    final zip = m.readString('zip') ?? '';
+    return Place(
+      id: id,
+      name: name,
+      category: school
+          ? PlaceCategory.school
+          : PlaceCategory.values.firstWhere(
+              (c) => c.name == m.readString('category'),
+              orElse: () => PlaceCategory.activity,
+            ),
+      details: [
+        [line, city].where((p) => p.isNotEmpty).join(', '),
+        if (zip.isNotEmpty) zip,
+      ].where((p) => p.isNotEmpty).join(' · '),
+      keywords: [city, m.readString('state') ?? '', zip].join(' ').trim(),
+      // Schools: a schools.id (saved directly). Activities: the Google
+      // place id they were saved with, so families match by place.
+      googlePlaceId: school ? null : id,
+      latitude: lat,
+      longitude: lng,
+      addressLine: line,
+      city: city,
+      state: m.readString('state') ?? '',
+      zip: zip,
+      isSaved: true,
+    );
+  }
 }

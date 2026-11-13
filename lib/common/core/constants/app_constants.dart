@@ -1,6 +1,6 @@
 /// App-wide, non-network constants.
 abstract final class AppConstants {
-  static const String appName = 'kidpool';
+  static const String appName = 'Kid Pool';
 
   /// Version reported to `check_app_version` (must look like `1.2.3`).
   static const String appVersionNumber = appDisplayVersion;

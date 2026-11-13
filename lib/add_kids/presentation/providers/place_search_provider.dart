@@ -37,6 +37,25 @@ class PlaceSearchProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<Place> get results => _results;
 
+  bool _online = false;
+
+  /// The list shows KidPool's saved places (not Google's): offer "Search
+  /// Google" in case the place isn't there yet.
+  bool get canSearchGoogle =>
+      !_online &&
+      !_searching &&
+      _query.trim().length >= 2 &&
+      _results.isNotEmpty &&
+      _results.every((p) => p.isSaved);
+
+  /// "Can't find it? Search Google": the same text on Google.
+  void searchGoogle() {
+    if (_online) return;
+    _online = true;
+    _schedule(immediate: true);
+    _notify();
+  }
+
   void open(PlaceKind kind, {String query = ''}) {
     _kind = kind;
     _query = query;
@@ -47,6 +66,7 @@ class PlaceSearchProvider extends ChangeNotifier {
   void setKind(PlaceKind kind) {
     if (_kind == kind) return;
     _kind = kind;
+    _online = false;
     _results = const [];
     _schedule(immediate: true);
     _notify();
@@ -54,6 +74,7 @@ class PlaceSearchProvider extends ChangeNotifier {
 
   void setQuery(String query) {
     _query = query;
+    _online = false;
     _schedule();
     _notify();
   }
@@ -76,7 +97,7 @@ class PlaceSearchProvider extends ChangeNotifier {
   final Map<String, List<Place>> _cache = {};
 
   Future<void> _run() async {
-    final cacheKey = '${_kind.name}|${_query.trim().toLowerCase()}';
+    final cacheKey = '${_kind.name}|${_query.trim().toLowerCase()}|$_online';
     if (_cache[cacheKey] case final cached?) {
       ++_requestId;
       _searching = false;
@@ -93,7 +114,12 @@ class PlaceSearchProvider extends ChangeNotifier {
     if (id != _requestId || _disposed) return;
     final kind = _kind;
     final result = await _search(
-      SearchKidPlacesParams(kind: kind, query: _query, near: near),
+      SearchKidPlacesParams(
+        kind: kind,
+        query: _query,
+        near: near,
+        online: _online,
+      ),
     );
     if (id != _requestId || _disposed) return; // a newer search is running
     _searching = false;

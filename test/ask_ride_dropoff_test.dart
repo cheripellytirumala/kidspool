@@ -561,6 +561,16 @@ void main() {
   });
 
   group('SearchDropOffPlaces', () {
+    test('KidPool places first: no Google call', () async {
+      final places = _FakePlaces();
+      final result = await SearchDropOffPlaces(
+        places,
+        savedSearch: (q) async => [_swim],
+      )(const SearchDropOffPlacesParams(query: 'blue'));
+      expect(result.toNullable(), [_swim]);
+      expect(places.calls, 0);
+    });
+
     test('Text Search over quota: still finds places', () async {
       final places = _FakePlaces()..overQuota = true;
       final result = await SearchDropOffPlaces(places)(

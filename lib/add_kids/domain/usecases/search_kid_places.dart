@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:equatable/equatable.dart';
 import 'package:fpdart/fpdart.dart';
 
@@ -7,15 +9,26 @@ import '../../../common/domain/entities/place_search_result.dart';
 import '../../../common/domain/repositories/places_repository.dart';
 import '../../../common/domain/usecases/search_places_with_fallback.dart';
 import '../entities/geo_point.dart';
+import '../repositories/kids_repository.dart';
 import '../entities/place.dart';
 import '../entities/place_search_query.dart';
 
 /// F09 search: schools or activities from Google Places Text Search,
 /// biased near the parent's home.
 class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
-  const SearchKidPlaces(this._places);
+  const SearchKidPlaces(this._places, {KidsRepository? saved}) : _saved = saved;
 
   final PlacesRepository _places;
+
+  /// KidPool's own schools / activity places, searched before Google (the
+  /// project's Google quota is small).
+  final KidsRepository? _saved;
+
+  /// Saved places shown at most, nearest first.
+  static const int maxSaved = 20;
+
+  /// With nothing typed, saved places further than this aren't listed.
+  static const double savedNearbyMeters = 80000;
 
   /// Radius of the "near home" bias.
   static const double nearRadiusMeters = 5000;
@@ -24,6 +37,29 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
   Future<Either<Failure, List<Place>>> call(
     SearchKidPlacesParams params,
   ) async {
+    // 1. KidPool's own list first — no Google call.
+    final saved = _saved;
+    if (!params.online && saved != null) {
+      final found = (await saved.searchSavedPlaces(
+        params.kind,
+        params.query,
+      )).getOrElse((_) => const []);
+      final near = params.near;
+      double? meters(Place p) => near == null
+          ? null
+          : _distance(near.latitude, near.longitude, p.latitude!, p.longitude!);
+      final list = [
+        for (final p in found)
+          if (params.query.trim().isNotEmpty ||
+              (meters(p) ?? 0) <= savedNearbyMeters)
+            p,
+      ];
+      if (near != null) {
+        list.sort((a, b) => meters(a)!.compareTo(meters(b)!));
+      }
+      if (list.isNotEmpty) return Right(list.take(maxSaved).toList());
+    }
+    // 2. Not found (or "Search Google" tapped): Google.
     if (!await _places.isSearchConfigured()) {
       return Left(
         DeviceFailure(
@@ -121,12 +157,30 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
   }
 }
 
+/// Straight-line metres between two points (haversine).
+double _distance(double lat1, double lng1, double lat2, double lng2) {
+  const r = 6371000.0;
+  double rad(double d) => d * math.pi / 180;
+  final dLat = rad(lat2 - lat1);
+  final dLng = rad(lng2 - lng1);
+  final a =
+      math.pow(math.sin(dLat / 2), 2) +
+      math.cos(rad(lat1)) *
+          math.cos(rad(lat2)) *
+          math.pow(math.sin(dLng / 2), 2);
+  return 2 * r * math.asin(math.sqrt(a.toDouble()));
+}
+
 class SearchKidPlacesParams extends Equatable {
   const SearchKidPlacesParams({
     required this.kind,
     required this.query,
     this.near,
+    this.online = false,
   });
+
+  /// Skip KidPool's saved places and search Google ("Search Google").
+  final bool online;
 
   final PlaceKind kind;
 
@@ -137,5 +191,5 @@ class SearchKidPlacesParams extends Equatable {
   final GeoPoint? near;
 
   @override
-  List<Object?> get props => [kind, query, near];
+  List<Object?> get props => [kind, query, near, online];
 }

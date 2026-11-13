@@ -12,7 +12,7 @@
     <!-- "Ride in 30 min" reminders survive a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
-        android:label="kidspool"
+        android:label="Kid Pool"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
@@ -41,6 +41,10 @@
         <meta-data
             android:name="com.google.android.geo.API_KEY"
             android:value="${mapsApiKey}" />
+        <!-- Optional Places search key (PLACES_API_KEY); empty = map key. -->
+        <meta-data
+            android:name="kidpool.places.API_KEY"
+            android:value="${placesApiKey}" />
         <!-- Scheduled local notifications ("ride in 30 min" reminders). -->
         <receiver
             android:exported="false"

@@ -13,7 +13,8 @@ class MainActivity : FlutterActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "isConfigured" -> result.success(hasMapsKey())
-                    "apiKey" -> result.success(mapsKey())
+                    // Places search: its own key if set, else the map key.
+                    "apiKey" -> result.success(metaKey("kidpool.places.API_KEY") ?: mapsKey())
                     else -> result.notImplemented()
                 }
             }
@@ -21,8 +22,10 @@ class MainActivity : FlutterActivity() {
 
     private fun hasMapsKey(): Boolean = mapsKey() != null
 
-    private fun mapsKey(): String? {
+    private fun mapsKey(): String? = metaKey("com.google.android.geo.API_KEY")
+
+    private fun metaKey(name: String): String? {
         val info = packageManager.getApplicationInfo(packageName, PackageManager.GET_META_DATA)
-        return info.metaData?.getString("com.google.android.geo.API_KEY")?.takeIf { it.isNotBlank() }
+        return info.metaData?.getString(name)?.takeIf { it.isNotBlank() }
     }
 }

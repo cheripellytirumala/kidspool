@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Kidspool</string>
+	<string>Kid Pool</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>kidspool</string>
+	<string>Kid Pool</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -26,6 +26,8 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>GMSApiKey</key>
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
+	<key>KidpoolPlacesApiKey</key>
+	<string>$(GOOGLE_PLACES_API_KEY)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
@@ -34,6 +36,10 @@
 	<array>
 		<string>location</string>
 	</array>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>KidPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is. It also uses your location to fill in your home address.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>KidPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>KidPool uses your location to fill in your home address and, while you drive a ride, to show the parent where the car is (also in the background, until drop-off).</string>
 	<key>NSPhotoLibraryUsageDescription</key>

@@ -33,7 +33,9 @@ void registerKidsDependencies(GetIt sl) {
     )
     // Use cases (registerLazySingleton per use case)
     // SearchKidPlaces / GetHomeLocation also use the shared PlacesRepository.
-    ..registerLazySingleton<SearchKidPlaces>(() => SearchKidPlaces(sl()))
+    ..registerLazySingleton<SearchKidPlaces>(
+      () => SearchKidPlaces(sl(), saved: sl()),
+    )
     ..registerLazySingleton<GetHomeLocation>(() => GetHomeLocation(sl(), sl()))
     ..registerLazySingleton<ResolveSchoolId>(() => ResolveSchoolId(sl()))
     // Providers

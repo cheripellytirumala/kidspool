@@ -34,4 +34,10 @@ abstract interface class KidsRepository {
   Future<Either<Failure, Unit>> setActivities(List<KidActivity> activities);
 
   Future<Either<Failure, List<KidActivity>>> getActivities();
+
+  /// Schools / activity places KidPool already knows (no Google quota).
+  Future<Either<Failure, List<Place>>> searchSavedPlaces(
+    PlaceKind kind,
+    String query,
+  );
 }
