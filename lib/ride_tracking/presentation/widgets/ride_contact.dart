@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../common/core/router/app_routes.dart';
+import '../../../common/core/services/phone_dialer.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
@@ -9,19 +10,22 @@ import '../../../common/presentation/widgets/app_snack.dart';
 import '../../domain/entities/ride_tracking.dart';
 import 'ride_styles.dart';
 
-/// Call / message / SOS helpers. Message opens the ride chat; the app has
-/// no `url_launcher`, so Call shows the number (with Copy) instead of dialing.
+/// Call / message / SOS helpers. Call opens the phone's dialer with the
+/// number; where the device can't dial (Simulator, tablets) it shows the
+/// number with Copy. Message opens the ride chat.
 abstract final class RideContact {
-  static void call(
+  static Future<void> call(
     BuildContext context, {
     required String name,
     String? phone,
-  }) {
+  }) async {
     if (phone == null || phone.trim().isEmpty) {
       showAppSnack(context, 'We don’t have a phone number for $name.');
       return;
     }
-    ScaffoldMessenger.of(context)
+    final messenger = ScaffoldMessenger.of(context);
+    if (await PhoneDialer.dial(phone)) return;
+    messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
@@ -82,17 +86,28 @@ abstract final class RideContact {
                 style: AppTextStyles.bodyL,
               ),
               const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
+              // Tap to open the dialer with 911.
+              Semantics(
+                button: true,
+                label: 'Call 911',
+                excludeSemantics: true,
+                child: Material(
                   color: RideColors.sos,
                   borderRadius: BorderRadius.circular(20),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  '911',
-                  style: RideTextStyles.numberL.copyWith(
-                    color: AppColors.textOnDark,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => PhoneDialer.dial('911'),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: Text(
+                          '911',
+                          style: RideTextStyles.numberL.copyWith(
+                            color: AppColors.textOnDark,
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

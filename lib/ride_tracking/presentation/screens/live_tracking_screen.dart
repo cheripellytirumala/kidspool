@@ -168,6 +168,8 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
         onStart: _onDriverAction,
         onMessage: onMessage,
         onCall: onCall,
+        // Goes to the dashboard (see BackToHomeScope on this route).
+        onBack: () => Navigator.of(context).maybePop(),
       );
     }
 
