@@ -11,6 +11,7 @@ import '../../core/constants/ride_tracking_assets.dart';
 import '../../core/utils/ride_format.dart';
 import '../../domain/entities/ride_tracking.dart';
 import 'ride_avatar.dart';
+import 'ride_buttons.dart';
 import 'ride_map.dart';
 import 'ride_styles.dart';
 
@@ -24,6 +25,7 @@ class RideStartView extends StatelessWidget {
     required this.onStart,
     required this.onMessage,
     required this.onCall,
+    required this.onBack,
   });
 
   final RideTracking tracking;
@@ -31,6 +33,9 @@ class RideStartView extends StatelessWidget {
   final VoidCallback onStart;
   final VoidCallback onMessage;
   final VoidCallback onCall;
+
+  /// Back to the dashboard (the tab under the ride pages).
+  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
@@ -50,6 +55,11 @@ class RideStartView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: RideIconButton.back(onPressed: onBack),
+                      ),
+                      const SizedBox(height: 16),
                       _Headline(tracking: t),
                       const SizedBox(height: 12),
                       _MapCard(tracking: t),

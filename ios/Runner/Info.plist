@@ -28,6 +28,10 @@
 	<string>$(GOOGLE_MAPS_API_KEY)</string>
 	<key>KidpoolPlacesApiKey</key>
 	<string>$(GOOGLE_PLACES_API_KEY)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>tel</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
