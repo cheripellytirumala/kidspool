@@ -33,6 +33,9 @@ abstract final class AppRoutes {
   // Profile
   static const String profile = '/profile';
 
+  /// Profile › Send feedback (problems, ideas, screenshots).
+  static const String feedback = '/profile/feedback';
+
   // Messages (F24 / F24a). Chat + group info take [RideChatArgs]; the
   // request detail (A7a) takes `RideRequestArgs` from lib/messages.
   static const String messages = '/messages';

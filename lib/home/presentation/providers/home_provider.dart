@@ -31,13 +31,18 @@ class HomeProvider extends ChangeNotifier {
     GetMyRideGroups? getMyRideGroups,
     DateTime Function()? clock,
     void Function(List<UpcomingRide> drives)? onDrivesLoaded,
+    bool Function(String userId)? isBlocked,
+    Listenable? blockChanges,
   }) : _repository = repository,
+       _isBlocked = isBlocked,
        _onDrivesLoaded = onDrivesLoaded,
        _getRideGroups = getMyRideGroups,
        _getFamiliesNearMe = getFamiliesNearMe,
        _account = account,
        _preferences = preferences,
        _clock = clock ?? DateTime.now {
+    // Someone blocked or unblocked: the family preview re-filters.
+    blockChanges?.addListener(notifyListeners);
     _readRole();
   }
 
@@ -317,7 +322,13 @@ class HomeProvider extends ChangeNotifier {
   }
 
   /// The nearest three families; empty hides the FAMILIES section.
-  List<Family> get previewFamilies => _families.take(3).toList();
+  List<Family> get previewFamilies => [
+    for (final f in _families)
+      if (!(_isBlocked?.call(f.id) ?? false)) f,
+  ].take(3).toList();
+
+  /// Blocked people's families aren't shown.
+  final bool Function(String userId)? _isBlocked;
 
   void _setStatus(ViewStatus status, {Failure? failure}) {
     _status = status;

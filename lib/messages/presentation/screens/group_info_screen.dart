@@ -19,6 +19,8 @@ import '../widgets/group_chat_widgets.dart';
 import '../widgets/group_info_widgets.dart';
 import '../widgets/group_name_dialog.dart';
 import '../widgets/messages_common.dart';
+import '../../../safety/domain/safety_entities.dart';
+import '../../../safety/presentation/widgets/report_block_sheet.dart';
 
 /// A ride group's info: name, school, members and the group actions (Add
 /// parents, Rename, Mute notifications, Leave group). Reads
@@ -197,7 +199,22 @@ class _GroupInfoView extends StatelessWidget {
                       MessagesSectionLabel('Members · ${group.memberCount}'),
                       for (final m in group.members) ...[
                         const SizedBox(height: 12),
-                        GroupMemberTile(member: m),
+                        // Tap someone else: report or block them.
+                        GestureDetector(
+                          onTap: m.isMe
+                              ? null
+                              : () => showSafetyActions(
+                                  context,
+                                  SafetyTarget(
+                                    userId: m.id,
+                                    name: m.firstName,
+                                    initials: m.initials,
+                                    context: ReportContext.member,
+                                    contextId: group.id,
+                                  ),
+                                ),
+                          child: GroupMemberTile(member: m),
+                        ),
                       ],
                       const SizedBox(height: 12),
                       Center(

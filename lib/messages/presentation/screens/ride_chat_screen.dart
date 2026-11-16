@@ -17,6 +17,10 @@ import '../../domain/usecases/pass_ride_request.dart';
 import '../providers/ride_chat_provider.dart';
 import '../widgets/chat_widgets.dart';
 import '../widgets/messages_common.dart';
+import '../../../safety/domain/safety_entities.dart';
+import '../../domain/entities/ride_chat.dart';
+import '../../../safety/presentation/blocked_users.dart';
+import '../../../safety/presentation/widgets/report_block_sheet.dart';
 
 /// F19 · Ride chat. Reads [RideChatArgs] from the route.
 class RideChatScreen extends StatelessWidget {
@@ -49,6 +53,27 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _provider.startPolling();
+    _blocked.addListener(_onBlockedChanged);
+  }
+
+  /// People the user blocked: their messages are hidden here.
+  final BlockedUsers _blocked = sl<BlockedUsers>();
+  void _onBlockedChanged() => setState(() {});
+
+  /// The other grown-up, for Report / Block (null until it loads).
+  SafetyTarget? _target(RideChatProvider provider, {ChatMessage? message}) {
+    final other = provider.other;
+    final id = other.id;
+    if (id == null || id.isEmpty) return null;
+    return SafetyTarget(
+      userId: id,
+      name: other.firstName,
+      initials: other.initials,
+      context: ReportContext.rideChat,
+      contextId: provider.args?.requestId,
+      messageId: message?.id,
+      messageText: message?.body,
+    );
   }
 
   @override
@@ -65,6 +90,7 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _blocked.removeListener(_onBlockedChanged);
     _provider.stopPolling();
     _controller.dispose();
     super.dispose();
@@ -99,9 +125,20 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
 
   /// ⋮: ride info, or delete this chat from the user's Messages.
   Future<void> _more(RideChatProvider provider) async {
-    final picked = await showChatActionsSheet(context, const [
-      ChatAction(label: 'Ride info', icon: Icons.info_outline_rounded),
-      ChatAction(
+    final target = _target(provider);
+    final name = provider.other.firstName;
+    final blocked = _blocked.isBlocked(target?.userId);
+    final picked = await showChatActionsSheet(context, [
+      const ChatAction(label: 'Ride info', icon: Icons.info_outline_rounded),
+      if (target != null) ...[
+        ChatAction(label: 'Report $name', icon: Icons.flag_outlined),
+        ChatAction(
+          label: blocked ? 'Unblock $name' : 'Block $name',
+          icon: blocked ? Icons.lock_open_rounded : Icons.block_rounded,
+          destructive: !blocked,
+        ),
+      ],
+      const ChatAction(
         label: 'Delete chat',
         icon: Icons.delete_outline_rounded,
         destructive: true,
@@ -109,6 +146,12 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
     ]);
     if (!mounted || picked == null) return;
     if (picked == 0) return _push(AppRoutes.rideGroupInfo, provider.args);
+    if (target != null && picked == 1) return reportUser(context, target);
+    if (target != null && picked == 2) {
+      if (blocked) return unblockUser(context, target);
+      await blockUser(context, target);
+      return;
+    }
     await _deleteChat(provider);
   }
 
@@ -215,6 +258,23 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
     final ride = provider.ride;
     final other = provider.other;
     final items = <Widget>[const SafetyTip()];
+    final target = _target(provider);
+    final blocked = _blocked.isBlocked(target?.userId);
+    if (blocked && target != null) {
+      items.add(
+        Center(
+          child: TextButton(
+            onPressed: () => unblockUser(context, target),
+            child: Text(
+              'You blocked ${target.name}. Their messages are hidden. '
+              'Tap to unblock.',
+              textAlign: TextAlign.center,
+              style: MessagesStyles.labelS,
+            ),
+          ),
+        ),
+      );
+    }
 
     if (provider.messagesStatus.isFailure) {
       items.add(
@@ -238,8 +298,16 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
         items.add(ChatPill(MessagesFormat.dayLabel(m.createdAt)));
         lastDay = m.createdAt;
       }
+      final mine = provider.isMine(m);
+      if (!mine && blocked) continue;
       items.add(
-        ChatBubble(message: m, mine: provider.isMine(m), sender: other),
+        GestureDetector(
+          onLongPress: mine || target == null
+              ? null
+              : () =>
+                    showSafetyActions(context, _target(provider, message: m)!),
+          child: ChatBubble(message: m, mine: mine, sender: other),
+        ),
       );
     }
     // F19: the ride card sits in the thread under the latest messages.

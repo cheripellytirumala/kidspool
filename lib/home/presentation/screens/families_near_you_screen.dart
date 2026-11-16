@@ -27,6 +27,8 @@ import '../widgets/home_pill_chip.dart';
 import '../widgets/ride_summary_card.dart';
 import '../widgets/select_box.dart';
 import '../widgets/send_message_sheet.dart';
+import '../../../safety/domain/safety_entities.dart';
+import '../../../safety/presentation/widgets/report_block_sheet.dart';
 
 /// F14 · Families near you.
 ///
@@ -178,13 +180,25 @@ class _FamiliesView extends StatelessWidget {
                           ],
                           for (final family in provider.visibleFamilies) ...[
                             const SizedBox(height: 12),
-                            FamilyListCard(
-                              family: family,
-                              selectable: selecting,
-                              selected: provider.isSelected(family),
-                              onTap: () => selecting
-                                  ? provider.toggle(family)
-                                  : provider.beginSelection(family),
+                            // Long-press: report or block this parent.
+                            GestureDetector(
+                              onLongPress: () => showSafetyActions(
+                                context,
+                                SafetyTarget(
+                                  userId: family.id,
+                                  name: family.parentName,
+                                  initials: family.initials,
+                                  context: ReportContext.family,
+                                ),
+                              ),
+                              child: FamilyListCard(
+                                family: family,
+                                selectable: selecting,
+                                selected: provider.isSelected(family),
+                                onTap: () => selecting
+                                    ? provider.toggle(family)
+                                    : provider.beginSelection(family),
+                              ),
                             ),
                           ],
                         ],

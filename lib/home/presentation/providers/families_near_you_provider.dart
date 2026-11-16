@@ -62,7 +62,10 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     String Function()? rideMessage,
     Future<String?> Function(String groupId)? askInGroup,
     GetMyRideGroups? getMyRideGroups,
+    bool Function(String userId)? isBlocked,
+    Listenable? blockChanges,
   }) : _getFamiliesNearMe = getFamiliesNearMe,
+       _isBlocked = isBlocked,
        _getMyRideGroups = getMyRideGroups,
        _askInGroup = askInGroup,
        _createRide = createRide,
@@ -72,7 +75,19 @@ class FamiliesNearYouProvider extends ChangeNotifier {
        _account = account,
        _rideSummary = rideSummary,
        _requestIds = requestIds,
-       _sendRideMessage = sendRideMessage;
+       _sendRideMessage = sendRideMessage,
+       _blockChanges = blockChanges {
+    _blockChanges?.addListener(notifyListeners);
+  }
+
+  /// Fires when someone is blocked or unblocked: the list re-filters.
+  final Listenable? _blockChanges;
+
+  @override
+  void dispose() {
+    _blockChanges?.removeListener(notifyListeners);
+    super.dispose();
+  }
 
   final GetFamiliesNearMe _getFamiliesNearMe;
   final AccountRepository? _account;
@@ -300,14 +315,20 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   String? get placeId => _placeId;
   FamilyFilter get filter => _filter;
 
-  int get totalCount => _families.length;
+  /// Blocked people's families aren't listed.
+  final bool Function(String userId)? _isBlocked;
+  Iterable<Family> get _shown => _isBlocked == null
+      ? _families
+      : _families.where((f) => !_isBlocked(f.id));
+
+  int get totalCount => _shown.length;
   int countFor(KidPlace place) =>
-      _families.where((f) => f.placeIds.contains(place.id)).length;
+      _shown.where((f) => f.placeIds.contains(place.id)).length;
 
   /// Families at the chosen place (F14 "All · n" / school / activity
   /// chips, in both modes); in select mode also matching the filter.
   List<Family> get visibleFamilies => [
-    for (final f in _families)
+    for (final f in _shown)
       if ((_placeId == null || f.placeIds.contains(_placeId)) &&
           (_mode == FamiliesMode.browse || _matchesFilter(f)))
         f,

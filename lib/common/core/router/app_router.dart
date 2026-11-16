@@ -32,6 +32,7 @@ import '../../../ride_tracking/presentation/screens/ride_completed_screen.dart';
 import '../../presentation/screens/web_page_screen.dart';
 import '../../presentation/widgets/approval_gate.dart';
 import 'app_routes.dart';
+import '../../../feedback/feedback_screen.dart';
 
 /// Central route table. Screens navigate with
 /// `Navigator.pushNamed(context, AppRoutes.x)`.
@@ -55,6 +56,7 @@ abstract final class AppRouter {
     AppRoutes.messageSent: (_) => const MessageSentScreen(),
     AppRoutes.rides: (_) => const RidesScreen(),
     AppRoutes.profile: (_) => const ProfileScreen(),
+    AppRoutes.feedback: (_) => const FeedbackScreen(),
     // Messages: request detail reads `RideRequestArgs`, chat and group info
     // read [RideChatArgs].
     AppRoutes.messages: (_) => const MessagesScreen(),
