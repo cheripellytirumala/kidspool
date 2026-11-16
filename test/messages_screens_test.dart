@@ -41,6 +41,7 @@ import 'package:kidspool/messages/presentation/screens/messages_screen.dart';
 import 'package:kidspool/messages/presentation/screens/ride_chat_screen.dart';
 import 'package:kidspool/messages/presentation/screens/ride_group_info_screen.dart';
 import 'package:kidspool/messages/presentation/screens/ride_request_detail_screen.dart';
+import 'helpers/fake_safety.dart';
 
 const _me = 'me-id';
 const _jen = ChatPerson(
@@ -241,6 +242,7 @@ Future<void> _register(
   RideMode rideMode = RideMode.both,
 }) async {
   await sl.reset();
+  await registerFakeSafety(sl);
   final profile = _FakeProfileRepository(rideMode);
   sl
     ..registerFactory<RidesProvider>(

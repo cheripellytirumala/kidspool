@@ -16,8 +16,12 @@ import '../../domain/usecases/leave_ride_group.dart';
 import '../providers/group_chat_provider.dart';
 import '../widgets/chat_widgets.dart';
 import '../../domain/entities/ride_ask.dart';
+import '../../domain/entities/ride_group.dart';
 import '../widgets/group_chat_widgets.dart';
 import '../widgets/messages_common.dart';
+import '../../../safety/domain/safety_entities.dart';
+import '../../../safety/presentation/blocked_users.dart';
+import '../../../safety/presentation/widgets/report_block_sheet.dart';
 
 /// A ride group's chat. Reads [GroupChatArgs] from the route.
 ///
@@ -53,6 +57,29 @@ class _GroupChatViewState extends State<_GroupChatView>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _provider.startPolling();
+    _blocked.addListener(_onBlockedChanged);
+  }
+
+  /// People the user blocked: their messages are hidden.
+  final BlockedUsers _blocked = sl<BlockedUsers>();
+  void _onBlockedChanged() => setState(() {});
+
+  /// Long-press on someone else's message: report it, or block them.
+  void _messageActions(GroupMessage m) {
+    final sender = m.sender;
+    if (sender == null || m.isSystem) return;
+    showSafetyActions(
+      context,
+      SafetyTarget(
+        userId: sender.id,
+        name: sender.firstName,
+        initials: sender.initials,
+        context: ReportContext.groupChat,
+        contextId: _provider.args?.groupId,
+        messageId: m.id,
+        messageText: m.body,
+      ),
+    );
   }
 
   @override
@@ -69,6 +96,7 @@ class _GroupChatViewState extends State<_GroupChatView>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _blocked.removeListener(_onBlockedChanged);
     _provider.stopPolling();
     _controller.dispose();
     super.dispose();
@@ -317,6 +345,8 @@ class _GroupChatViewState extends State<_GroupChatView>
     for (final m in provider.messages) {
       // Someone else took this ride: it's gone for everyone else.
       if (provider.isHidden(m)) continue;
+      // Blocked people's messages aren't shown.
+      if (_blocked.isBlocked(m.sender?.id)) continue;
       if (lastDay == null || !MessagesFormat.sameDay(lastDay, m.createdAt)) {
         items.add(ChatPill(MessagesFormat.dayLabel(m.createdAt)));
         lastDay = m.createdAt;
@@ -325,7 +355,10 @@ class _GroupChatViewState extends State<_GroupChatView>
       final ask = provider.askFor(m);
       items.add(
         ask == null
-            ? GroupMessageView(message: m, mine: mine)
+            ? GestureDetector(
+                onLongPress: mine ? null : () => _messageActions(m),
+                child: GroupMessageView(message: m, mine: mine),
+              )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [

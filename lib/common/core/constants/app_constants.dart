@@ -1,6 +1,6 @@
 /// App-wide, non-network constants.
 abstract final class AppConstants {
-  static const String appName = 'Kid Pool';
+  static const String appName = 'KidsPool';
 
   /// Version reported to `check_app_version` (must look like `1.2.3`).
   static const String appVersionNumber = appDisplayVersion;
@@ -14,11 +14,13 @@ abstract final class AppConstants {
   /// "I need rides" / "I can offer and request rides" picked on About you.
   static const String cacheKeyRideRole = 'ride_role';
 
-  // TODO: replace with the real pages before release (placeholders).
   /// Opened in-app from "I agree to the Terms and Privacy Policy".
-  static const String termsUrl = 'https://example.com/terms';
-  static const String privacyUrl = 'https://example.com/privacy';
+  static const String termsUrl =
+      'https://nfcsolutionsindia.github.io/kidpool-web/terms';
+  static const String privacyUrl =
+      'https://kidspool-legal.netlify.app/privacy/';
 
-  /// Profile › Help & support (placeholder, like the two above).
-  static const String supportUrl = 'https://example.com/help';
+  /// Profile › Help & support: KidPool website (FAQ, safety, contact).
+  static const String supportUrl =
+      'https://nfcsolutionsindia.github.io/kidpool-web/';
 }

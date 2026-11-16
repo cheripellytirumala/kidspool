@@ -12,6 +12,7 @@ import '../../presentation/providers/home_provider.dart';
 import '../../../ask_ride/domain/entities/ride_schedule.dart';
 import '../../../ask_ride/presentation/providers/ask_ride_provider.dart';
 import '../../domain/entities/ride_summary.dart';
+import '../../../safety/presentation/blocked_users.dart';
 
 /// Registers everything owned by the Home feature group.
 /// Called from `lib/core/di/injection_container.dart`.
@@ -39,6 +40,8 @@ void registerHomeDependencies(GetIt sl) {
         preferences: sl(),
         getFamiliesNearMe: sl(),
         getMyRideGroups: sl(),
+        isBlocked: sl<BlockedUsers>().isBlocked,
+        blockChanges: sl<BlockedUsers>(),
         // "You have a ride in 30 min" for booked drives not started yet.
         onDrivesLoaded: (drives) => sl<RideNotifications>().syncDriveReminders([
           for (final d in drives)
@@ -66,6 +69,8 @@ void registerHomeDependencies(GetIt sl) {
         rideMessage: () => sl<AskRideProvider>().chatMessage,
         askInGroup: (groupId) => sl<AskRideProvider>().askInGroup(groupId),
         getMyRideGroups: sl(),
+        isBlocked: sl<BlockedUsers>().isBlocked,
+        blockChanges: sl<BlockedUsers>(),
       ),
     );
 }

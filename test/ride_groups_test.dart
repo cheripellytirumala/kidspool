@@ -56,6 +56,9 @@ import 'package:kidspool/messages/presentation/screens/group_info_screen.dart';
 import 'package:kidspool/messages/presentation/screens/messages_screen.dart';
 import 'package:kidspool/messages/presentation/providers/ride_groups_provider.dart';
 import 'package:kidspool/messages/presentation/screens/ride_groups_screen.dart';
+import 'helpers/fake_safety.dart';
+import 'package:kidspool/safety/data/safety_repository.dart';
+import 'package:kidspool/safety/presentation/blocked_users.dart';
 
 const _me = 'me-id';
 
@@ -363,6 +366,7 @@ GroupChatProvider _chatProvider(_GroupsRepository repo) => GroupChatProvider(
 
 Future<void> _register(_GroupsRepository repo) async {
   await sl.reset();
+  await registerFakeSafety(sl);
   sl
     ..registerFactory<MessagesProvider>(() => _messagesProvider(repo))
     ..registerFactory<GroupChatProvider>(() => _chatProvider(repo))
@@ -908,6 +912,32 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         expect(find.text('I can drive'), findsOneWidget);
         expect(tester.takeException(), isNull);
+        await _dispose(tester);
+      });
+
+      testWidgets('long-press a message, block the sender at $tag', (
+        tester,
+      ) async {
+        final repo = _GroupsRepository();
+        await _register(repo);
+        await _pump(tester, const GroupChatScreen(), arguments: _args);
+        expect(find.text('Who can drive Tuesday?'), findsOneWidget);
+
+        await tester.longPress(find.text('Who can drive Tuesday?'));
+        await tester.pumpAndSettle();
+        expect(find.text('Report this message'), findsOneWidget);
+        await tester.tap(find.text('Block Ben'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(TextButton, 'Block'));
+        await tester.pumpAndSettle();
+
+        // Ben's message is gone; the system line stays.
+        expect(find.text('Who can drive Tuesday?'), findsNothing);
+        expect(find.text('Ava created the group'), findsOneWidget);
+        expect(sl<BlockedUsers>().isBlocked('ben-id'), isTrue);
+        expect((sl<SafetyRepository>() as FakeSafetyRepository).blocked, [
+          'ben-id',
+        ]);
         await _dispose(tester);
       });
 

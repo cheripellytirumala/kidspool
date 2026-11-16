@@ -12,7 +12,7 @@
     <!-- "Ride in 30 min" reminders survive a reboot. -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <application
-        android:label="Kid Pool"
+        android:label="KidsPool"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

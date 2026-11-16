@@ -11,6 +11,8 @@ import '../../../add_kids/data/data_sources/local/kid_activities_store.dart';
 import '../../../add_kids/presentation/screens/where_kids_go_screen.dart'
     show WhereKidsGoArgs;
 import '../../../common/core/constants/app_constants.dart';
+import '../../../feedback/feedback_screen.dart';
+import '../../../safety/presentation/widgets/account_safety.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/domain/entities/my_status.dart';
@@ -246,6 +248,26 @@ class _ProfileView extends StatelessWidget {
         onTap: () => actions.openWeb('Help & support', AppConstants.supportUrl),
       ),
       ProfileRow(
+        icon: const _MaterialIcon(Icons.rate_review_outlined),
+        title: 'Send feedback',
+        subtitle: 'Report a problem or suggest an improvement',
+        onTap: () => openFeedback(context),
+      ),
+      ProfileRow(
+        icon: const _MaterialIcon(Icons.block_rounded),
+        title: 'Blocked people',
+        subtitle: 'People whose messages you’ve hidden',
+        onTap: () => showBlockedPeopleSheet(context),
+      ),
+      ProfileRow(
+        icon: const _MaterialIcon(Icons.delete_outline_rounded),
+        iconBackground: ProfileStyles.sosTint,
+        title: 'Delete account',
+        titleColor: ProfileStyles.sos,
+        subtitle: 'Permanently delete your account and data',
+        onTap: actions.deleteAccount,
+      ),
+      ProfileRow(
         icon: const AppIcon(ProfileAssets.logout, size: 22),
         iconBackground: ProfileStyles.sosTint,
         title: 'Log out',
@@ -375,6 +397,18 @@ class _ProfileActions {
     AppRoutes.webPage,
     arguments: WebPageArgs(title: title, url: url),
   );
+
+  /// Deletes the account on the server, then signs out on this device.
+  Future<void> deleteAccount() async {
+    if (!await confirmAndDeleteAccount(context)) return;
+    await provider.signOut();
+    if (!context.mounted) return;
+    resetSessionState();
+    Navigator.of(
+      context,
+    ).pushNamedAndRemoveUntil(AppRoutes.phoneNumber, (_) => false);
+    showAppSnack(context, 'Your account was deleted.');
+  }
 
   Future<void> signOut() async {
     final ok = await showProfileConfirm(
