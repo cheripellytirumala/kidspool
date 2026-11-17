@@ -29,6 +29,7 @@ import '../widgets/select_box.dart';
 import '../widgets/send_message_sheet.dart';
 import '../../../safety/domain/safety_entities.dart';
 import '../../../safety/presentation/widgets/report_block_sheet.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F14 · Families near you.
 ///
@@ -84,7 +85,7 @@ class _FamiliesView extends StatelessWidget {
         if (!didPop) provider.cancelSelection();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark,
+        value: AppSystemUi.dark,
         child: Scaffold(
           backgroundColor: AppColors.screen,
           body: AppLoadingOverlay(

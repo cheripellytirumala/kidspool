@@ -12,6 +12,7 @@ import '../common/presentation/theme/app_text_styles.dart';
 import '../common/presentation/widgets/app_button.dart';
 import '../common/presentation/widgets/app_snack.dart';
 import 'feedback_repository.dart';
+import '../common/presentation/theme/app_system_ui.dart';
 
 /// Profile › Send feedback: opens the feedback screen, then thanks the
 /// user back on Profile.
@@ -139,7 +140,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: SafeArea(

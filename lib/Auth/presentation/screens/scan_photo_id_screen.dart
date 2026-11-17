@@ -14,12 +14,13 @@ import '../providers/scan_id_provider.dart';
 import '../widgets/auth_back_button.dart';
 import '../widgets/camera_controls.dart';
 import '../widgets/id_viewfinder.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// V1 · Scan photo ID — Figma node 1018:8233.
 ///
-/// On arrival it asks camera or library for the front, and again for the
-/// back once the front is in (also when a Front / Back chip is tapped); the
-/// shutter takes a photo. Once both sides are captured the photos are shown
+/// The shutter takes the selected side with the camera; "Choose from
+/// library" picks it instead. Front / Back chips choose the side (or retake
+/// one). No sheet pops up over the shutter. Once both sides are captured the photos are shown
 /// for review on V3 and sent to `submit-identity-verification`.
 class ScanPhotoIdScreen extends StatelessWidget {
   const ScanPhotoIdScreen({super.key});
@@ -53,34 +54,14 @@ class _ScanBodyState extends State<_ScanBody> {
     super.initState();
     // Restore the saved name (lost after an app restart) for the ID check.
     context.read<AuthFlowProvider>().restoreFromProfile();
-    // On landing, ask right away whether to take or pick the photo.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _askSource());
   }
 
-  /// "Take a photo" / "Choose from library" for the current side; skipped
-  /// once that side already has a photo (e.g. coming back from V3).
-  Future<void> _askSource() async {
-    if (!mounted) return;
-    final scan = context.read<ScanIdProvider>();
-    final flow = context.read<AuthFlowProvider>();
-    final done = scan.side == IdSide.front
-        ? flow.idFrontPath != null
-        : flow.idBackPath != null;
-    if (done || scan.isBusy) return;
-    final fromCamera = await showPhotoSourceSheet(context);
-    if (fromCamera == null || !mounted) return;
-    await _capture(context, fromCamera: fromCamera);
-  }
-
-  /// Front / Back chip: selects that side and asks camera or library for it
-  /// (also to retake a side that already has a photo).
-  Future<void> _pickSide(IdSide side) async {
+  /// Front / Back chip: selects that side; the shutter or "Choose from
+  /// library" then takes it (also to retake a side that has a photo).
+  void _pickSide(IdSide side) {
     final scan = context.read<ScanIdProvider>();
     if (scan.isBusy) return;
     scan.selectSide(side);
-    final fromCamera = await showPhotoSourceSheet(context);
-    if (fromCamera == null || !mounted) return;
-    await _capture(context, fromCamera: fromCamera);
   }
 
   /// Back: previous screen, or About you when this is the first screen
@@ -110,14 +91,54 @@ class _ScanBodyState extends State<_ScanBody> {
     final frontDone = flow.idFrontPath != null;
     // A passport has no back side.
     final backDone = !flow.idNeedsBack || flow.idBackPath != null;
-    final before = scan.side;
     scan.advance(frontDone: frontDone, backDone: backDone);
     if (flow.hasIdPhotos) {
       Navigator.pushNamed(context, AppRoutes.idVerified);
-    } else if (scan.side != before) {
-      // Front done: ask camera or library for the back straight away.
-      await _askSource();
     }
+  }
+
+  /// Why the license is needed and how the photos are kept.
+  void _showPrivacy(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: AppColors.screen,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Your ID photos', style: AppTextStyles.headingH3),
+              const SizedBox(height: 12),
+              for (final line in const [
+                'Why: we confirm every parent who drives has a valid '
+                    'license, and that the name matches your profile.',
+                'Who sees it: only the KidsPool review team. Other parents '
+                    'only see that you’re verified, never the photos.',
+                'How it’s stored: in private, access-controlled storage, '
+                    'never shared or sold.',
+                'Deleting: the photos are deleted when you delete your '
+                    'account (Profile › Delete account).',
+              ])
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Text(line, style: AppTextStyles.body),
+                ),
+              const SizedBox(height: 4),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Got it'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -129,7 +150,7 @@ class _ScanBodyState extends State<_ScanBody> {
     final idTypes = flow.allowedIdTypes;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: AppSystemUi.light,
       child: Scaffold(
         backgroundColor: AppColors.inverse,
         body: AppLoadingOverlay(
@@ -144,114 +165,172 @@ class _ScanBodyState extends State<_ScanBody> {
                 child: FittedBox(fit: BoxFit.scaleDown, child: IdViewfinder()),
               ),
               SafeArea(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(32, 8, 32, 8),
-                      child: AuthBackButton(onPressed: _back),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text.rich(
-                            TextSpan(
-                              text: 'Scan your\n',
-                              children: [
-                                TextSpan(
-                                  text: idTypes.length > 1
-                                      ? 'photo ID'
-                                      : flow.idType.inSentence,
-                                  style: TextStyle(color: AppColors.lime),
-                                ),
-                              ],
+                // Scrolls on short phones; the tips and shutter stay at the
+                // bottom on taller ones.
+                child: LayoutBuilder(
+                  builder: (context, constraints) => SingleChildScrollView(
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
+                      ),
+                      child: IntrinsicHeight(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(32, 8, 32, 8),
+                              child: AuthBackButton(onPressed: _back),
                             ),
-                            style: AppTextStyles.displayL.copyWith(
-                              color: AppColors.textOnDark,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          // Parents who only need rides pick their ID type.
-                          if (idTypes.length > 1) ...[
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  for (final type in idTypes) ...[
-                                    DarkChoiceChip(
-                                      label: type.label,
-                                      selected: type == flow.idType,
-                                      onTap: () {
-                                        flow.setIdType(type);
-                                        scan.selectSide(IdSide.front);
-                                      },
+                                  Text.rich(
+                                    TextSpan(
+                                      text: 'Scan your\n',
+                                      children: [
+                                        TextSpan(
+                                          text: idTypes.length > 1
+                                              ? 'photo ID'
+                                              : flow.idType.inSentence,
+                                          style: TextStyle(
+                                            color: AppColors.lime,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(width: 8),
+                                    style: AppTextStyles.displayL.copyWith(
+                                      color: AppColors.textOnDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    idTypes.length > 1
+                                        ? 'We check your ID so families know who '
+                                              'they’re riding with.'
+                                        : 'Every parent who drives is checked, so '
+                                              'families know their driver is licensed.',
+                                    style: AppTextStyles.label.copyWith(
+                                      color: AppColors.textOnDark,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  GestureDetector(
+                                    onTap: () => _showPrivacy(context),
+                                    child: Text(
+                                      'Who sees it and how it’s stored',
+                                      style: AppTextStyles.label.copyWith(
+                                        color: AppColors.lime,
+                                        decoration: TextDecoration.underline,
+                                        decorationColor: AppColors.lime,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  // Parents who only need rides pick their ID type.
+                                  if (idTypes.length > 1) ...[
+                                    SingleChildScrollView(
+                                      scrollDirection: Axis.horizontal,
+                                      child: Row(
+                                        children: [
+                                          for (final type in idTypes) ...[
+                                            DarkChoiceChip(
+                                              label: type.label,
+                                              selected: type == flow.idType,
+                                              onTap: () {
+                                                flow.setIdType(type);
+                                                scan.selectSide(IdSide.front);
+                                              },
+                                            ),
+                                            const SizedBox(width: 8),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
                                   ],
+                                  Row(
+                                    children: [
+                                      DarkChoiceChip(
+                                        label: frontDone
+                                            ? 'Front · done'
+                                            : 'Front',
+                                        selected: scan.side == IdSide.front,
+                                        onTap: () => _pickSide(IdSide.front),
+                                      ),
+                                      if (flow.idNeedsBack) ...[
+                                        const SizedBox(width: 8),
+                                        DarkChoiceChip(
+                                          label: flow.idBackPath != null
+                                              ? 'Back · done'
+                                              : 'Back',
+                                          selected: scan.side == IdSide.back,
+                                          onTap: () => _pickSide(IdSide.back),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 8),
-                          ],
-                          Row(
-                            children: [
-                              DarkChoiceChip(
-                                label: frontDone ? 'Front ✓' : 'Front',
-                                selected: scan.side == IdSide.front,
-                                onTap: () => _pickSide(IdSide.front),
+                            const Spacer(),
+                            const Center(
+                              child: Wrap(
+                                spacing: 16,
+                                runSpacing: 8,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  CameraHintPill('Good light'),
+                                  CameraHintPill('No glare'),
+                                  CameraHintPill('All 4 corners'),
+                                ],
                               ),
-                              if (flow.idNeedsBack) ...[
-                                const SizedBox(width: 8),
-                                DarkChoiceChip(
-                                  label: flow.idBackPath != null
-                                      ? 'Back ✓'
-                                      : 'Back',
-                                  selected: scan.side == IdSide.back,
-                                  onTap: () => _pickSide(IdSide.back),
+                            ),
+                            const SizedBox(height: 20),
+                            // Camera only here; the library is offered in the
+                            // camera-or-library sheet for each side.
+                            Center(
+                              child: ShutterButton(
+                                onPressed: () =>
+                                    _capture(context, fromCamera: true),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Center(
+                              child: TextButton.icon(
+                                onPressed: () =>
+                                    _capture(context, fromCamera: false),
+                                icon: const Icon(
+                                  Icons.photo_library_outlined,
+                                  color: AppColors.textOnDark,
                                 ),
-                              ],
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Spacer(),
-                    const Center(
-                      child: Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        alignment: WrapAlignment.center,
-                        children: [
-                          CameraHintPill('Good light'),
-                          CameraHintPill('No glare'),
-                          CameraHintPill('All 4 corners'),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Camera only here; the library is offered in the
-                    // camera-or-library sheet for each side.
-                    Center(
-                      child: ShutterButton(
-                        onPressed: () => _capture(context, fromCamera: true),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Center(
-                      child: Text(
-                        scan.instruction(
-                          frontDone: frontDone,
-                          backDone: backDone,
-                        ),
-                        style: AuthTextStyles.labelM.copyWith(
-                          color: AppColors.textOnDarkMuted,
+                                label: Text(
+                                  'Choose from library',
+                                  style: AppTextStyles.label.copyWith(
+                                    color: AppColors.textOnDark,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Center(
+                              child: Text(
+                                scan.instruction(
+                                  frontDone: frontDone,
+                                  backDone: backDone,
+                                ),
+                                style: AuthTextStyles.labelM.copyWith(
+                                  color: AppColors.textOnDarkMuted,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
               ),
             ],

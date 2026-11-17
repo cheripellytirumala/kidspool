@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_system_ui.dart';
 
 /// Standard screen layout from the Figma frames: 20px side padding, Display/L
 /// headline, optional subtitle, 14px gap between blocks, and an optional
@@ -101,7 +102,7 @@ class AppScreen extends StatelessWidget {
           );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: isDark ? AppSystemUi.light : AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: SafeArea(

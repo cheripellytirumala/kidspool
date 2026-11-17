@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
@@ -54,35 +56,41 @@ class _OtpBody extends StatelessWidget {
     );
     final isSending = context.select<OtpProvider, bool>((otp) => otp.isSending);
 
-    return Scaffold(
-      backgroundColor: AppColors.screen,
-      resizeToAvoidBottomInset: false,
-      body: AppLoadingOverlay(
-        isLoading: isVerifying || isSending,
-        message: isVerifying ? 'Verifying…' : 'Sending code…',
-        child: Stack(
-          children: [
-            // S03 underneath, frozen.
-            IgnorePointer(
-              child: PhoneNumberView(
-                onSendOtp: () {},
-                field: PhoneFieldPreview(
-                  value: UsPhoneNumberFormatter.format(digits),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: AppSystemUi.dark,
+      child: Scaffold(
+        backgroundColor: AppColors.screen,
+        resizeToAvoidBottomInset: false,
+        body: AppLoadingOverlay(
+          isLoading: isVerifying || isSending,
+          message: isVerifying ? 'Verifying…' : 'Sending code…',
+          child: Stack(
+            children: [
+              // S03 underneath, frozen.
+              IgnorePointer(
+                child: PhoneNumberView(
+                  onSendOtp: () {},
+                  field: PhoneFieldPreview(
+                    value: UsPhoneNumberFormatter.format(digits),
+                  ),
                 ),
               ),
-            ),
-            Positioned.fill(
-              child: Semantics(
-                button: true,
-                label: 'Edit number',
-                child: GestureDetector(
-                  onTap: () => Navigator.of(context).maybePop(),
-                  child: const ColoredBox(color: AuthColors.scrim),
+              Positioned.fill(
+                child: Semantics(
+                  button: true,
+                  label: 'Edit number',
+                  child: GestureDetector(
+                    onTap: () => Navigator.of(context).maybePop(),
+                    child: const ColoredBox(color: AuthColors.scrim),
+                  ),
                 ),
               ),
-            ),
-            const Align(alignment: Alignment.bottomCenter, child: _CodeSheet()),
-          ],
+              const Align(
+                alignment: Alignment.bottomCenter,
+                child: _CodeSheet(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -104,8 +112,9 @@ class _CodeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final otp = context.watch<OtpProvider>();
+    // Same "+1 (415) 555-0142" format as the phone field.
     final phone = context.select<AuthFlowProvider, String>(
-      (flow) => flow.nationalPhone,
+      (flow) => flow.internationalPhone,
     );
     final media = MediaQuery.of(context);
     final bottomInset = media.viewInsets.bottom > 0
@@ -195,11 +204,20 @@ class _AutoFilledChip extends StatelessWidget {
           const SizedBox(width: 8),
           Flexible(
             child: Text(
-              'Filled in from your messages ✓',
+              // No SMS provider yet: the server returns the code (test
+              // mode) and the app fills it in. Say so instead of claiming it
+              // came from the messages.
+              'Test mode: code filled in for you',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textPrimary,
               ),
             ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.check_circle_rounded,
+            size: 16,
+            color: AppColors.ink,
           ),
         ],
       ),

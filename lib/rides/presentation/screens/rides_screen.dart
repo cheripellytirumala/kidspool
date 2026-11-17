@@ -18,6 +18,7 @@ import '../../../messages/presentation/widgets/messages_list_widgets.dart';
 import '../../core/constants/rides_styles.dart';
 import '../providers/rides_provider.dart';
 import '../widgets/ride_list_card.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F19c · Your rides (Rides tab).
 ///
@@ -52,7 +53,7 @@ class _RidesView extends StatelessWidget {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: AppLoadingOverlay(

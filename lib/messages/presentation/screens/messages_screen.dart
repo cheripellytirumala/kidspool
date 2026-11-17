@@ -20,6 +20,7 @@ import '../widgets/group_chat_widgets.dart';
 import '../widgets/messages_common.dart';
 import '../widgets/messages_list_widgets.dart';
 import 'ride_request_detail_screen.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F24 · Messages (Chats) and F24a · Requests — the Messages tab.
 class MessagesScreen extends StatelessWidget {
@@ -64,7 +65,7 @@ class _MessagesView extends StatelessWidget {
       },
     ];
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: Stack(

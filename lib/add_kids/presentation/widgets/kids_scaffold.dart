@@ -8,6 +8,7 @@ import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
 import 'kids_icon_button.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// Page layout shared by the Kids frames: optional top bar (56px back button
 /// + trailing badge), Display/L header with an 8px inset, a scrollable body
@@ -26,6 +27,7 @@ class KidsScaffold extends StatelessWidget {
     this.topPadding = 12,
     this.backgroundColor = AppColors.screen,
     this.above = const [],
+    this.onBack,
   });
 
   final String? title;
@@ -42,19 +44,23 @@ class KidsScaffold extends StatelessWidget {
   /// Widgets placed above the header (e.g. the F12 check disc).
   final List<Widget> above;
 
+  /// Back action when there's nothing to pop (e.g. sign-up resumed on this
+  /// screen). When set, the back button always shows.
+  final VoidCallback? onBack;
+
   bool get _isDark => backgroundColor.computeLuminance() < 0.5;
 
   @override
   Widget build(BuildContext context) {
     final canPop = ModalRoute.of(context)?.canPop ?? false;
-    final hasBack = showBack && canPop;
+    final hasBack = showBack && (canPop || onBack != null);
     final bottomInset = math.max(
       32.0,
       MediaQuery.viewPaddingOf(context).bottom,
     );
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: _isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: _isDark ? AppSystemUi.light : AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: backgroundColor,
         body: SafeArea(
@@ -72,7 +78,9 @@ class KidsScaffold extends StatelessWidget {
                         KidsIconButton(
                           asset: KidsAssets.arrowLeft,
                           tooltip: 'Back',
-                          onPressed: () => Navigator.of(context).maybePop(),
+                          onPressed: canPop
+                              ? () => Navigator.of(context).maybePop()
+                              : onBack,
                         )
                       else
                         const SizedBox(height: 56),

@@ -13,6 +13,7 @@ import '../../../ask_ride/domain/entities/ride_schedule.dart';
 import '../../../ask_ride/presentation/providers/ask_ride_provider.dart';
 import '../../domain/entities/ride_summary.dart';
 import '../../../safety/presentation/blocked_users.dart';
+import '../../data/data_sources/remote/ride_invites.dart';
 
 /// Registers everything owned by the Home feature group.
 /// Called from `lib/core/di/injection_container.dart`.
@@ -63,6 +64,8 @@ void registerHomeDependencies(GetIt sl) {
         rideSummary: () => _askRideSummary(sl<AskRideProvider>()),
         requestIds: () => sl<AskRideProvider>().createdRequestIds,
         sendRideMessage: sl(),
+        inviteToRide: (requestIds, parentIds) =>
+            inviteToRideRequest(sl(), requestIds, parentIds),
         createRideGroup: sl(),
         sendGroupMessage: sl(),
         createRide: () => sl<AskRideProvider>().submit(),

@@ -22,6 +22,7 @@ import '../widgets/ride_map.dart';
 import '../widgets/ride_start_view.dart';
 import '../widgets/ride_state_view.dart';
 import '../widgets/ride_styles.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F22 · Live tracking. Reads [RideArgs] from the route; the requesting
 /// parent watches the car, the Ride Partner also gets Start ride /
@@ -174,7 +175,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: AppSystemUi.light,
       child: Scaffold(
         backgroundColor: AppColors.inverse,
         body: Stack(

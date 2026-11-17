@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import 'app_colors.dart';
 import 'app_text_styles.dart';
+import 'app_system_ui.dart';
 
 abstract final class AppTheme {
   static final ButtonStyle _inkTextButton = TextButton.styleFrom(
@@ -42,7 +42,7 @@ abstract final class AppTheme {
         foregroundColor: AppColors.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
+        systemOverlayStyle: AppSystemUi.dark,
       ),
       // Lime text is unreadable on white: dialog / text buttons use ink.
       textButtonTheme: TextButtonThemeData(style: _inkTextButton),

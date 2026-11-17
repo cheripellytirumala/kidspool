@@ -30,6 +30,7 @@ import '../widgets/schedule_sheets.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/screens/map_address_picker_screen.dart';
 import '../../domain/entities/saved_place.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// G1 · Ask for a ride · details.
 ///
@@ -83,7 +84,7 @@ class _AskRideDetailsViewState extends State<_AskRideDetailsView> {
     final provider = context.watch<AskRideProvider>();
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         // The initial load shows a centered AppLoader in place of the form.

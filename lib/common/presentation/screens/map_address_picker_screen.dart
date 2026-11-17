@@ -17,6 +17,7 @@ import '../theme/app_text_styles.dart';
 import '../widgets/app_button.dart';
 import '../widgets/app_icon.dart';
 import '../widgets/app_loader.dart';
+import '../theme/app_system_ui.dart';
 
 /// Full-screen Google map with a search field. The user searches an address
 /// (Places autocomplete) or drags the map under the pin, then confirms.
@@ -162,7 +163,7 @@ class _MapAddressPickerViewState extends State<_MapAddressPickerView> {
     final initial = widget.initial;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.surface,
         resizeToAvoidBottomInset: false,

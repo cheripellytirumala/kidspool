@@ -6,6 +6,7 @@ import '../../core/router/app_routes.dart';
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
 import '../theme/app_text_styles.dart';
+import '../theme/app_system_ui.dart';
 
 /// In-app web page (Terms, Privacy Policy). Reads [WebPageArgs].
 class WebPageScreen extends StatefulWidget {
@@ -67,7 +68,7 @@ class _WebPageScreenState extends State<WebPageScreen> {
   Widget build(BuildContext context) {
     final controller = _controller;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: SafeArea(

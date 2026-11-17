@@ -11,6 +11,7 @@ import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/ride_groups_provider.dart';
 import '../widgets/group_chat_widgets.dart';
 import '../widgets/messages_common.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// "Your ride groups" (Home › Your ride group › See all): every group the
 /// user is in; tapping one opens its chat.
@@ -51,7 +52,7 @@ class _RideGroupsView extends StatelessWidget {
     final provider = context.watch<RideGroupsProvider>();
     final groups = provider.groups;
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: AppLoadingOverlay(
