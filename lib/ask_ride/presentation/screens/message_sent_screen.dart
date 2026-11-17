@@ -11,6 +11,7 @@ import '../../core/constants/ask_ride_assets.dart';
 import '../providers/ask_ride_provider.dart';
 import '../widgets/ask_ride_common.dart';
 import '../widgets/ask_ride_text_styles.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F20 · Message sent to all selected parents (success).
 ///
@@ -62,7 +63,7 @@ class _MessageSentView extends StatelessWidget {
     };
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: PopScope(
         // Going back would re-open the families sheet for a request that
         // was already sent.

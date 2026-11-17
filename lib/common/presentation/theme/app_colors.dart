@@ -17,7 +17,9 @@ abstract final class AppColors {
 
   // Text
   static const Color textPrimary = Color(0xFF0F0F0F); // text/primary
-  static const Color textSecondary = Color(0xFF808080); // text/secondary
+  // Darker than Figma's #808080 (3.4:1 on bg/surface) to meet WCAG AA
+  // 4.5:1 for helper and placeholder text.
+  static const Color textSecondary = Color(0xFF5E5E5E); // text/secondary
   static const Color textOnLime = Color(0xFF0F0F0F); // text/on-lime
   static const Color textOnDark = Color(0xFFFFFFFF); // text/on-dark
   static const Color textOnDarkMuted = Color(0xFF9A9A9A); // text/on-dark-muted

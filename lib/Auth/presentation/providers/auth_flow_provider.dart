@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -6,6 +8,7 @@ import '../../../common/core/error/exceptions.dart';
 import '../../../common/core/services/location_service.dart';
 import '../../../common/core/services/photo_picker.dart';
 import '../../../common/domain/entities/my_status.dart';
+import '../../../common/domain/entities/picked_address.dart';
 import '../../core/constants/auth_api_constants.dart';
 import '../../data/data_sources/local/license_reader.dart';
 import '../../domain/entities/auth_requests.dart';
@@ -178,17 +181,95 @@ class AuthFlowProvider extends ChangeNotifier {
   String get addressLabel =>
       [_street.trim(), _apt.trim()].where((part) => part.isNotEmpty).join(', ');
 
-  bool get isProfileComplete =>
-      _firstName.trim().isNotEmpty &&
-      _lastName.trim().isNotEmpty &&
-      (_addressSaved ||
-          (_street.trim().isNotEmpty &&
-              _zip.trim().isNotEmpty &&
-              _city.trim().isNotEmpty &&
-              _stateCode.trim().isNotEmpty)) &&
-      _role != null &&
-      _isGuardian &&
-      _agreedToTerms;
+  bool get isProfileComplete => missingFields.isEmpty;
+
+  /// Required fields still empty on About you, in screen order.
+  Set<ProfileField> get missingFields => {
+    if (_firstName.trim().isEmpty) ProfileField.firstName,
+    if (_lastName.trim().isEmpty) ProfileField.lastName,
+    if (!_addressSaved) ...{
+      if (_street.trim().isEmpty) ProfileField.street,
+      if (_city.trim().isEmpty) ProfileField.city,
+      if (_stateCode.trim().isEmpty) ProfileField.state,
+      if (_zip.trim().isEmpty) ProfileField.zip,
+    },
+    if (_role == null) ProfileField.role,
+    if (!_isGuardian) ProfileField.guardian,
+    if (!_agreedToTerms) ProfileField.terms,
+  };
+
+  bool _showErrors = false;
+
+  /// Set when Continue is tapped with fields missing: each one then shows
+  /// its own message until it is filled in.
+  bool get showErrors => _showErrors;
+
+  /// The message under [field], or null when it is filled in (or Continue
+  /// hasn't been tried yet).
+  String? errorFor(ProfileField field) =>
+      _showErrors && missingFields.contains(field) ? field.message : null;
+
+  /// Continue with fields missing: shows each one's message and returns a
+  /// short summary for a snack bar.
+  String revealMissing() {
+    _update(() => _showErrors = true);
+    final missing = missingFields;
+    return missing.length == 1
+        ? missing.first.message
+        : 'Fill in the ${missing.length} highlighted fields to continue.';
+  }
+
+  /// Where the home pin goes on the map: the picked / located / typed
+  /// address, once known.
+  ResolvedAddress? get mapPoint => _coordinates;
+
+  /// Address chosen on the full-screen map: fills the fields and the pin.
+  void applyPickedAddress(PickedAddress picked) {
+    _geocodeTimer?.cancel();
+    _geocodeToken++;
+    _update(() {
+      if (picked.street.isNotEmpty) _street = picked.street;
+      if (picked.city.isNotEmpty) _city = picked.city;
+      if (picked.stateCode.isNotEmpty) _stateCode = picked.stateCode;
+      if (picked.zip.isNotEmpty) _zip = picked.zip;
+      _coordinates = ResolvedAddress(
+        latitude: picked.latitude,
+        longitude: picked.longitude,
+        street: _street,
+        city: _city,
+        stateCode: _stateCode,
+        zip: _zip,
+      );
+    });
+  }
+
+  Timer? _geocodeTimer;
+  int _geocodeToken = 0;
+
+  /// Moves the map pin to the typed address, once typing pauses.
+  void _scheduleGeocode() {
+    _geocodeTimer?.cancel();
+    final token = ++_geocodeToken;
+    if (_street.trim().isEmpty ||
+        (_city.trim().isEmpty && _zip.trim().isEmpty)) {
+      return;
+    }
+    _geocodeTimer = Timer(const Duration(milliseconds: 900), () async {
+      try {
+        final found = await _location.geocode(
+          street: _street.trim(),
+          city: _city.trim(),
+          stateCode: _stateCode.trim(),
+          zip: _zip.trim(),
+        );
+        if (token != _geocodeToken || _coordinates != null) return;
+        _coordinates = found;
+        notifyListeners();
+      } on Object {
+        // Not found yet (still typing): the pin stays where it was.
+      }
+    });
+  }
 
   void setFirstName(String value) => _update(() => _firstName = value);
   void setLastName(String value) => _update(() => _lastName = value);
@@ -210,6 +291,8 @@ class AuthFlowProvider extends ChangeNotifier {
     _update(() => _isLocating = true);
     try {
       final address = await _location.currentAddress();
+      _geocodeTimer?.cancel();
+      _geocodeToken++;
       _coordinates = address;
       if (address.street.isNotEmpty) _street = address.street;
       if (address.zip.isNotEmpty) _zip = address.zip;
@@ -518,6 +601,7 @@ class AuthFlowProvider extends ChangeNotifier {
   void _updateAddress(VoidCallback change) {
     _coordinates = null;
     _update(change);
+    _scheduleGeocode();
   }
 
   void _update(VoidCallback change) {
@@ -540,3 +624,20 @@ enum LicenseNameCheck {
 
 /// Name and phone saved on the user's profile (`profiles`).
 typedef SavedProfile = ({String firstName, String lastName, String? phone});
+
+/// Required fields on About you, with the message shown under each.
+enum ProfileField {
+  firstName('Enter your first name'),
+  lastName('Enter your last name'),
+  street('Enter your street address'),
+  city('Enter your city'),
+  state('Enter your state'),
+  zip('Enter your ZIP code'),
+  role('Choose how you’ll use KidsPool'),
+  guardian('Confirm you’re a parent or guardian, 18 or older'),
+  terms('Agree to the Terms and Privacy Policy');
+
+  const ProfileField(this.message);
+
+  final String message;
+}

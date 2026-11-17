@@ -7,7 +7,7 @@ import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_screen.dart';
 
 /// Layout of "S03 · Phone number": headline, the phone [field], privacy note
-/// and the "Send OTP" button pinned to the bottom. Also rendered behind the
+/// and the "Send code" button pinned to the bottom. Also rendered behind the
 /// S03a code sheet.
 class PhoneNumberView extends StatelessWidget {
   const PhoneNumberView({
@@ -26,7 +26,7 @@ class PhoneNumberView extends StatelessWidget {
     return AppScreen(
       title: 'Let’s get you\nstarted',
       subtitle: 'Enter your mobile number - we’ll text you a code.',
-      bottom: AppButton(label: 'Send OTP', onPressed: onSendOtp),
+      bottom: AppButton(label: 'Send code', onPressed: onSendOtp),
       children: [field, const _PrivacyNote()],
     );
   }

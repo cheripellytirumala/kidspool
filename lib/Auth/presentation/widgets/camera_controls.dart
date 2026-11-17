@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../common/presentation/theme/app_colors.dart';
-import '../../../common/presentation/theme/app_dimens.dart';
+import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../core/constants/auth_assets.dart';
 import '../../core/constants/auth_styles.dart';
 
@@ -47,7 +47,8 @@ class DarkChoiceChip extends StatelessWidget {
   }
 }
 
-/// Small raised pill with a capture tip ("Good light").
+/// A capture tip ("Good light"): a lime check and plain text, so it reads
+/// as advice, not as a button.
 class CameraHintPill extends StatelessWidget {
   const CameraHintPill(this.label, {super.key});
 
@@ -55,16 +56,16 @@ class CameraHintPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: AuthColors.inverseRaised,
-        borderRadius: BorderRadius.circular(AppDimens.radiusPill),
-      ),
-      child: Text(
-        label,
-        style: AuthTextStyles.captionS.copyWith(color: AppColors.textOnDark),
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.check_rounded, size: 18, color: AppColors.lime),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: AppTextStyles.label.copyWith(color: AppColors.textOnDark),
+        ),
+      ],
     );
   }
 }

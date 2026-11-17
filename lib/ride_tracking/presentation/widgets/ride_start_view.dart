@@ -14,6 +14,7 @@ import 'ride_avatar.dart';
 import 'ride_buttons.dart';
 import 'ride_map.dart';
 import 'ride_styles.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F20 · The Ride Partner's view before the ride starts: headline, a map
 /// card to the destination, the kids, Message / Call and Start ride.
@@ -42,7 +43,7 @@ class RideStartView extends StatelessWidget {
     final t = tracking;
     final parentName = t.parent?.firstName ?? 'the parent';
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: SafeArea(

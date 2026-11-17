@@ -37,6 +37,7 @@ import '../widgets/profile_header.dart';
 import '../widgets/profile_row.dart';
 import '../widgets/profile_section_label.dart';
 import '../widgets/profile_sheets.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// S18 · Profile.
 ///
@@ -69,7 +70,7 @@ class _ProfileView extends StatelessWidget {
     final overview = provider.overview;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: AppLoadingOverlay(

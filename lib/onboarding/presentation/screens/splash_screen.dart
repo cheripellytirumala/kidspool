@@ -11,6 +11,7 @@ import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/app_version_provider.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// S01 · Splash. Checks the app version, then continues to sign-in or back
 /// to where a signed-in user left off.
@@ -41,9 +42,20 @@ class _SplashScreenState extends State<SplashScreen> {
     super.dispose();
   }
 
-  void _onStatusChanged() {
-    if (!mounted || !_provider.status.isSuccess) return;
+  /// How long the splash stays up at least, so it is seen on every launch
+  /// (the version check alone can return in a few milliseconds).
+  static const Duration minimumDisplay = Duration(milliseconds: 1500);
+
+  final Stopwatch _shown = Stopwatch()..start();
+  bool _leaving = false;
+
+  Future<void> _onStatusChanged() async {
+    if (!mounted || _leaving || !_provider.status.isSuccess) return;
     if (_provider.isUpdateRequired) return; // Stay here: update message.
+    _leaving = true;
+    final wait = minimumDisplay - _shown.elapsed;
+    if (wait > Duration.zero) await Future<void>.delayed(wait);
+    if (!mounted) return;
     Navigator.of(context).pushReplacementNamed(_provider.nextRoute);
   }
 
@@ -53,7 +65,7 @@ class _SplashScreenState extends State<SplashScreen> {
     final busy = provider.status.isInitial || provider.status.isLoading;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
+      value: AppSystemUi.light,
       child: Scaffold(
         backgroundColor: AppColors.inverse,
         body: LayoutBuilder(

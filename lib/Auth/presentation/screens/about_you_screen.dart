@@ -1,18 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' show LatLng;
 import 'package:provider/provider.dart';
 
 import '../../../common/core/constants/app_constants.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
+import '../../../common/domain/entities/picked_address.dart';
+import '../../../common/presentation/screens/map_address_picker_screen.dart';
 import '../../../common/presentation/theme/app_assets.dart';
+import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_checkbox_row.dart';
 import '../../../common/presentation/widgets/app_chip_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_labeled_field.dart';
-import '../../../common/presentation/widgets/app_pill_input.dart';
 import '../../../common/presentation/widgets/app_screen.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
@@ -20,10 +23,10 @@ import '../../../common/presentation/widgets/app_section_label.dart';
 import '../../../common/presentation/widgets/app_select_card.dart';
 import '../../core/constants/auth_assets.dart';
 import '../../domain/entities/ride_role.dart';
+import '../../../profile/domain/entities/ride_mode.dart';
 import '../providers/auth_flow_provider.dart';
 import '../widgets/home_map_preview.dart';
 import '../widgets/profile_photo_button.dart';
-import '../widgets/switch_tile.dart';
 import '../widgets/verified_phone_tile.dart';
 
 /// Route arguments for [AboutYouScreen].
@@ -62,6 +65,9 @@ class _AboutYouBody extends StatefulWidget {
 }
 
 class _AboutYouBodyState extends State<_AboutYouBody> {
+  /// Two name fields (56 each) and the 8 between them.
+  static const double _nameFieldsHeight = 120;
+
   late final AuthFlowProvider _flow = context.read<AuthFlowProvider>();
 
   late final TextEditingController _firstName = TextEditingController(
@@ -142,8 +148,39 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
     if (error != null && mounted) showAppSnack(context, error);
   }
 
+  /// Full map: search or drag to the home, then fill the fields from it.
+  Future<void> _pickOnMap() async {
+    FocusScope.of(context).unfocus();
+    final point = _flow.mapPoint;
+    final picked = await MapAddressPickerScreen.open(
+      context,
+      title: 'Your home address',
+      initial: point == null
+          ? null
+          : PickedAddress(
+              latitude: point.latitude,
+              longitude: point.longitude,
+              street: _flow.street,
+              city: _flow.city,
+              stateCode: _flow.stateCode,
+              zip: _flow.zip,
+            ),
+    );
+    if (picked == null || !mounted) return;
+    _flow.applyPickedAddress(picked);
+    _street.text = _flow.street;
+    _zip.text = _flow.zip;
+    _city.text = _flow.city;
+    _stateCode.text = _flow.stateCode;
+  }
+
   Future<void> _continue() async {
     FocusScope.of(context).unfocus();
+    if (!_flow.isProfileComplete) {
+      // Say which field is missing, next to it.
+      showAppSnack(context, _flow.revealMissing());
+      return;
+    }
     final error = await _flow.submitProfile();
     if (!mounted) return;
     if (error != null) return showAppSnack(context, error);
@@ -183,35 +220,50 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
   }
 
   Widget _buildForm(AuthFlowProvider flow) {
+    final point = flow.mapPoint;
     return AppScreen(
       title: 'About you',
       showBack: widget.fromProfile,
       children: [
+        // The photo is as tall as the two name fields beside it.
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ProfilePhotoButton(imagePath: flow.selfiePath, onTap: _addPhoto),
+            SizedBox(
+              width: 96,
+              height: _nameFieldsHeight,
+              child: ProfilePhotoButton(
+                imagePath: flow.selfiePath,
+                onTap: _addPhoto,
+              ),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 children: [
                   AppLabeledField(
-                    label: 'First Name',
+                    label: 'First name',
                     controller: _firstName,
                     textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.words,
                     onChanged: flow.setFirstName,
+                    errorText: flow.errorFor(ProfileField.firstName),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 8),
                   AppLabeledField(
-                    label: 'Last Name',
+                    label: 'Last name',
                     controller: _lastName,
                     textInputAction: TextInputAction.next,
+                    textCapitalization: TextCapitalization.words,
                     onChanged: flow.setLastName,
+                    errorText: flow.errorFor(ProfileField.lastName),
                   ),
                 ],
               ),
             ),
           ],
         ),
+        const AppSectionLabel('Home address'),
         Align(
           alignment: Alignment.centerLeft,
           child: AppChipButton(
@@ -224,89 +276,82 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
         ),
         HomeMapPreview(
           label: flow.addressLabel,
-          onTap: flow.isLocating ? null : _useCurrentLocation,
+          point: point == null ? null : LatLng(point.latitude, point.longitude),
+          onTap: flow.isLocating ? null : _pickOnMap,
         ),
-        AppPillInput(
+        AppLabeledField(
+          label: 'Street address',
           controller: _street,
-          hint: 'Street address',
           textInputAction: TextInputAction.next,
+          textCapitalization: TextCapitalization.words,
           onChanged: flow.setStreet,
-          leading: SizedBox.square(
-            dimension: 24,
-            child: Center(
-              child: SvgPicture.asset(
-                AuthAssets.iconHomeGlyph,
-                width: 19,
-                height: 18.2,
-              ),
-            ),
+          errorText: flow.errorFor(ProfileField.street),
+          leading: SvgPicture.asset(
+            AuthAssets.iconHomeGlyph,
+            width: 19,
+            height: 18.2,
           ),
         ),
-        Row(
-          children: [
-            Expanded(
-              child: AppPillInput(
-                controller: _apt,
-                hint: 'Apt / Unit (optional)',
-                textInputAction: TextInputAction.next,
-                onChanged: flow.setApt,
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 120,
-              child: AppPillInput(
-                controller: _zip,
-                hint: 'ZIP',
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                onChanged: flow.setZip,
-              ),
-            ),
-          ],
+        AppLabeledField(
+          label: 'Apt / Unit (optional)',
+          controller: _apt,
+          textInputAction: TextInputAction.next,
+          onChanged: flow.setApt,
+        ),
+        // US order: City, State, ZIP.
+        AppLabeledField(
+          label: 'City',
+          controller: _city,
+          textInputAction: TextInputAction.next,
+          textCapitalization: TextCapitalization.words,
+          onChanged: flow.setCity,
+          errorText: flow.errorFor(ProfileField.city),
         ),
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: AppPillInput(
-                controller: _city,
-                hint: 'City',
-                textInputAction: TextInputAction.next,
-                onChanged: flow.setCity,
-              ),
-            ),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 100,
-              child: AppPillInput(
+              child: AppLabeledField(
+                label: 'State',
                 controller: _stateCode,
-                hint: 'State',
-                textInputAction: TextInputAction.done,
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.characters,
                 onChanged: flow.setStateCode,
+                errorText: flow.errorFor(ProfileField.state),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: AppLabeledField(
+                label: 'ZIP code',
+                controller: _zip,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                onChanged: flow.setZip,
+                errorText: flow.errorFor(ProfileField.zip),
               ),
             ),
           ],
         ),
-        SwitchTile(
-          title: 'Set as default address',
-          subtitle: 'Matching will use this address',
-          value: flow.isDefaultAddress,
-          onChanged: flow.setDefaultAddress,
+        Text(
+          'We use your home to find families near you. You can add more '
+          'addresses later in Profile.',
+          style: AppTextStyles.caption,
         ),
         // Read-only: the number verified by OTP (or from the profile).
         if (flow.internationalPhone.isNotEmpty)
           VerifiedPhoneTile(phone: flow.internationalPhone),
         const AppSectionLabel('I want to'),
         AppSelectCard(
-          title: 'I need rides',
-          subtitle: 'Ask families at your kids’ schools and clubs',
+          title: RideMode.seeker.title,
+          subtitle: RideMode.seeker.description,
           icon: const AppIcon(AppAssets.iconKid, size: 22),
           selected: flow.role == RideRole.seeker,
           onTap: () => flow.selectRole(RideRole.seeker),
         ),
         AppSelectCard(
-          title: 'I can offer and request rides',
-          subtitle: 'Ask for rides and help others',
+          title: RideMode.both.title,
+          subtitle: RideMode.both.description,
           // Figma shows the car when selected (1018:7939) and the heart when
           // not (1018:8075).
           icon: flow.role == RideRole.both
@@ -319,11 +364,15 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
           selected: flow.role == RideRole.both,
           onTap: () => flow.selectRole(RideRole.both),
         ),
+        if (flow.errorFor(ProfileField.role) case final error?)
+          _FieldError(error),
         AppCheckboxRow(
           value: flow.isGuardian,
           label: 'I’m a parent or legal guardian, 18 or older',
           onChanged: flow.setGuardian,
         ),
+        if (flow.errorFor(ProfileField.guardian) case final error?)
+          _FieldError(error),
         AppCheckboxRow(
           value: flow.agreedToTerms,
           label: 'I agree to the Terms and Privacy Policy',
@@ -334,18 +383,34 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
           },
           onChanged: flow.setAgreedToTerms,
         ),
+        if (flow.errorFor(ProfileField.terms) case final error?)
+          _FieldError(error),
         const SizedBox(height: 10),
-        if (flow.selfiePath == null)
-          Text(
-            'Add a photo of yourself so other parents can recognise you.',
-            style: AppTextStyles.caption,
-          ),
         AppButton(
           label: widget.fromProfile ? 'Save' : 'Continue',
           isLoading: flow.isSaving,
-          onPressed: flow.isProfileComplete ? _continue : null,
+          // Stays tappable: with fields missing it points them out.
+          onPressed: _continue,
         ),
       ],
+    );
+  }
+}
+
+/// A required choice that's still missing (red, under it).
+class _FieldError extends StatelessWidget {
+  const _FieldError(this.message);
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        message,
+        style: AppTextStyles.caption.copyWith(color: AppColors.danger),
+      ),
     );
   }
 }

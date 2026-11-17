@@ -13,12 +13,16 @@ import 'common/presentation/widgets/extra_top_inset.dart';
 import 'notifications/core/services/ride_notifications.dart';
 import 'onboarding/presentation/providers/app_version_provider.dart';
 import 'ride_tracking/presentation/widgets/ride_alerts_host.dart';
+import 'package:flutter/services.dart';
+import 'common/presentation/theme/app_system_ui.dart';
 
 /// Lets the ride alerts banner (above the Navigator) open screens.
 final GlobalKey<NavigatorState> rootNavigatorKey = GlobalKey<NavigatorState>();
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // White Android navigation bar by default (screens override per theme).
+  SystemChrome.setSystemUIOverlayStyle(AppSystemUi.dark);
   await initDependencies();
   // S19 / S20 system notifications + push (push stays off without Firebase
   // config). Not awaited: never delays the first frame.

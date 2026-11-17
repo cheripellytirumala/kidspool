@@ -1,7 +1,8 @@
-/// How the parent uses KidPool ("I want to" on About you). Stored on the
+/// How the parent uses KidPool ("I want to" on About you and Profile —
+/// the same names on both). Stored on the
 /// device under `AppConstants.cacheKeyRideRole` (`seeker` / `both`).
 enum RideMode {
-  /// "I need rides" — only asks for rides.
+  /// "I get rides only" — only asks for rides.
   seeker,
 
   /// "I get & give rides" — asks for rides and offers seats.

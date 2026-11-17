@@ -23,6 +23,8 @@ class AppLabeledField extends StatefulWidget {
     this.large = false,
     this.readOnly = false,
     this.inputFormatters,
+    this.errorText,
+    this.textCapitalization = TextCapitalization.none,
   });
 
   final String label;
@@ -39,6 +41,10 @@ class AppLabeledField extends StatefulWidget {
   /// Uses Heading/H3 (20px) for the value, as on the phone-number screen.
   final bool large;
   final List<TextInputFormatter>? inputFormatters;
+
+  /// Shown in red under the field (and as a red border) when set.
+  final String? errorText;
+  final TextCapitalization textCapitalization;
 
   @override
   State<AppLabeledField> createState() => _AppLabeledFieldState();
@@ -66,19 +72,25 @@ class _AppLabeledFieldState extends State<AppLabeledField> {
         : AppTextStyles.title;
     final focused = _focusNode.hasFocus;
 
-    return GestureDetector(
+    final error = widget.errorText;
+    final field = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: _focusNode.requestFocus,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
+        // The border eats into the padding so the field never changes size.
         padding: EdgeInsets.symmetric(
-          horizontal: focused ? 12 : 14,
-          vertical: focused ? 8 : 10,
+          horizontal: focused ? 12 : (error != null ? 12.5 : 14),
+          vertical: focused ? 8 : (error != null ? 8.5 : 10),
         ),
         decoration: BoxDecoration(
           color: AppColors.surface,
           borderRadius: BorderRadius.circular(AppDimens.radiusField),
-          border: focused ? Border.all(color: AppColors.ink, width: 2) : null,
+          border: focused
+              ? Border.all(color: AppColors.ink, width: 2)
+              : error != null
+              ? Border.all(color: AppColors.danger, width: 1.5)
+              : null,
         ),
         child: Row(
           children: [
@@ -101,6 +113,7 @@ class _AppLabeledFieldState extends State<AppLabeledField> {
                     keyboardType: widget.keyboardType,
                     textInputAction: widget.textInputAction,
                     inputFormatters: widget.inputFormatters,
+                    textCapitalization: widget.textCapitalization,
                     style: valueStyle,
                     decoration: InputDecoration(
                       isCollapsed: true,
@@ -121,6 +134,21 @@ class _AppLabeledFieldState extends State<AppLabeledField> {
           ],
         ),
       ),
+    );
+    if (error == null) return field;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        field,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+          child: Text(
+            error,
+            style: AppTextStyles.caption.copyWith(color: AppColors.danger),
+          ),
+        ),
+      ],
     );
   }
 }

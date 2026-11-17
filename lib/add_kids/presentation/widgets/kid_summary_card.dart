@@ -36,7 +36,11 @@ class KidSummaryCard extends StatelessWidget {
                   spacing: 2,
                   children: [
                     Text(
-                      child.firstName,
+                      // Full name, matching the initials in the avatar.
+                      [
+                        child.firstName,
+                        child.lastName,
+                      ].where((p) => p.trim().isNotEmpty).join(' '),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AppTextStyles.headingH3,

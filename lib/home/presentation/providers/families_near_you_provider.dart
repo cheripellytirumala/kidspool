@@ -56,6 +56,8 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     RideSummary? Function()? rideSummary,
     List<String> Function()? requestIds,
     SendRideMessage? sendRideMessage,
+    Future<String?> Function(List<String> requestIds, List<String> parentIds)?
+    inviteToRide,
     CreateRideGroup? createRideGroup,
     SendGroupMessage? sendGroupMessage,
     Future<String?> Function()? createRide,
@@ -76,6 +78,7 @@ class FamiliesNearYouProvider extends ChangeNotifier {
        _rideSummary = rideSummary,
        _requestIds = requestIds,
        _sendRideMessage = sendRideMessage,
+       _inviteToRide = inviteToRide,
        _blockChanges = blockChanges {
     _blockChanges?.addListener(notifyListeners);
   }
@@ -99,6 +102,15 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   /// into the first one's chat with each selected parent.
   final List<String> Function()? _requestIds;
   final SendRideMessage? _sendRideMessage;
+
+  /// Gives the picked parents the ride request (so they can chat and tap
+  /// "I can help"), even when the server didn't pick them as nearby
+  /// drivers. Returns an error or null.
+  final Future<String?> Function(
+    List<String> requestIds,
+    List<String> parentIds,
+  )?
+  _inviteToRide;
   final CreateRideGroup? _createRideGroup;
   final SendGroupMessage? _sendGroupMessage;
 
@@ -469,6 +481,12 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     }
     _isSending = true;
     notifyListeners();
+    // Best effort: parents the server already notified get it anyway;
+    // for the rest, the send below reports what failed.
+    await _inviteToRide?.call(
+      _requestIds?.call() ?? [requestId],
+      _selectedIds.toList(),
+    );
     final body = message;
     // After asking for a ride: the ride is posted after the Hi.
     final ride = _startedInSelectMode ? _rideMessage?.call() : null;

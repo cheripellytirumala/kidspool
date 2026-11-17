@@ -393,6 +393,53 @@ void main() {
         expect(send.calls, isEmpty);
       });
 
+      test('invites the picked parents before sending the Hi', () async {
+        final send = _FakeSend();
+        final log = <String>[];
+        final p = FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(
+            _FakeRepository(
+              () async =>
+                  Right(FamiliesNearMe(families: families, hasSchool: true)),
+            ),
+          ),
+          requestIds: () => const ['r1', 'r2'],
+          sendRideMessage: send,
+          inviteToRide: (requests, parents) async {
+            log.add('invite ${requests.join(',')} → ${parents.join(',')}');
+            expect(send.calls, isEmpty, reason: 'invite comes first');
+            return null;
+          },
+        );
+        await p.load();
+        p.toggle(families[0]);
+        p.toggle(families[3]);
+        final (sent, error) = await p.sendMessage();
+        expect(error, isNull);
+        expect(sent, 2);
+        expect(log, ['invite r1,r2 → a,d']);
+      });
+
+      test('a failed invite does not stop the Hi', () async {
+        final send = _FakeSend();
+        final p = FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(
+            _FakeRepository(
+              () async =>
+                  Right(FamiliesNearMe(families: families, hasSchool: true)),
+            ),
+          ),
+          requestIds: () => const ['r1'],
+          sendRideMessage: send,
+          inviteToRide: (_, _) async => 'Not available yet.',
+        );
+        await p.load();
+        p.toggle(families[0]);
+        final (sent, error) = await p.sendMessage();
+        expect(error, isNull);
+        expect(sent, 1);
+      });
+
       test('reports the server error when no parent got it', () async {
         final p = sender(_FakeSend(fail: true));
         await p.load();

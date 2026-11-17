@@ -29,6 +29,7 @@ import '../widgets/family_preview_card.dart';
 import '../widgets/home_hero_card.dart';
 import '../widgets/home_ride_map_card.dart';
 import '../widgets/ride_group_card.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// Home dashboard.
 ///
@@ -229,7 +230,7 @@ class _HomeView extends StatelessWidget {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: AppLoadingOverlay(

@@ -58,7 +58,7 @@ abstract final class ApiErrorMessages {
     'group_full': 'Groups can have up to 8 families.',
     // App version
     'invalid_platform': 'This device isn’t supported.',
-    'invalid_version': 'This app version isn’t recognised.',
+    'invalid_version': 'This app version isn’t recognized.',
     'platform_not_configured': 'This device isn’t supported yet.',
   };
 

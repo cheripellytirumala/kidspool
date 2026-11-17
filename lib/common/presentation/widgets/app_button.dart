@@ -31,7 +31,7 @@ class AppButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (background, foreground, border) = switch (variant) {
+    var (background, foreground, border) = switch (variant) {
       AppButtonVariant.lime => (AppColors.lime, AppColors.textOnLime, null),
       AppButtonVariant.dark => (AppColors.ink, AppColors.textOnDark, null),
       AppButtonVariant.light => (
@@ -46,6 +46,15 @@ class AppButton extends StatelessWidget {
       ),
     };
 
+    // Disabled: solid grey with dark text instead of a faded button, so the
+    // label stays readable (WCAG contrast) yet clearly inactive.
+    final disabled = !_enabled && !isLoading;
+    if (disabled && variant != AppButtonVariant.outline) {
+      background = AppColors.surfaceStrong;
+      foreground = AppColors.textSecondary;
+      border = null;
+    }
+
     return Semantics(
       button: true,
       enabled: _enabled,
@@ -53,7 +62,7 @@ class AppButton extends StatelessWidget {
       excludeSemantics: true,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 150),
-        opacity: _enabled || isLoading ? 1 : 0.35,
+        opacity: disabled && variant == AppButtonVariant.outline ? 0.5 : 1,
         child: DecoratedBox(
           decoration: BoxDecoration(
             color: background,

@@ -91,6 +91,11 @@ class _AddChildViewState extends State<_AddChildView> {
     setState(() => _ready = true);
   }
 
+  /// Back when Add a child is the first screen (sign-up resumed here):
+  /// About you, the step before it.
+  void _backToAboutYou() =>
+      Navigator.of(context).pushReplacementNamed(AppRoutes.aboutYou);
+
   void _goNext() {
     if (_returnOnSave) {
       final kids = context.read<KidsProvider>();
@@ -149,6 +154,7 @@ class _AddChildViewState extends State<_AddChildView> {
       return KidsScaffold(
         title: 'Add a child',
         subtitle: 'Add each child who needs rides.',
+        onBack: _backToAboutYou,
         children: [
           if (kids.status.isFailure)
             Text(kids.errorMessage ?? '', style: KidsTextStyles.bodyM)
@@ -187,6 +193,7 @@ class _AddChildViewState extends State<_AddChildView> {
             title: 'Add a child',
             subtitle: 'Add each child who needs rides.',
             gap: 12,
+            onBack: _backToAboutYou,
             bottom: AppButton(
               label: 'Continue',
               onPressed: form.canContinue ? _goNext : null,
@@ -321,6 +328,11 @@ class _ChildFormCard extends StatelessWidget {
               );
             },
           ),
+          if (form.ageGradeError case final error?)
+            Text(
+              error,
+              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
+            ),
           KidFieldTile(
             icon: KidsAssets.heart,
             label: 'Medical notes (optional)',
@@ -414,7 +426,7 @@ class _PhotoRow extends StatelessWidget {
                 children: [
                   Text('Add a photo', style: KidsTextStyles.labelL),
                   Text(
-                    'Optional · helps the Ride Partner recognise $name',
+                    'Optional · helps the Ride Partner recognize $name',
                     style: KidsTextStyles.captionM,
                   ),
                 ],

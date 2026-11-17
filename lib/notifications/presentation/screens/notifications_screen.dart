@@ -13,6 +13,7 @@ import '../../core/constants/notifications_assets.dart';
 import '../../domain/entities/app_notification.dart';
 import '../providers/notifications_provider.dart';
 import '../widgets/notification_tile.dart';
+import '../../../common/presentation/theme/app_system_ui.dart';
 
 /// F25b · Notifications — opened from the Home bell.
 ///
@@ -67,7 +68,7 @@ class _NotificationsView extends StatelessWidget {
     final bottomInset = MediaQuery.viewPaddingOf(context).bottom;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.dark,
+      value: AppSystemUi.dark,
       child: Scaffold(
         backgroundColor: AppColors.screen,
         body: AppLoadingOverlay(

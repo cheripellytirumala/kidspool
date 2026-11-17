@@ -5,6 +5,7 @@ import '../../../common/core/services/photo_picker.dart';
 import '../../domain/entities/child.dart';
 import '../../domain/entities/place.dart';
 import 'kids_provider.dart';
+import '../../domain/entities/grade_age.dart';
 
 /// Form state of F06 · Add a child. One instance per screen.
 ///
@@ -80,7 +81,17 @@ class AddChildFormProvider extends ChangeNotifier {
       !isSaving &&
       firstName.text.trim().isNotEmpty &&
       _dateOfBirth != null &&
-      _grade != null;
+      _grade != null &&
+      ageGradeError == null;
+
+  /// Set when the age and the grade don't go together (e.g. 16 years and
+  /// Grade 2); shown under them and blocks Save.
+  String? get ageGradeError {
+    final dob = _dateOfBirth;
+    final grade = _grade;
+    if (dob == null || grade == null) return null;
+    return GradeAge.mismatch(age: Child.ageOn(dob), grade: grade);
+  }
 
   /// Continue is available once there is at least one kid and no open form.
   bool get canContinue => !_isOpen && _kids.hasChildren;
@@ -162,6 +173,7 @@ class AddChildFormProvider extends ChangeNotifier {
   /// Saves the open form on the server. Returns an error message, or `null`
   /// on success.
   Future<String?> save() async {
+    if (ageGradeError case final error?) return error;
     if (!canSave) return 'Please fill in the required fields.';
     final id = await _kids.saveChild(
       ChildDraft(
