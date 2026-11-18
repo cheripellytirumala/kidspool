@@ -49,3 +49,6 @@ app.*.map.json
 
 # Google Maps API keys (see docs/google_maps_setup.md)
 /ios/Flutter/Secrets.xcconfig
+
+# Test APKs handed to testers (not source)
+docs/testing/builds/

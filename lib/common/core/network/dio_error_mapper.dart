@@ -61,7 +61,9 @@ abstract final class DioErrorMapper {
         : null;
     final message =
         ApiErrorMessages.forCode(code, field: field, detail: details) ??
-        _readableMessage(body) ??
+        // Raw database errors ("new row for relation … violates check
+        // constraint …") are never shown to parents.
+        (_isDatabaseError(body) ? null : _readableMessage(body)) ??
         _defaultMessageFor(statusCode);
 
     if (statusCode == 401) return UnauthorizedException(message, code);
@@ -76,6 +78,19 @@ abstract final class DioErrorMapper {
       } catch (_) {}
     }
     return const {};
+  }
+
+  /// PostgREST passes Postgres errors through with their 5-character
+  /// SQLSTATE in `code` (e.g. 23514). Our own RPC errors use PT4xx codes
+  /// with a snake_case message, which are handled above.
+  static final RegExp _sqlState = RegExp(r'^[0-9A-Z]{5}$');
+
+  static bool _isDatabaseError(Map<String, dynamic> body) {
+    final code = body['code'];
+    return code is String &&
+        _sqlState.hasMatch(code) &&
+        !code.startsWith('PT') &&
+        !code.startsWith('PGRST');
   }
 
   /// A server message that is already human-readable (Auth errors, etc.).

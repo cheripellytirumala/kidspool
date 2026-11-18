@@ -243,10 +243,10 @@ void main() {
       });
       final result = await repo.getFamiliesNearMe(schoolId: 's1');
       expect(result.isRight(), isTrue);
-      expect(api.calls.single.$2, {'schoolId': 's1', 'radiusMiles': 10.0});
+      expect(api.calls.single.$2, {'schoolId': 's1', 'radiusMiles': 15.534});
 
       await repo.getFamiliesNearMe();
-      expect(api.calls.last.$2, {'radiusMiles': 10.0});
+      expect(api.calls.last.$2, {'radiusMiles': 15.534});
     });
 
     test('empty list asks get_my_kids whether a kid has a school', () async {

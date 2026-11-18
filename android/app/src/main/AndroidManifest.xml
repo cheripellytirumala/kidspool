@@ -37,6 +37,11 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <!-- Impeller (Vulkan) crashed the engine at start-up on a Redmi phone
+             (Android 16, Nov 2026): use the stable Skia renderer on Android. -->
+        <meta-data
+            android:name="io.flutter.embedding.android.EnableImpeller"
+            android:value="false" />
         <!-- Google Maps SDK key, injected from android/local.properties. -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"

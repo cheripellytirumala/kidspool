@@ -13,8 +13,8 @@ import '../widgets/place_assignment_sheet.dart';
 import '../widgets/place_search_sheet.dart';
 
 /// Where do your kids go? — one page for the whole step:
-/// - F08 (Figma 849:13732): kid tabs, "Add Facility", tip; Continue disabled.
-/// - "Add Facility" opens the F09 search sheet (849:13899 / 852:14790);
+/// - F08 (Figma 849:13732): kid tabs, "Add school or activity", tip; Continue disabled.
+/// - "Add school or activity" opens the F09 search sheet (849:13899 / 852:14790);
 ///   picking a result replaces it with the F10 "Who goes here?" sheet
 ///   (849:14061).
 /// - After Save the page shows F11 (849:13790): the kid's places, "Also:"
@@ -70,7 +70,10 @@ class _WhereKidsGoView extends StatelessWidget {
       isLoading: kids.isLoading,
       child: KidsScaffold(
         title: 'Where do your kids go?',
-        subtitle: 'Pick a child, then add their school and activities.',
+        subtitle: kids.children.length > 1
+            ? 'Pick a child, then add their school and activities.'
+            : 'Add ${kids.children.firstOrNull?.firstName ?? 'your child'}’s '
+                  'school and activities.',
         titleGap: 4,
         bottom: AppButton(
           label: hasPlaces ? 'Save' : 'Continue',

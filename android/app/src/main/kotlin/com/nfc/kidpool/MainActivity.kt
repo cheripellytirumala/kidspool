@@ -1,4 +1,4 @@
-package com.example.kidspool
+package com.nfc.kidpool
 
 import android.content.pm.PackageManager
 import io.flutter.embedding.android.FlutterActivity
