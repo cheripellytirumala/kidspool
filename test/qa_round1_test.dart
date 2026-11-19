@@ -69,7 +69,7 @@ void main() {
         expect(flow.errorFor(ProfileField.firstName), isNull);
         flow.setFirstName('Vivek');
         final summary = flow.revealMissing();
-        expect(summary, contains('highlighted'));
+        expect(summary, startsWith('Still needed:'));
         expect(flow.errorFor(ProfileField.firstName), isNull);
         expect(flow.errorFor(ProfileField.lastName), 'Enter your last name');
         expect(flow.errorFor(ProfileField.zip), 'Enter your ZIP code');

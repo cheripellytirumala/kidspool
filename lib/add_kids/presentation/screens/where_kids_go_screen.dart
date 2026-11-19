@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
+import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
+import '../../domain/entities/child.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/kids_provider.dart';
@@ -13,8 +15,8 @@ import '../widgets/place_assignment_sheet.dart';
 import '../widgets/place_search_sheet.dart';
 
 /// Where do your kids go? — one page for the whole step:
-/// - F08 (Figma 849:13732): kid tabs, "Add Facility", tip; Continue disabled.
-/// - "Add Facility" opens the F09 search sheet (849:13899 / 852:14790);
+/// - F08 (Figma 849:13732): kid tabs, "Add school or activity", tip; Continue disabled.
+/// - "Add school or activity" opens the F09 search sheet (849:13899 / 852:14790);
 ///   picking a result replaces it with the F10 "Who goes here?" sheet
 ///   (849:14061).
 /// - After Save the page shows F11 (849:13790): the kid's places, "Also:"
@@ -62,15 +64,20 @@ class _WhereKidsGoView extends StatelessWidget {
     final active = kids.activeChild;
     final needsSchool =
         returnOnSave && active != null && active.schoolId == null;
+    // Every child needs a school (an activity alone isn't enough).
     final hasPlaces = returnOnSave && active != null
         ? !needsSchool
-        : kids.anyPlaces;
+        : kids.allKidsHaveSchool;
+    final missing = returnOnSave ? const <Child>[] : kids.kidsWithoutSchool;
 
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
       child: KidsScaffold(
         title: 'Where do your kids go?',
-        subtitle: 'Pick a child, then add their school and activities.',
+        subtitle: kids.children.length > 1
+            ? 'Pick a child, then add their school and activities.'
+            : 'Add ${kids.children.firstOrNull?.firstName ?? 'your child'}’s '
+                  'school and activities.',
         titleGap: 4,
         bottom: AppButton(
           label: hasPlaces ? 'Save' : 'Continue',
@@ -81,6 +88,12 @@ class _WhereKidsGoView extends StatelessWidget {
               : () => Navigator.of(context).pushNamed(AppRoutes.allSet),
         ),
         children: [
+          if (missing.isNotEmpty && kids.anyPlaces)
+            Text(
+              'Add a school for ${missing.map((k) => k.firstName).join(', ')} '
+              'to continue — every child needs a school.',
+              style: AppTextStyles.body.copyWith(color: AppColors.danger),
+            ),
           if (needsSchool)
             Text(
               'Add ${active.firstName}’s school (School tab) to ask for '

@@ -16,6 +16,9 @@ abstract final class RideColors {
 
   /// Dotted "still to drive" route on the map.
   static const Color routeAhead = Color(0xFF9A9A9A);
+
+  /// Other routes to the same place, under the main one.
+  static const Color routeAlternative = Color(0xFFA9B1BA);
 }
 
 /// Shadows from the Figma effect styles.

@@ -9,6 +9,7 @@ import '../../../auth/presentation/screens/id_verified_screen.dart';
 import '../../../auth/presentation/screens/otp_screen.dart';
 import '../../../auth/presentation/screens/phone_number_screen.dart';
 import '../../../auth/presentation/screens/review_pending_screen.dart';
+import '../../../auth/presentation/screens/vehicle_details_screen.dart';
 import '../../../auth/presentation/screens/scan_photo_id_screen.dart';
 import '../../../home/presentation/screens/families_near_you_screen.dart';
 import '../../../home/presentation/screens/home_screen.dart';
@@ -45,6 +46,7 @@ abstract final class AppRouter {
     AppRoutes.scanPhotoId: (_) => const ScanPhotoIdScreen(),
     AppRoutes.idVerified: (_) => const IdVerifiedScreen(),
     AppRoutes.reviewPending: (_) => const ReviewPendingScreen(),
+    AppRoutes.vehicleDetails: (_) => const VehicleDetailsScreen(),
     AppRoutes.addChild: (_) => const AddChildScreen(),
     AppRoutes.yourKids: (_) => const YourKidsScreen(),
     AppRoutes.whereKidsGo: (_) => const WhereKidsGoScreen(),

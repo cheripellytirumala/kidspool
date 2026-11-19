@@ -1,0 +1,11 @@
+-- Families near you, ride-group adds and hand-picked invites now reach
+-- families within 25 km (15.5 mi) of home, matching the 25 km driver radius
+-- (2026-11-18_driver_radius_25km.sql). Applied on Supabase as migration
+-- "families_radius_25km". Changes, in short:
+--   get_families_near_me: v_radius := greatest(<requested, 1–25 mi>, 25000 m)
+--     so app builds that still ask for 10 mi get 25 km too.
+--   can_add_to_ride_group: st_dwithin(..., 25000) (was 16093.4).
+--   invite_to_ride_request: st_dwithin(..., 25000) (was 16093.44).
+-- Full bodies are in the Supabase migration "families_radius_25km"
+-- (Dashboard → Database → Migrations); invite_to_ride_request is otherwise
+-- as in 2026-11-17_invite_families_to_ride.sql, with 25000 for 16093.44.

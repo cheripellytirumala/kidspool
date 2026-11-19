@@ -177,8 +177,9 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
   Future<void> _continue() async {
     FocusScope.of(context).unfocus();
     if (!_flow.isProfileComplete) {
-      // Say which field is missing, next to it.
-      showAppSnack(context, _flow.revealMissing());
+      // Mark each missing field; the summary shows above Continue (a snack
+      // would cover the button).
+      _flow.revealMissing();
       return;
     }
     final error = await _flow.submitProfile();
@@ -366,26 +367,33 @@ class _AboutYouBodyState extends State<_AboutYouBody> {
         ),
         if (flow.errorFor(ProfileField.role) case final error?)
           _FieldError(error),
-        AppCheckboxRow(
-          value: flow.isGuardian,
-          label: 'I’m a parent or legal guardian, 18 or older',
-          onChanged: flow.setGuardian,
+        _Outlined(
+          error: flow.errorFor(ProfileField.guardian) != null,
+          child: AppCheckboxRow(
+            value: flow.isGuardian,
+            label: 'I’m a parent or legal guardian, 18 or older',
+            onChanged: flow.setGuardian,
+          ),
         ),
         if (flow.errorFor(ProfileField.guardian) case final error?)
           _FieldError(error),
-        AppCheckboxRow(
-          value: flow.agreedToTerms,
-          label: 'I agree to the Terms and Privacy Policy',
-          links: {
-            'Terms': () => _openWebPage('Terms', AppConstants.termsUrl),
-            'Privacy Policy': () =>
-                _openWebPage('Privacy Policy', AppConstants.privacyUrl),
-          },
-          onChanged: flow.setAgreedToTerms,
+        _Outlined(
+          error: flow.errorFor(ProfileField.terms) != null,
+          child: AppCheckboxRow(
+            value: flow.agreedToTerms,
+            label: 'I agree to the Terms and Privacy Policy',
+            links: {
+              'Terms': () => _openWebPage('Terms', AppConstants.termsUrl),
+              'Privacy Policy': () =>
+                  _openWebPage('Privacy Policy', AppConstants.privacyUrl),
+            },
+            onChanged: flow.setAgreedToTerms,
+          ),
         ),
         if (flow.errorFor(ProfileField.terms) case final error?)
           _FieldError(error),
         const SizedBox(height: 10),
+        if (flow.missingSummary case final summary?) _FieldError(summary),
         AppButton(
           label: widget.fromProfile ? 'Save' : 'Continue',
           isLoading: flow.isSaving,
@@ -411,6 +419,30 @@ class _FieldError extends StatelessWidget {
         message,
         style: AppTextStyles.caption.copyWith(color: AppColors.danger),
       ),
+    );
+  }
+}
+
+/// Red outline around a required checkbox row that is still unticked.
+class _Outlined extends StatelessWidget {
+  const _Outlined({required this.error, required this.child});
+
+  final bool error;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: error ? AppColors.danger : Colors.transparent,
+          width: 1.5,
+        ),
+      ),
+      child: child,
     );
   }
 }

@@ -168,12 +168,29 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
     }
   }
 
+  /// The name saved for a school: the `schools` table needs 2–120
+  /// characters. Google sometimes names a place with one letter (or not at
+  /// all), so the address is added; very long names are shortened.
+  static String schoolName(Place place) {
+    var name = place.name.trim();
+    if (name.length < 2) {
+      final where = [
+        place.addressLine,
+        place.city,
+      ].map((p) => p.trim()).where((p) => p.isNotEmpty).join(', ');
+      name = [name, where].where((p) => p.isNotEmpty).join(' · ');
+      if (name.length < 2) name = 'School';
+    }
+    if (name.length > 120) name = '${name.substring(0, 119).trimRight()}…';
+    return name;
+  }
+
   /// Params of `school_from_place`; names match the SQL arguments.
   static Map<String, dynamic> schoolFromPlaceParams(Place place) {
     String? text(String v) => v.trim().isEmpty ? null : v.trim();
     return {
       'placeId': place.googlePlaceId ?? place.id,
-      'name': place.name.trim(),
+      'name': schoolName(place),
       'addressLine': text(place.addressLine),
       'city': text(place.city),
       'state': text(place.state),

@@ -9,7 +9,6 @@ import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
-import '../../../common/presentation/widgets/app_snack.dart';
 import '../../core/constants/ride_tracking_assets.dart';
 import '../../core/utils/ride_format.dart';
 import '../../domain/entities/ride_tracking.dart';
@@ -19,7 +18,6 @@ import '../widgets/ride_buttons.dart';
 import '../widgets/ride_contact.dart';
 import '../widgets/ride_state_view.dart';
 import '../widgets/ride_styles.dart';
-import '../widgets/thank_you_sheet.dart';
 import '../widgets/trip_summary_card.dart';
 
 /// F23 · Ride completed. Reads [RideArgs] from the route. The requesting
@@ -45,21 +43,6 @@ class _RideCompletedView extends StatelessWidget {
   void _goHome(BuildContext context) => Navigator.of(
     context,
   ).pushNamedAndRemoveUntil(AppRoutes.home, (_) => false);
-
-  Future<void> _sayThanks(BuildContext context, RideTracking t) async {
-    final provider = context.read<RideCompletedProvider>();
-    final rating = await showThankYouSheet(
-      context,
-      name: t.driver?.firstName ?? 'your Ride Partner',
-    );
-    if (rating == null || !context.mounted) return;
-    final error = await provider.sayThankYou(rating);
-    if (!context.mounted) return;
-    showAppSnack(
-      context,
-      error ?? 'Thanks sent to ${t.driver?.firstName ?? 'your Ride Partner'}!',
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,21 +107,21 @@ class _RideCompletedView extends StatelessWidget {
                         onPressed: () => RideContact.message(context, tracking),
                       ),
                     ] else ...[
-                      AppButton(
-                        label: provider.thanked
-                            ? 'Thanks sent'
-                            : 'Say thank you',
-                        isLoading: provider.thanking,
-                        onPressed: provider.thanked || tracking.driver == null
-                            ? null
-                            : () => _sayThanks(context, tracking),
-                      ),
-                      const SizedBox(height: 16),
+                      // No rating of the driver: parents just head home or
+                      // message them.
                       AppButton(
                         label: 'Back to Home',
-                        variant: AppButtonVariant.light,
                         onPressed: () => _goHome(context),
                       ),
+                      if (tracking.driver != null) ...[
+                        const SizedBox(height: 16),
+                        AppButton(
+                          label: 'Message ${tracking.driver!.firstName}',
+                          variant: AppButtonVariant.light,
+                          onPressed: () =>
+                              RideContact.message(context, tracking),
+                        ),
+                      ],
                     ],
                   ],
                 ),

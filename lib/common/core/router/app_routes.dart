@@ -10,6 +10,9 @@ abstract final class AppRoutes {
   static const String idVerified = '/auth/id-verified';
   static const String reviewPending = '/auth/review-pending';
 
+  /// After the driver's license: the car's model, plate and seats.
+  static const String vehicleDetails = '/auth/vehicle';
+
   // Kids
   static const String addChild = '/kids/add';
   static const String yourKids = '/kids';

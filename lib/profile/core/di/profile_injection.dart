@@ -11,6 +11,7 @@ import '../../domain/usecases/get_profile_overview.dart';
 import '../../domain/usecases/set_default_address.dart';
 import '../../domain/usecases/sign_out.dart';
 import '../../presentation/providers/profile_provider.dart';
+import '../../data/repositories/my_car_repository.dart';
 
 /// Registers everything owned by the Profile group.
 /// Called from `lib/common/core/di/injection_container.dart`.
@@ -45,6 +46,7 @@ void registerProfileDependencies(GetIt sl) {
     ..registerLazySingleton<SetDefaultAddress>(() => SetDefaultAddress(sl()))
     ..registerLazySingleton<DeleteSavedAddress>(() => DeleteSavedAddress(sl()))
     ..registerLazySingleton<SignOut>(() => SignOut(sl()))
+    ..registerLazySingleton<MyCarRepository>(() => MyCarRepository(sl()))
     // Providers: per-screen state.
     ..registerFactory<ProfileProvider>(
       () => ProfileProvider(

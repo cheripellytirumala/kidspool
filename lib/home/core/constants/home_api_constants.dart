@@ -27,8 +27,9 @@ abstract final class HomeApiConstants {
   /// to tell "no kids with a school yet" from "no families found".
   static const String getMyKids = 'get_my_kids';
 
-  /// Default search radius of [getFamiliesNearMe] (the server clamps 1–25).
-  static const double familiesRadiusMiles = 10;
+  /// Search radius of [getFamiliesNearMe]: 25 km, the same as the driver
+  /// search (the server uses at least 25 km and at most 25 miles).
+  static const double familiesRadiusMiles = 15.534;
 
   /// PostgREST code when an RPC isn't deployed (or the schema cache is
   /// stale).

@@ -118,6 +118,18 @@ class _AddChildViewState extends State<_AddChildView> {
     }
   }
 
+  /// "School" on an existing child: the school picker for this child, then
+  /// back here with the kids reloaded.
+  Future<void> _changeSchool(String childId) async {
+    final kids = context.read<KidsProvider>();
+    kids.selectChild(childId);
+    await Navigator.of(context).pushNamed(
+      AppRoutes.whereKidsGo,
+      arguments: const WhereKidsGoArgs(returnOnSave: true),
+    );
+    if (mounted) await kids.load(force: true);
+  }
+
   /// Saves the open form, opens a blank one and puts the cursor in its
   /// First name (which scrolls the new form into view).
   Future<void> _addAnother(AddChildFormProvider form) async {
@@ -170,7 +182,12 @@ class _AddChildViewState extends State<_AddChildView> {
     final cards = <Widget>[
       for (final child in kids.children)
         if (form.editingId == child.id)
-          _ChildFormCard(form: form, onSave: () => _run(form.save, next: true))
+          _ChildFormCard(
+            form: form,
+            onSave: () => _run(form.save, next: true),
+            schoolName: child.schoolName,
+            onChangeSchool: () => _changeSchool(child.id),
+          )
         else
           KidSummaryCard(
             child: child,
@@ -214,10 +231,19 @@ class _AddChildViewState extends State<_AddChildView> {
 
 /// "Kid · Emma" expanded card with the form fields.
 class _ChildFormCard extends StatelessWidget {
-  const _ChildFormCard({required this.form, required this.onSave});
+  const _ChildFormCard({
+    required this.form,
+    required this.onSave,
+    this.schoolName,
+    this.onChangeSchool,
+  });
 
   final AddChildFormProvider form;
   final VoidCallback onSave;
+
+  /// Editing an existing child: their school, changed on the school picker.
+  final String? schoolName;
+  final VoidCallback? onChangeSchool;
 
   Future<void> _pickDateOfBirth(BuildContext context) async {
     final now = DateTime.now();
@@ -332,6 +358,14 @@ class _ChildFormCard extends StatelessWidget {
             Text(
               error,
               style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
+            ),
+          if (onChangeSchool != null)
+            KidFieldTile(
+              icon: KidsAssets.grad20,
+              label: 'School',
+              hint: 'Add school',
+              value: schoolName,
+              onTap: onChangeSchool,
             ),
           KidFieldTile(
             icon: KidsAssets.heart,

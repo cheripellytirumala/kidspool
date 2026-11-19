@@ -79,6 +79,7 @@ class RidePerson extends Equatable {
     this.phone,
     this.carModel,
     this.plate,
+    this.carSeats,
   });
 
   final String? id;
@@ -87,6 +88,9 @@ class RidePerson extends Equatable {
   final String? phone;
   final String? carModel;
   final String? plate;
+
+  /// All seats in the driver's car (5 = a 5-seater), when saved.
+  final int? carSeats;
 
   String get firstName => name.split(' ').first;
 
@@ -97,17 +101,26 @@ class RidePerson extends Equatable {
     return '${parts.first} ${parts.last[0]}.';
   }
 
-  /// `Blue Toyota · 5RTY 118`, or null when no car is on file.
+  /// `Blue Toyota · 5RTY 118 · 7-seater`, or null when no car is on file.
   String? get vehicleLine {
     final parts = [
       carModel,
       plate,
+      if (carSeats != null) '$carSeats-seater',
     ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
     return parts.isEmpty ? null : parts.join(' · ');
   }
 
   @override
-  List<Object?> get props => [id, name, initials, phone, carModel, plate];
+  List<Object?> get props => [
+    id,
+    name,
+    initials,
+    phone,
+    carModel,
+    plate,
+    carSeats,
+  ];
 }
 
 /// A kid on the ride.

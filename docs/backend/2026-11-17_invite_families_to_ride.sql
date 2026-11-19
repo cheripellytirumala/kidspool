@@ -61,7 +61,7 @@ begin
        and p.id <> v_uid
        and p.role = 'parent'
        and p.onboarding_status = 'approved'
-       and extensions.st_dwithin(a.location, v_home, 16093.44) -- 10 mi
+       and extensions.st_dwithin(a.location, v_home, 25000) -- 25 km
   ), ins as (
     insert into public.ride_request_notifications (request_id, driver_id, invited_at)
     select r.id, t.id, now()

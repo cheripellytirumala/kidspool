@@ -109,6 +109,7 @@ abstract final class RideTrackingModel {
       phone: m.readString('phone'),
       carModel: vehicle.readString('model'),
       plate: vehicle.readString('plateNumber'),
+      carSeats: vehicle.readInt('carSeats'),
     );
   }
 

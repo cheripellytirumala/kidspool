@@ -35,7 +35,7 @@ if (file("google-services.json").exists()) {
 }
 
 android {
-    namespace = "com.example.kidspool"
+    namespace = "com.nfc.kidpool"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

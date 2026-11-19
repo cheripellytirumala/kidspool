@@ -19,6 +19,7 @@ void main() {
     AppRoutes.aboutYou,
     AppRoutes.scanPhotoId,
     AppRoutes.idVerified,
+    AppRoutes.vehicleDetails,
     AppRoutes.addChild,
     AppRoutes.yourKids,
     AppRoutes.whereKidsGo,

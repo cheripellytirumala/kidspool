@@ -99,6 +99,76 @@ CreateRideParams _withDropoff(DropOffAddress? d) => CreateRideParams(
 );
 
 void main() {
+  group('QA round 3: ask for a ride', () {
+    late DateTime clock;
+    Future<AskRideProvider> make({int? age}) async {
+      final repo = _FakeRepo(
+        kids: [
+          AskRideKid(
+            id: 'k1',
+            name: 'Ivy',
+            schoolId: 's1',
+            schoolName: 'Lincoln Elementary',
+            age: age,
+          ),
+        ],
+        places: const [_home],
+      );
+      clock = DateTime.now();
+      final p = AskRideProvider(
+        getRideOptions: GetRideOptions(repo),
+        addSavedPlace: AddSavedPlace(repo),
+        repository: repo,
+        timeZone: _FixedTimeZone(),
+        now: () => clock,
+      );
+      await p.load();
+      return p;
+    }
+
+    test('return trip starts with no time and asks for one', () async {
+      final p = await make();
+      p.setOnce(
+        date: DateTime.now().add(const Duration(days: 3)),
+        time: const RideTime(8, 30),
+      );
+      p.setReturnTrip(true);
+      expect(p.draft.returnTime, isNull);
+      expect(p.validationError, 'Type a time for the return trip.');
+    });
+
+    test('a created ride is not reused once its time has passed', () async {
+      final p = await make();
+      final day = DateTime.now().add(const Duration(days: 1));
+      p.setOnce(date: day, time: const RideTime(8, 30));
+      expect(await p.submit(), isNull);
+      expect(p.createdRequestIds, ['r1']);
+      clock = DateTime(day.year, day.month, day.day, 9);
+      expect(p.createdRequestIds, isEmpty);
+    });
+
+    test('editing the ride drops the old request', () async {
+      final p = await make();
+      p.setOnce(
+        date: DateTime.now().add(const Duration(days: 2)),
+        time: const RideTime(8, 30),
+      );
+      await p.submit();
+      expect(p.createdRequestIds, isNotEmpty);
+      p.setBoosterSeat(!p.draft.boosterSeat);
+      expect(p.createdRequestIds, isEmpty);
+    });
+
+    test('a child under 8 gets the booster seat and a hint', () async {
+      final young = await make(age: 6);
+      expect(young.draft.boosterSeat, isTrue);
+      expect(young.boosterHint, contains('Ivy is 6'));
+      final older = await make(age: 10);
+      expect(older.draft.boosterSeat, isFalse);
+      expect(older.boosterHint, isNull);
+    });
+  });
+
   group('create_ride_request params', () {
     test('school ride: exactly the old params, no dropoffAddress', () {
       expect(AskRideRemoteDataSourceImpl.createRideParams(_baseParams), {

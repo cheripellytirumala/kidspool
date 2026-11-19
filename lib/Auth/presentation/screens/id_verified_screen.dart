@@ -57,13 +57,10 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
     final error = await context.read<AuthFlowProvider>().submitIdentity();
     if (!context.mounted) return;
     if (error != null) return showAppSnack(context, error);
-    // Sent for review: carry on to Add a child while the team checks the
-    // ID in the background; don't let the user go back into sign-up.
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.addChild,
-      (route) => false,
-    );
+    // Sent for review: carry on to "Your vehicle" (then Add a child) while
+    // the team checks the license. Back returns here; sending again is
+    // treated as done.
+    Navigator.pushNamed(context, AppRoutes.vehicleDetails);
   }
 
   @override
@@ -148,13 +145,14 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
                 child: AppButton(
                   label: uploaded ? 'Yes, this is my license' : 'Continue',
                   isLoading: flow.isSubmittingId,
-                  // Only once the license was read, isn't expired, and the
+                  // Only once the license was read, isn't expired, the driver is 18+, and the
                   // first or last name typed on About you is on it.
                   onPressed:
                       flow.hasIdPhotos &&
                           !flow.isReadingLicense &&
                           flow.licenseChecked &&
                           !(flow.license?.isExpired ?? false) &&
+                          !(flow.license?.isUnder18 ?? false) &&
                           flow.licenseNameCheck == LicenseNameCheck.matches
                       ? () => _confirm(context)
                       : null,
@@ -200,6 +198,20 @@ class _LicenseNotice extends StatelessWidget {
         text:
             'This license looks expired. Please retake the photos with a '
             'valid license.',
+        action: 'Retake photos',
+        onAction: () {
+          flow.clearIdPhotos();
+          Navigator.of(context).pop();
+        },
+      );
+    }
+    if (license.isUnder18) {
+      return _Notice(
+        error: true,
+        text:
+            'The date of birth on this license is under 18. Only adults '
+            'can give rides on KidsPool. If the date was read wrong, retake '
+            'a sharp photo of the front.',
         action: 'Retake photos',
         onAction: () {
           flow.clearIdPhotos();

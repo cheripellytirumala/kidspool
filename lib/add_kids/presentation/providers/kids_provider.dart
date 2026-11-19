@@ -233,6 +233,16 @@ class KidsProvider extends ChangeNotifier {
   bool get anyPlaces =>
       _activities.isNotEmpty || _children.any((c) => c.schoolId != null);
 
+  /// Kids still without a school (every child needs one to ask for rides).
+  List<Child> get kidsWithoutSchool => [
+    for (final c in _children)
+      if (c.schoolId == null) c,
+  ];
+
+  /// Every child has a school: sign-up can go on.
+  bool get allKidsHaveSchool =>
+      _children.isNotEmpty && kidsWithoutSchool.isEmpty;
+
   /// "No places yet" / "1 place" / "3 places".
   String placesLabel(String childId) {
     final count = placeCount(childId);
