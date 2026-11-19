@@ -8,6 +8,7 @@ abstract final class MyStatusModel {
     if (json is! Map) throw const ParsingException('Invalid status response.');
     final map = Map<String, dynamic>.from(json);
     final identity = map['identity'];
+    final driver = map['driver'];
     return MyStatus(
       role: map.readString('role'),
       firstName: map.readString('firstName') ?? '',
@@ -20,6 +21,10 @@ abstract final class MyStatusModel {
           : null,
       kidsCount: map.readInt('kidsCount') ?? 0,
       hasDefaultAddress: map.readBool('hasDefaultAddress') ?? false,
+      licenseStatus: OnboardingStatus.parse(map.readString('driverStatus')),
+      licenseRejectionReason: driver is Map
+          ? Map<String, dynamic>.from(driver).readString('rejectionReason')
+          : null,
     );
   }
 }

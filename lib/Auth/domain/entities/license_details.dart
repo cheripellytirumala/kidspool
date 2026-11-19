@@ -53,6 +53,22 @@ class LicenseDetails extends Equatable {
     return expiry.isBefore(DateTime(now.year, now.month, now.day));
   }
 
+  /// Age in whole years from [birthDate], or null when it wasn't read.
+  int? ageOn([DateTime? today]) {
+    final birth = birthDate;
+    if (birth == null) return null;
+    final now = today ?? DateTime.now();
+    var years = now.year - birth.year;
+    if (now.month < birth.month ||
+        (now.month == birth.month && now.day < birth.day)) {
+      years--;
+    }
+    return years;
+  }
+
+  /// Drivers must be adults: true when the birth date says under 18.
+  bool get isUnder18 => (ageOn() ?? 18) < 18;
+
   /// "D•••482" — only the last 3 characters are shown.
   String? get maskedNumber {
     final n = licenseNumber;

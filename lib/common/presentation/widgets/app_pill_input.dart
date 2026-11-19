@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 import '../theme/app_dimens.dart';
@@ -20,6 +21,9 @@ class AppPillInput extends StatelessWidget {
     this.readOnly = false,
     this.autofocus = false,
     this.focusNode,
+    this.textCapitalization = TextCapitalization.none,
+    this.inputFormatters,
+    this.error = false,
   });
 
   final TextEditingController? controller;
@@ -33,6 +37,11 @@ class AppPillInput extends StatelessWidget {
   final bool readOnly;
   final bool autofocus;
   final FocusNode? focusNode;
+  final TextCapitalization textCapitalization;
+  final List<TextInputFormatter>? inputFormatters;
+
+  /// Red outline (a required field still empty).
+  final bool error;
 
   @override
   Widget build(BuildContext context) {
@@ -42,6 +51,7 @@ class AppPillInput extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppDimens.radiusPill),
+        border: error ? Border.all(color: AppColors.danger, width: 1.5) : null,
       ),
       child: Row(
         children: [
@@ -56,6 +66,8 @@ class AppPillInput extends StatelessWidget {
               onChanged: onChanged,
               keyboardType: keyboardType,
               textInputAction: textInputAction,
+              textCapitalization: textCapitalization,
+              inputFormatters: inputFormatters,
               style: AppTextStyles.bodyL,
               decoration: InputDecoration(
                 isCollapsed: true,

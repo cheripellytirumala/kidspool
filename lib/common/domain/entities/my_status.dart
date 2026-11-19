@@ -7,6 +7,7 @@ enum OnboardingStatus {
   approved,
   rejected;
 
+  /// Also reads `profiles.driver_status` (`not_submitted` = not started).
   static OnboardingStatus parse(String? value) => switch (value) {
     'pending_review' => pendingReview,
     'approved' => approved,
@@ -25,6 +26,8 @@ class MyStatus extends Equatable {
     required this.rejectionReason,
     required this.kidsCount,
     required this.hasDefaultAddress,
+    this.licenseStatus = OnboardingStatus.notStarted,
+    this.licenseRejectionReason,
   });
 
   /// `parent`, `staff` or `null` while not chosen yet.
@@ -37,6 +40,14 @@ class MyStatus extends Equatable {
   final String? rejectionReason;
   final int kidsCount;
   final bool hasDefaultAddress;
+
+  /// `profiles.driver_status`: the driver's license review, separate from
+  /// the account ([onboardingStatus]), which riders get without a license.
+  final OnboardingStatus licenseStatus;
+  final String? licenseRejectionReason;
+
+  /// A driver's license was checked and approved.
+  bool get isLicenseVerified => licenseStatus == OnboardingStatus.approved;
 
   bool get hasRole => role != null;
   bool get isApproved => onboardingStatus == OnboardingStatus.approved;
@@ -54,5 +65,7 @@ class MyStatus extends Equatable {
     rejectionReason,
     kidsCount,
     hasDefaultAddress,
+    licenseStatus,
+    licenseRejectionReason,
   ];
 }

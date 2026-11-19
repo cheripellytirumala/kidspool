@@ -124,7 +124,18 @@ class AskRideProvider extends ChangeNotifier {
 
   /// Requests made by the last [submit], first ride first. The families
   /// screen sends the parent's message in the first one's chat.
-  List<String> get createdRequestIds => _createdRequestIds;
+  /// Empty once the first ride's pick-up time has passed, so a message is
+  /// never sent with a ride the other parent can no longer accept.
+  List<String> get createdRequestIds {
+    if (_createdRequestIds.isEmpty) return const [];
+    final time = _draft.pickupTime;
+    final dates = _draft.schedule?.rideDates ?? const <DateTime>[];
+    if (time != null && dates.isNotEmpty) {
+      final first = RideLeadTime.pickupAt(dates.first, time);
+      if (!first.isAfter(_now())) return const [];
+    }
+    return _createdRequestIds;
+  }
 
   /// Defaults: first kid, default address → their school, 8:00 AM pick-up.
   static const RideTime defaultPickupTime = RideTime(8, 0);
@@ -161,8 +172,10 @@ class AskRideProvider extends ChangeNotifier {
       dropOff: _schoolPlace(kid?.schoolId),
       pickupTime: defaultPickupTime,
       returnTrip: false,
-      returnTime: defaultReturnTime,
-      boosterSeat: kid?.needsBooster ?? false,
+      // No made-up return time: the parent types it when they turn the
+      // return trip on.
+      returnTime: null,
+      boosterSeat: kid?.boosterSuggested ?? false,
     );
   }
 
@@ -269,7 +282,7 @@ class AskRideProvider extends ChangeNotifier {
         kidIds: ids,
         pickup: rideHome ? setSchool : null,
         dropOff: rideHome ? null : setSchool,
-        boosterSeat: selected.any((k) => k.needsBooster),
+        boosterSeat: selected.any((k) => k.boosterSuggested),
       ),
     );
   }
@@ -391,17 +404,26 @@ class AskRideProvider extends ChangeNotifier {
 
   // ── Extras ──────────────────────────────────────────────────────────────
 
+  /// Turning the return trip on leaves the time empty for the parent to
+  /// type (validation asks for it); turning it off clears it.
   void setReturnTrip(bool value) => _update(
-    _draft.copyWith(
-      returnTrip: value,
-      returnTime: value && _draft.returnTime == null
-          ? () => defaultReturnTime
-          : null,
-    ),
+    _draft.copyWith(returnTrip: value, returnTime: value ? null : () => null),
   );
 
   void setReturnTime(RideTime? time) =>
       _update(_draft.copyWith(returnTime: () => time));
+
+  /// "Booster seat needed: Ivy is 6." for the chosen kids under 8, else
+  /// null.
+  String? get boosterHint {
+    final young = [
+      for (final k in _selectedKids)
+        if (k.youngForBooster) k,
+    ];
+    if (young.isEmpty) return null;
+    final who = young.map((k) => '${k.name} is ${k.age}').join(', ');
+    return 'Booster seat needed: $who (under ${AskRideKid.boosterUntilAge}).';
+  }
 
   void setBoosterSeat(bool value) =>
       _update(_draft.copyWith(boosterSeat: value));
@@ -729,6 +751,7 @@ class AskRideProvider extends ChangeNotifier {
   /// Clears the draft after the flow is finished.
   void reset() {
     _draft = _initialDraft();
+    _createdRequestIds = const [];
     _submitted = false;
     _sentToCount = null;
     notifyListeners();
@@ -737,6 +760,8 @@ class AskRideProvider extends ChangeNotifier {
   void _update(RideRequest draft, {bool notify = true}) {
     if (draft == _draft) return;
     _draft = draft;
+    // A changed ride is a new request: don't reuse the old one's chats.
+    _createdRequestIds = const [];
     if (notify) notifyListeners();
   }
 

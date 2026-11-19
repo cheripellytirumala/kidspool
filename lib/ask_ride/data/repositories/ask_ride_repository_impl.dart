@@ -43,6 +43,7 @@ class AskRideRepositoryImpl implements AskRideRepository {
             schoolId: k.schoolId,
             schoolName: k.schoolName,
             needsBooster: k.needsBooster,
+            age: k.displayAge,
           ),
       ],
     );

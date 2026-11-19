@@ -226,6 +226,11 @@ class _Form extends StatelessWidget {
           onChanged: provider.setBoosterSeat,
         ),
       ),
+      if (provider.boosterHint case final hint?)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(hint, style: AppTextStyles.caption),
+        ),
       RideNoteField(initialValue: draft.note, onChanged: provider.setNote),
       AppButton(
         label: 'Next: choose who to ask',

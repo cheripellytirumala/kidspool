@@ -113,7 +113,7 @@ class _ScanBodyState extends State<_ScanBody> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Your ID photos', style: AppTextStyles.headingH3),
+              Text('Your license photos', style: AppTextStyles.headingH3),
               const SizedBox(height: 12),
               for (final line in const [
                 'Why: we confirm every parent who drives has a valid '
@@ -159,11 +159,6 @@ class _ScanBodyState extends State<_ScanBody> {
           child: Stack(
             children: [
               const Positioned.fill(child: _CameraView()),
-              // The ID frame is centered on the screen (Figma: 425 of 844).
-              const Align(
-                alignment: Alignment(0, 0.01),
-                child: FittedBox(fit: BoxFit.scaleDown, child: IdViewfinder()),
-              ),
               SafeArea(
                 // Scrolls on short phones; the tips and shutter stay at the
                 // bottom on taller ones.
@@ -274,7 +269,22 @@ class _ScanBodyState extends State<_ScanBody> {
                                 ],
                               ),
                             ),
-                            const Spacer(),
+                            // The ID frame sits between the text and the
+                            // tips, so the chips never cover it.
+                            const Expanded(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                child: Center(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: IdViewfinder(),
+                                  ),
+                                ),
+                              ),
+                            ),
                             const Center(
                               child: Wrap(
                                 spacing: 16,

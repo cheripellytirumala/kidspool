@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:google_mlkit_barcode_scanning/google_mlkit_barcode_scanning.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
@@ -12,6 +14,11 @@ import '../../../domain/entities/license_details.dart';
 /// Never throws: returns `null` when nothing useful could be read.
 abstract interface class LicenseReader {
   Future<LicenseDetails?> read({required String frontPath, String? backPath});
+
+  /// True when two photos show the same side of the card (the same file,
+  /// or nearly the same printed text), e.g. the front taken again as the
+  /// back. Never throws: false when it can't tell.
+  Future<bool> isSameSide(String pathA, String pathB);
 }
 
 class MlKitLicenseReader implements LicenseReader {
@@ -30,6 +37,55 @@ class MlKitLicenseReader implements LicenseReader {
 
     final fromText = await _readText(frontPath);
     return (fromText == null || fromText.isEmpty) ? null : fromText;
+  }
+
+  @override
+  Future<bool> isSameSide(String pathA, String pathB) async {
+    try {
+      final a = await File(pathA).readAsBytes();
+      final b = await File(pathB).readAsBytes();
+      if (a.length == b.length && _sameBytes(a, b)) return true;
+    } catch (_) {
+      return false;
+    }
+    final wordsA = await _words(pathA);
+    final wordsB = await _words(pathB);
+    return looksLikeSameText(wordsA, wordsB);
+  }
+
+  /// Two sides of a card share little text; the same side photographed
+  /// twice shares most of it.
+  static bool looksLikeSameText(Set<String> a, Set<String> b) {
+    if (a.length < 5 || b.length < 5) return false;
+    final shared = a.intersection(b).length;
+    final smaller = a.length < b.length ? a.length : b.length;
+    return shared / smaller >= 0.6;
+  }
+
+  static bool _sameBytes(List<int> a, List<int> b) {
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  Future<Set<String>> _words(String path) async {
+    final recognizer = TextRecognizer();
+    try {
+      final result = await recognizer.processImage(
+        InputImage.fromFilePath(path),
+      );
+      return result.text
+          .toUpperCase()
+          .split(RegExp(r'[^A-Z0-9]+'))
+          .where((w) => w.length >= 3)
+          .toSet();
+    } catch (e) {
+      AppLogger.warning('Text recognition failed: $e', tag: _tag);
+      return const {};
+    } finally {
+      await recognizer.close();
+    }
   }
 
   // ── Barcode (AAMVA PDF417) ───────────────────────────────────────────────
@@ -117,9 +173,34 @@ class MlKitLicenseReader implements LicenseReader {
     }
   }
 
-  static final _date = RegExp(r'(\d{2})[/\-.](\d{2})[/\-.](\d{4})');
+  static final _date = RegExp(
+    r'\b(\d{1,2})\s*[/\-.]\s*(\d{1,2})\s*[/\-.]\s*(\d{4})\b',
+  );
 
-  /// Best-effort parse of the printed front of a US license.
+  /// Labels before the expiry date: US ("EXP", "4b EXP") and Indian
+  /// ("Valid Till", "Validity (NT)") licenses.
+  static const _expiryLabels = [
+    'EXP',
+    'VALID TILL',
+    'VALID UPTO',
+    'VALID UP TO',
+    'VALID UNTIL',
+    'VALIDITY',
+  ];
+  static const _birthLabels = ['DOB', 'D.O.B', 'DATE OF BIRTH', 'BIRTH'];
+
+  /// Every label that is followed by a date, so one field's search never
+  /// borrows the date of the next one.
+  static const _anyDateLabel = [
+    ..._expiryLabels,
+    ..._birthLabels,
+    'ISS',
+    'ISSUE',
+    'DATE OF',
+  ];
+
+  /// Best-effort parse of the printed front of a license (US, or Indian
+  /// with day-first dates).
   static LicenseDetails parseFrontText(String text) {
     final upper = text.toUpperCase();
     final lines = upper
@@ -127,24 +208,71 @@ class MlKitLicenseReader implements LicenseReader {
         .map((l) => l.trim())
         .where((l) => l.isNotEmpty)
         .toList();
+    // Indian (and most non-US) licenses print day/month/year.
+    final dayFirst = RegExp(
+      r'\bINDIA\b|UNION OF INDIA|TRANSPORT|VALID TILL|VALIDITY|DATE OF BIRTH',
+    ).hasMatch(upper);
+
+    DateTime? toDate(Match m) {
+      final a = int.parse(m.group(1)!);
+      final b = int.parse(m.group(2)!);
+      final y = int.parse(m.group(3)!);
+      // A first part over 12 can only be the day.
+      if (dayFirst || a > 12) return _validDate(y, b, a);
+      return _validDate(y, a, b);
+    }
 
     DateTime? dateAfter(List<String> labels) {
       for (var i = 0; i < lines.length; i++) {
-        if (!labels.any(lines[i].contains)) continue;
-        // Same line, or the next one (label above value).
-        for (final line in [lines[i], if (i + 1 < lines.length) lines[i + 1]]) {
-          final m = _date.firstMatch(line);
-          if (m != null) {
-            final date = _validDate(
-              int.parse(m.group(3)!),
-              int.parse(m.group(1)!),
-              int.parse(m.group(2)!),
-            );
+        final line = lines[i];
+        final at = labels
+            .map((l) => line.indexOf(l))
+            .where((p) => p >= 0)
+            .fold<int?>(null, (a, b) => a == null || b < a ? b : a);
+        if (at == null) continue;
+        // On the same line, after the label (not a date before it).
+        for (final m in _date.allMatches(line.substring(at))) {
+          final date = toDate(m);
+          if (date != null) return date;
+        }
+        // Or on the next line, unless that line is another field's.
+        if (i + 1 < lines.length) {
+          final next = lines[i + 1];
+          if (_anyDateLabel.any(next.contains)) continue;
+          for (final m in _date.allMatches(next)) {
+            final date = toDate(m);
             if (date != null) return date;
           }
         }
       }
       return null;
+    }
+
+    var expiry = dateAfter(_expiryLabels);
+    var birth = dateAfter(_birthLabels);
+    // One date can't be both; a birth date is in the past and an expiry
+    // comes after it.
+    final today = DateTime.now();
+    if (birth != null && (birth == expiry || birth.isAfter(today))) {
+      birth = null;
+    }
+    if (expiry != null && birth != null && !expiry.isAfter(birth)) {
+      expiry = null;
+    }
+    // No labels read: the earliest date at least 15 years ago is the birth
+    // date, the latest date is the expiry.
+    if (birth == null || expiry == null) {
+      final all = [for (final m in _date.allMatches(upper)) ?toDate(m)]..sort();
+      if (birth == null) {
+        final cutoff = DateTime(today.year - 15, today.month, today.day);
+        birth = all.where((d) => d.isBefore(cutoff)).firstOrNull;
+      }
+      if (expiry == null && all.isNotEmpty && all.last != birth) {
+        final last = all.last;
+        if (birth == null || last.isAfter(DateTime(birth.year + 16))) {
+          expiry = last;
+        }
+      }
     }
 
     String? valueAfter(RegExp label) {
@@ -164,7 +292,7 @@ class MlKitLicenseReader implements LicenseReader {
     // letter + 7–8 digits format (CA, FL, IL, …).
     final number =
         RegExp(
-          r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
+          r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?\s*[:.]?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
         ).firstMatch(upper)?.group(1) ??
         RegExp(r'\b([A-Z]\d{7,8})\b').firstMatch(upper)?.group(1);
 
@@ -180,19 +308,30 @@ class MlKitLicenseReader implements LicenseReader {
       }
     }
 
+    var lastName = nameIn(valueAfter(RegExp(r'(?:^|\s)(?:1\s+)?LN\b[\s:.]*')));
+    var firstName = nameIn(valueAfter(RegExp(r'(?:^|\s)(?:2\s+)?FN\b[\s:.]*')));
+    // Indian licenses: one "Name: KIRAN KUMAR" field; the last word is the
+    // last name. (Not "Son/Daughter/Wife of", which comes after it.)
+    if (firstName == null && lastName == null) {
+      final full = nameIn(valueAfter(RegExp(r'(?:^|\s)NAME\b[\s:.]*')));
+      final words = full?.split(' ') ?? const <String>[];
+      if (words.length >= 2) {
+        firstName = words.sublist(0, words.length - 1).join(' ');
+        lastName = words.last;
+      } else if (words.length == 1) {
+        firstName = words.single;
+      }
+    }
+
     return LicenseDetails(
       source: LicenseReadSource.text,
-      lastName: _name(
-        nameIn(valueAfter(RegExp(r'(?:^|\s)(?:1\s+)?LN\b[\s:.]*'))),
-      ),
-      firstName: _name(
-        nameIn(valueAfter(RegExp(r'(?:^|\s)(?:2\s+)?FN\b[\s:.]*'))),
-      ),
+      lastName: _name(lastName),
+      firstName: _name(firstName),
       licenseNumber: (number != null && RegExp(r'\d').hasMatch(number))
           ? number.replaceAll(RegExp(r'[^A-Z0-9]'), '')
           : null,
-      expiryDate: dateAfter(const ['EXP']),
-      birthDate: dateAfter(const ['DOB', 'BIRTH']),
+      expiryDate: expiry,
+      birthDate: birth,
       state: state,
     );
   }
@@ -232,6 +371,14 @@ class MlKitLicenseReader implements LicenseReader {
     'SAMPLE\'S',
     'USA',
     'ADDRESS',
+    'SON',
+    'DAUGHTER',
+    'WIFE',
+    'S/O',
+    'D/O',
+    'W/O',
+    'S/D/W',
+    'OF',
   };
 
   /// The leading name part of a label value, or `null` if there is none.

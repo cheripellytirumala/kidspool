@@ -148,9 +148,25 @@ class IdSummaryCard extends StatelessWidget {
 }
 
 /// "08/2029".
+const _months = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/// "15 Aug 1990": the full date, so the day and month can't be confused.
 String _monthYear(DateTime? date) => date == null
-    ? '—'
-    : '${date.month.toString().padLeft(2, '0')}/${date.year}';
+    ? 'Not read'
+    : '${date.day} ${_months[date.month - 1]} ${date.year}';
 
 class _Detail extends StatelessWidget {
   const _Detail({required this.label, required this.value});

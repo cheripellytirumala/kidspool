@@ -119,8 +119,10 @@ class _AppLabeledFieldState extends State<AppLabeledField> {
                       isCollapsed: true,
                       border: InputBorder.none,
                       hintText: widget.hint,
+                      // Regular weight so an example never looks typed in.
                       hintStyle: valueStyle.copyWith(
                         color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w400,
                       ),
                     ),
                   ),

@@ -66,7 +66,8 @@ class ProfileOverview extends Equatable {
     defaultAddress?.city,
   ].whereType<String>().where((p) => p.isNotEmpty).join(' · ');
 
-  bool get isLicenseVerified => status.isApproved;
+  /// Only an approved driver's license, never just an approved account.
+  bool get isLicenseVerified => status.isLicenseVerified;
 
   ProfileOverview copyWith({
     RideMode? rideMode,

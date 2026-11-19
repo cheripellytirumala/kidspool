@@ -3,7 +3,9 @@ import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
+import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
+import '../../domain/entities/child.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/kids_provider.dart';
@@ -62,9 +64,11 @@ class _WhereKidsGoView extends StatelessWidget {
     final active = kids.activeChild;
     final needsSchool =
         returnOnSave && active != null && active.schoolId == null;
+    // Every child needs a school (an activity alone isn't enough).
     final hasPlaces = returnOnSave && active != null
         ? !needsSchool
-        : kids.anyPlaces;
+        : kids.allKidsHaveSchool;
+    final missing = returnOnSave ? const <Child>[] : kids.kidsWithoutSchool;
 
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
@@ -84,6 +88,12 @@ class _WhereKidsGoView extends StatelessWidget {
               : () => Navigator.of(context).pushNamed(AppRoutes.allSet),
         ),
         children: [
+          if (missing.isNotEmpty && kids.anyPlaces)
+            Text(
+              'Add a school for ${missing.map((k) => k.firstName).join(', ')} '
+              'to continue — every child needs a school.',
+              style: AppTextStyles.body.copyWith(color: AppColors.danger),
+            ),
           if (needsSchool)
             Text(
               'Add ${active.firstName}’s school (School tab) to ask for '

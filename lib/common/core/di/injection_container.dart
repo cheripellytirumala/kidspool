@@ -38,6 +38,7 @@ import '../services/time_zone_service.dart';
 import '../../data/repositories/account_repository_impl.dart';
 import '../../domain/repositories/account_repository.dart';
 import '../utils/logger.dart';
+import '../../../ride_tracking/data/route_service.dart';
 
 /// Global service locator.
 final GetIt sl = GetIt.instance;
@@ -97,6 +98,18 @@ Future<void> _registerCore(EnvConfig env) async {
 /// Google Places search + map address picker (shared by every group).
 void _registerPlaces() {
   sl
+    // Road routes on the ride map; own client (no app auth headers).
+    ..registerLazySingleton<RouteService>(
+      () => RouteService(
+        Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 10),
+            responseType: ResponseType.json,
+          ),
+        ),
+      ),
+    )
     ..registerLazySingleton<PlacesRemoteDataSource>(
       // Own client: Google must not receive the app's auth headers.
       () => PlacesRemoteDataSourceImpl(

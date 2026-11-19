@@ -157,6 +157,14 @@ class AuthFlowProvider extends ChangeNotifier {
   /// Coordinates of the typed address; reset whenever the address changes.
   ResolvedAddress? _coordinates;
   bool _addressSaved = false;
+
+  /// The address was typed, located or picked on this visit: save it (as
+  /// the new default) even when one is already saved, e.g. "Edit my
+  /// details" from Profile with a new current location.
+  bool _addressEdited = false;
+
+  /// Save the address on Continue / Save.
+  bool get _needsAddress => !_addressSaved || _addressEdited;
   bool _isLocating = false;
   bool _isSaving = false;
 
@@ -187,7 +195,7 @@ class AuthFlowProvider extends ChangeNotifier {
   Set<ProfileField> get missingFields => {
     if (_firstName.trim().isEmpty) ProfileField.firstName,
     if (_lastName.trim().isEmpty) ProfileField.lastName,
-    if (!_addressSaved) ...{
+    if (_needsAddress) ...{
       if (_street.trim().isEmpty) ProfileField.street,
       if (_city.trim().isEmpty) ProfileField.city,
       if (_stateCode.trim().isEmpty) ProfileField.state,
@@ -200,6 +208,17 @@ class AuthFlowProvider extends ChangeNotifier {
 
   bool _showErrors = false;
 
+  /// The summary above Continue while fields are missing, else null.
+  String? get missingSummary =>
+      _showErrors && missingFields.isNotEmpty ? revealSummary : null;
+
+  String get revealSummary {
+    final missing = missingFields;
+    return missing.length == 1
+        ? missing.first.message
+        : 'Still needed: ${missing.map((f) => f.short).join(', ')}.';
+  }
+
   /// Set when Continue is tapped with fields missing: each one then shows
   /// its own message until it is filled in.
   bool get showErrors => _showErrors;
@@ -210,13 +229,13 @@ class AuthFlowProvider extends ChangeNotifier {
       _showErrors && missingFields.contains(field) ? field.message : null;
 
   /// Continue with fields missing: shows each one's message and returns a
-  /// short summary for a snack bar.
+  /// short summary shown above Continue.
   String revealMissing() {
     _update(() => _showErrors = true);
     final missing = missingFields;
     return missing.length == 1
         ? missing.first.message
-        : 'Fill in the ${missing.length} highlighted fields to continue.';
+        : 'Still needed: ${missing.map((f) => f.short).join(', ')}.';
   }
 
   /// Where the home pin goes on the map: the picked / located / typed
@@ -228,6 +247,7 @@ class AuthFlowProvider extends ChangeNotifier {
     _geocodeTimer?.cancel();
     _geocodeToken++;
     _update(() {
+      _addressEdited = true;
       if (picked.street.isNotEmpty) _street = picked.street;
       if (picked.city.isNotEmpty) _city = picked.city;
       if (picked.stateCode.isNotEmpty) _stateCode = picked.stateCode;
@@ -294,6 +314,7 @@ class AuthFlowProvider extends ChangeNotifier {
       _geocodeTimer?.cancel();
       _geocodeToken++;
       _coordinates = address;
+      _addressEdited = true;
       if (address.street.isNotEmpty) _street = address.street;
       if (address.zip.isNotEmpty) _zip = address.zip;
       if (address.city.isNotEmpty) _city = address.city;
@@ -351,7 +372,7 @@ class AuthFlowProvider extends ChangeNotifier {
       final basicsError = basics.getLeft().toNullable();
       if (basicsError != null) return basicsError.message;
 
-      if (!_addressSaved) {
+      if (_needsAddress) {
         final coordinates =
             _coordinates ??
             await _location.geocode(
@@ -370,12 +391,14 @@ class AuthFlowProvider extends ChangeNotifier {
             zip: _zip,
             latitude: coordinates.latitude,
             longitude: coordinates.longitude,
-            isDefault: _isDefaultAddress,
+            // A changed address replaces the old one as the default.
+            isDefault: _isDefaultAddress || _addressSaved,
           ),
         );
         final addressError = saved.getLeft().toNullable();
         if (addressError != null) return addressError.message;
         _addressSaved = true;
+        _addressEdited = false;
       }
 
       await _preferences.setString(
@@ -401,11 +424,12 @@ class AuthFlowProvider extends ChangeNotifier {
   String? get idFrontPath => _idFrontPath;
   String? get idBackPath => _idBackPath;
 
-  /// Parents who offer rides need a driver's license; parents who only need
-  /// rides may use any accepted photo ID.
-  List<IdDocumentType> get allowedIdTypes => _role == RideRole.seeker
-      ? IdDocumentType.values
-      : const [IdDocumentType.driversLicense];
+  /// Only parents who give rides scan an ID now, and it is always their
+  /// driver's license (riders skip this step), including when a rider
+  /// opens Profile › Driver's license to start giving rides.
+  List<IdDocumentType> get allowedIdTypes => const [
+    IdDocumentType.driversLicense,
+  ];
 
   /// The ID being scanned (always a driver's license for drivers).
   IdDocumentType get idType =>
@@ -436,6 +460,15 @@ class AuthFlowProvider extends ChangeNotifier {
     try {
       final path = await _photos.pick(fromCamera: fromCamera);
       if (path == null) return null;
+      // The back must not be the front again (and vice versa).
+      final other = side == IdSide.front ? _idBackPath : _idFrontPath;
+      if (other != null && await _licenseReader.isSameSide(path, other)) {
+        return side == IdSide.back
+            ? 'That’s the front of your ${idType.inSentence} again. Turn it '
+                  'over and take a photo of the back.'
+            : 'That’s the same photo as the back. Take a photo of the front '
+                  'of your ${idType.inSentence}.';
+      }
       _update(() {
         if (side == IdSide.front) {
           _idFrontPath = path;
@@ -600,6 +633,7 @@ class AuthFlowProvider extends ChangeNotifier {
 
   void _updateAddress(VoidCallback change) {
     _coordinates = null;
+    _addressEdited = true;
     _update(change);
     _scheduleGeocode();
   }
@@ -627,17 +661,23 @@ typedef SavedProfile = ({String firstName, String lastName, String? phone});
 
 /// Required fields on About you, with the message shown under each.
 enum ProfileField {
-  firstName('Enter your first name'),
-  lastName('Enter your last name'),
-  street('Enter your street address'),
-  city('Enter your city'),
-  state('Enter your state'),
-  zip('Enter your ZIP code'),
-  role('Choose how you’ll use KidsPool'),
-  guardian('Confirm you’re a parent or guardian, 18 or older'),
-  terms('Agree to the Terms and Privacy Policy');
+  firstName('Enter your first name', 'first name'),
+  lastName('Enter your last name', 'last name'),
+  street('Enter your street address', 'street address'),
+  city('Enter your city', 'city'),
+  state('Enter your state', 'state'),
+  zip('Enter your ZIP code', 'ZIP code'),
+  role('Choose how you’ll use KidsPool', 'how you’ll use KidsPool'),
+  guardian(
+    'Confirm you’re a parent or guardian, 18 or older',
+    'parent or guardian box',
+  ),
+  terms('Agree to the Terms and Privacy Policy', 'Terms box');
 
-  const ProfileField(this.message);
+  const ProfileField(this.message, this.short);
 
   final String message;
+
+  /// For the summary above Continue ("Still needed: city, Terms box.").
+  final String short;
 }

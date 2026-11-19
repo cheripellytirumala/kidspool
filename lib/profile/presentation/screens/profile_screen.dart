@@ -38,6 +38,7 @@ import '../widgets/profile_row.dart';
 import '../widgets/profile_section_label.dart';
 import '../widgets/profile_sheets.dart';
 import '../../../common/presentation/theme/app_system_ui.dart';
+import '../widgets/my_car_row.dart';
 
 /// S18 · Profile.
 ///
@@ -186,6 +187,8 @@ class _ProfileView extends StatelessWidget {
       // Driving
       const ProfileSectionLabel('Driving'),
       _LicenseRow(status: overview.status, onScan: actions.scanLicense),
+      // Seats only matter for parents who give rides.
+      if (overview.rideMode == RideMode.both) const MyCarRow(),
 
       // Addresses
       const ProfileSectionLabel('Addresses'),
@@ -438,7 +441,9 @@ class _LicenseRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (subtitle, pill, canScan) = switch (status.onboardingStatus) {
+    // The license's own review, not the account's (riders are approved
+    // without one).
+    final (subtitle, pill, canScan) = switch (status.licenseStatus) {
       OnboardingStatus.approved => ('Verified', 'Verified', false),
       OnboardingStatus.pendingReview => (
         'We’re checking your license',
@@ -446,7 +451,7 @@ class _LicenseRow extends StatelessWidget {
         false,
       ),
       OnboardingStatus.rejected => (
-        status.rejectionReason ?? 'Not accepted · scan it again',
+        status.licenseRejectionReason ?? 'Not accepted · scan it again',
         null,
         true,
       ),

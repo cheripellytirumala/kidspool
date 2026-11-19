@@ -74,7 +74,11 @@ class PlacesGroupCard extends StatelessWidget {
             ),
           ),
           for (final entry in entries)
-            _PlaceRow(entry: entry, onRemove: () => onRemove(entry.place)),
+            _PlaceRow(
+              entry: entry,
+              onRemove: () => onRemove(entry.place),
+              onChange: onAdd ?? () {},
+            ),
         ],
       ),
     );
@@ -82,10 +86,17 @@ class PlacesGroupCard extends StatelessWidget {
 }
 
 class _PlaceRow extends StatelessWidget {
-  const _PlaceRow({required this.entry, required this.onRemove});
+  const _PlaceRow({
+    required this.entry,
+    required this.onRemove,
+    required this.onChange,
+  });
 
   final PlaceEntry entry;
   final VoidCallback onRemove;
+
+  /// Schools can't be removed (every child needs one), only changed.
+  final VoidCallback onChange;
 
   @override
   Widget build(BuildContext context) {
@@ -117,13 +128,20 @@ class _PlaceRow extends StatelessWidget {
               ],
             ),
           ),
-          KidsIconButton(
-            asset: KidsAssets.trash,
-            size: 34,
-            iconSize: 18,
-            tooltip: 'Remove ${place.name}',
-            onPressed: onRemove,
-          ),
+          if (place.kind == PlaceKind.school)
+            TextButton(
+              onPressed: onChange,
+              style: TextButton.styleFrom(foregroundColor: AppColors.ink),
+              child: const Text('Change'),
+            )
+          else
+            KidsIconButton(
+              asset: KidsAssets.trash,
+              size: 34,
+              iconSize: 18,
+              tooltip: 'Remove ${place.name}',
+              onPressed: onRemove,
+            ),
         ],
       ),
     );

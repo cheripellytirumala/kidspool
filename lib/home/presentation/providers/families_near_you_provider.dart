@@ -138,11 +138,17 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   /// "Say Hi" template with the parent's first name and the shared school.
   String get messageTemplate {
     final name = _myFirstName.trim();
-    final placeName = _places
-        .where((p) => p.id == _placeId)
-        .map((p) => p.name)
-        .followedBy(_places.map((p) => p.name))
-        .firstOrNull;
+    // After asking for a ride: the school the ride goes to. Otherwise the
+    // chip picked on screen, then the first one.
+    final rideTo = ride?.to.trim();
+    final placeName =
+        (rideTo != null && rideTo.isNotEmpty && rideTo != 'Drop-off')
+        ? rideTo
+        : _places
+              .where((p) => p.id == _placeId)
+              .map((p) => p.name)
+              .followedBy(_places.map((p) => p.name))
+              .firstOrNull;
     final hi = name.isEmpty ? 'Hi!' : 'Hi! I’m $name.';
     final school = placeName == null
         ? 'Our kids go to the same school.'
