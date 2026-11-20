@@ -78,14 +78,17 @@ class RideAlertsProvider extends ChangeNotifier {
     }
     final alerts = result.getRight().toNullable();
     if (alerts == null) return;
-    final freshSince = _clock().subtract(
-      RideTrackingApiConstants.alertFreshness,
+    final now = _clock();
+    DateTime freshSince(RideAlert a) => now.subtract(
+      a.kind == RideAlertKind.arrived
+          ? RideTrackingApiConstants.arrivedAlertFreshness
+          : RideTrackingApiConstants.alertFreshness,
     );
     final added = <RideAlert>[];
     // Oldest first, so the queue reads in order.
     for (final alert in alerts.reversed) {
       if (!_seen.add(alert.id)) continue;
-      if (alert.createdAt.isAfter(freshSince)) added.add(alert);
+      if (alert.createdAt.isAfter(freshSince(alert))) added.add(alert);
     }
     if (added.isEmpty) return;
     _queue.addAll(added);

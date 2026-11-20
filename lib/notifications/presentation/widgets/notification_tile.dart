@@ -93,8 +93,13 @@ class _Leading extends StatelessWidget {
     NotificationKind.rideRequest => NotificationsAssets.inbox,
     NotificationKind.rideStarted ||
     NotificationKind.pickedUp ||
-    NotificationKind.rideArrived => NotificationsAssets.pin,
-    NotificationKind.rideConfirmed || NotificationKind.offerDeclined =>
+    NotificationKind.rideArrived ||
+    NotificationKind.rideOverdue ||
+    NotificationKind.rideAutoEnded => NotificationsAssets.pin,
+    NotificationKind.rideCancelled => NotificationsAssets.bell,
+    NotificationKind.rideConfirmed ||
+    NotificationKind.offerDeclined ||
+    NotificationKind.offerReceived =>
       notification.otherInitials == null ? NotificationsAssets.bell : null,
     _ => NotificationsAssets.bell,
   };

@@ -16,8 +16,12 @@ enum RideAlertKind {
   /// Kinds follow the previous app's `NotificationKind` plus the backend's
   /// ride event types (`started`, `picked_up`, `dropped_off`, `completed`).
   static RideAlertKind? fromValue(String? kind) => switch (kind) {
-    'ride_confirmed' || 'confirmed' || 'offer_accepted' => accepted,
-    'ride_started' || 'started' || 'picked_up' => started,
+    'ride_confirmed' ||
+    'confirmed' ||
+    'offer_accepted' ||
+    // Parent: a Ride Partner offered → See ride (accept / decline).
+    'offer_received' => accepted,
+    'ride_started' || 'started' || 'picked_up' || 'ride_overdue' => started,
     'school' ||
     'safe_zone' ||
     'checked_in' ||
@@ -25,7 +29,8 @@ enum RideAlertKind {
     'arrived' ||
     'ride_arrived' ||
     'completed' ||
-    'ride_completed' => arrived,
+    'ride_completed' ||
+    'ride_auto_ended' => arrived,
     _ => null,
   };
 }

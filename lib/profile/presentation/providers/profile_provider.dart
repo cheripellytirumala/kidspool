@@ -3,12 +3,14 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/failures.dart';
 import '../../../common/core/usecase/usecase.dart';
+import '../../../common/domain/entities/my_status.dart';
 import '../../../common/domain/entities/picked_address.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../domain/entities/profile_overview.dart';
 import '../../domain/entities/ride_mode.dart';
 import '../../domain/entities/saved_address.dart';
 import '../../domain/usecases/add_saved_address.dart';
+import '../../domain/usecases/change_gender.dart';
 import '../../domain/usecases/change_ride_mode.dart';
 import '../../domain/usecases/delete_saved_address.dart';
 import '../../domain/usecases/get_profile_overview.dart';
@@ -25,12 +27,14 @@ class ProfileProvider extends ChangeNotifier {
     required SetDefaultAddress setDefaultAddress,
     required DeleteSavedAddress deleteAddress,
     required SignOut signOut,
+    required ChangeGender changeGender,
   }) : _getOverview = getOverview,
        _changeRideMode = changeRideMode,
        _addAddress = addAddress,
        _setDefaultAddress = setDefaultAddress,
        _deleteAddress = deleteAddress,
-       _signOut = signOut;
+       _signOut = signOut,
+       _changeGender = changeGender;
 
   final GetProfileOverview _getOverview;
   final ChangeRideMode _changeRideMode;
@@ -38,6 +42,7 @@ class ProfileProvider extends ChangeNotifier {
   final SetDefaultAddress _setDefaultAddress;
   final DeleteSavedAddress _deleteAddress;
   final SignOut _signOut;
+  final ChangeGender _changeGender;
 
   ViewStatus _status = ViewStatus.initial;
   Failure? _failure;
@@ -90,6 +95,18 @@ class ProfileProvider extends ChangeNotifier {
     return _run(
       () => _changeRideMode(mode),
       (saved) => _overview = current.copyWith(rideMode: saved),
+    );
+  }
+
+  /// Sets (or clears, with `null`) the optional gender.
+  Future<String?> setGender(Gender? gender) async {
+    final current = _overview;
+    if (current == null || current.status.gender == gender) return null;
+    return _run(
+      () => _changeGender(gender),
+      (saved) => _overview = _overview?.copyWith(
+        status: current.status.withGender(saved),
+      ),
     );
   }
 

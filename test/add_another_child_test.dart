@@ -87,4 +87,57 @@ void main() {
     expect(form.editingId, isNull);
     expect(form.isOpen, isTrue);
   });
+
+  group('booster seat', () {
+    final now = DateTime.now();
+    DateTime yearsAgo(int years) => DateTime(now.year - years, 1, 1);
+
+    test('turns on for a new kid under 8, off for an older one', () {
+      form.openNew();
+      expect(form.needsBooster, isFalse);
+      form.setDateOfBirth(yearsAgo(5));
+      expect(form.needsBooster, isTrue);
+      form.setDateOfBirth(yearsAgo(10));
+      expect(form.needsBooster, isFalse);
+    });
+
+    test('the parent\'s own choice wins over the age', () {
+      form.openNew();
+      form.setNeedsBooster(false);
+      form.setDateOfBirth(yearsAgo(5));
+      expect(form.needsBooster, isFalse);
+    });
+
+    test('a new form follows the age again', () {
+      form.openNew();
+      form.setNeedsBooster(false);
+      form.openNew();
+      form.setDateOfBirth(yearsAgo(5));
+      expect(form.needsBooster, isTrue);
+    });
+
+    test('editing a kid keeps their saved value', () {
+      form.edit('annie'); // saved without a booster
+      form.setDateOfBirth(yearsAgo(5));
+      expect(form.needsBooster, isFalse);
+    });
+
+    test('under-8 threshold matches Ask for a ride', () {
+      final today = DateTime(2026, 11, 20);
+      expect(
+        AddChildFormProvider.boosterRecommendedFor(
+          DateTime(2018, 11, 21),
+          today,
+        ),
+        isTrue, // 7
+      );
+      expect(
+        AddChildFormProvider.boosterRecommendedFor(
+          DateTime(2018, 11, 20),
+          today,
+        ),
+        isFalse, // 8 today
+      );
+    });
+  });
 }

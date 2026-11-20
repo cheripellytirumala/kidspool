@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kidspool/auth/data/data_sources/local/license_reader.dart';
+import 'package:kidspool/auth/presentation/widgets/phone_number_formatter.dart';
 import 'package:kidspool/auth/domain/entities/license_details.dart';
 import 'package:kidspool/common/data/models/my_status_model.dart';
 import 'package:kidspool/common/domain/entities/my_status.dart';
@@ -160,5 +161,13 @@ EXP 01/15/2030
     expect(points.first.longitude, closeTo(-120.2, 1e-6));
     expect(points.last.latitude, closeTo(43.252, 1e-6));
     expect(points.last.longitude, closeTo(-126.453, 1e-6));
+  });
+
+  test('a typed country code 1 is not part of the number', () {
+    expect(UsPhoneNumberFormatter.digitsOf('19999999999'), '9999999999');
+    expect(UsPhoneNumberFormatter.digitsOf('1 987 654 3211'), '9876543211');
+    expect(UsPhoneNumberFormatter.digitsOf('+1  1999999999'), '999999999');
+    expect(UsPhoneNumberFormatter.digitsOf('+1  (999) 999-9999'), '9999999999');
+    expect(UsPhoneNumberFormatter.digitsOf('9876543211'), '9876543211');
   });
 }

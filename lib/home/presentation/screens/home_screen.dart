@@ -198,6 +198,7 @@ class _HomeView extends StatelessWidget {
         avatarUrl: provider.featuredAvatarUrl,
         destination: provider.featuredDestination,
         pickupLabel: provider.featuredPickupLabel,
+        requestId: ride.id,
         onTrack: () => Navigator.pushNamed(
           context,
           AppRoutes.liveTracking,

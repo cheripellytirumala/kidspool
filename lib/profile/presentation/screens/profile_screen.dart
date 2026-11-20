@@ -139,6 +139,13 @@ class _ProfileView extends StatelessWidget {
         onEdit: actions.editDetails,
       ),
 
+      ProfileRow(
+        icon: const _MaterialIcon(Icons.person_outline_rounded),
+        title: 'Gender',
+        subtitle: Gender.labelOf(overview.status.gender),
+        onTap: () => actions.changeGender(overview.status.gender),
+      ),
+
       // How you use KidPool
       const ProfileSectionLabel('How you use KidPool'),
       ProfileRow(
@@ -353,6 +360,12 @@ class _ProfileActions {
     final mode = await showRideModeSheet(context, current);
     if (mode == null) return;
     _report(await provider.setRideMode(mode));
+  }
+
+  Future<void> changeGender(Gender? current) async {
+    final picked = await showGenderSheet(context, current);
+    if (picked == null) return;
+    _report(await provider.setGender(picked.gender));
   }
 
   Future<void> addAddress(bool isFirst) async {

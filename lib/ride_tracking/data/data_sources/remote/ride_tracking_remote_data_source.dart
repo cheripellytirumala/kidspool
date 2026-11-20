@@ -22,17 +22,15 @@ abstract interface class RideTrackingRemoteDataSource {
   /// Returns the miles driven since pickup.
   Future<double?> updateLocation(String requestId, RideFix at);
 
-  Future<void> markPickedUp(String requestId, RideFix? at);
+  /// [pin] is the requesting parent's 4-digit code.
+  Future<void> markPickedUp(String requestId, RideFix? at, {String? pin});
+
+  /// Parent or Ride Partner — started ride, kids not picked up yet.
+  Future<void> cancelActiveRide(String requestId, {String? reason});
 
   Future<RideCompletion> completeRide(String requestId, RideFix? at);
 
   Future<void> triggerSos(String requestId, RideFix? at);
-
-  Future<void> rateRide(
-    String requestId, {
-    required int rating,
-    required bool thankYou,
-  });
 }
 
 class RideTrackingRemoteDataSourceImpl implements RideTrackingRemoteDataSource {
@@ -86,12 +84,32 @@ class RideTrackingRemoteDataSourceImpl implements RideTrackingRemoteDataSource {
   );
 
   @override
-  Future<void> markPickedUp(String requestId, RideFix? at) => _rpc<void>(
-    RideTrackingApiConstants.markPickedUp,
-    {'requestId': requestId, ...?at?.toPointParams()},
-    'We couldn’t mark the pickup. Please try again.',
-    parser: (_) {},
-  );
+  Future<void> markPickedUp(String requestId, RideFix? at, {String? pin}) =>
+      _rpc<void>(
+        RideTrackingApiConstants.markPickedUp,
+        {'requestId': requestId, ...?at?.toPointParams(), 'pin': ?pin},
+        'We couldn’t mark the pickup. Please try again.',
+        parser: (json) {
+          // A wrong PIN is answered (not raised) so the server can count it.
+          if (json is Map && json['status'] == 'wrong_pin') {
+            final left = (json['attemptsLeft'] as num?)?.toInt();
+            throw ServerException(
+              RideTrackingErrorMessages.wrongPin(left),
+              409,
+              'wrong_pin',
+            );
+          }
+        },
+      );
+
+  @override
+  Future<void> cancelActiveRide(String requestId, {String? reason}) =>
+      _rpc<void>(
+        RideTrackingApiConstants.cancelActiveRide,
+        {'requestId': requestId, 'reason': ?reason},
+        'We couldn’t cancel the ride. Please try again.',
+        parser: (_) {},
+      );
 
   @override
   Future<RideCompletion> completeRide(String requestId, RideFix? at) => _rpc(
@@ -106,18 +124,6 @@ class RideTrackingRemoteDataSourceImpl implements RideTrackingRemoteDataSource {
     RideTrackingApiConstants.triggerSos,
     {'requestId': requestId, ...?at?.toPointParams()},
     'We couldn’t send the SOS. Call 911 if anyone is in danger.',
-    parser: (_) {},
-  );
-
-  @override
-  Future<void> rateRide(
-    String requestId, {
-    required int rating,
-    required bool thankYou,
-  }) => _rpc<void>(
-    RideTrackingApiConstants.rateRide,
-    {'requestId': requestId, 'rating': rating, 'thankYou': thankYou},
-    'We couldn’t send your thanks. Please try again.',
     parser: (_) {},
   );
 

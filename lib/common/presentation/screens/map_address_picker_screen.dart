@@ -7,6 +7,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../core/di/injection_container.dart';
 import '../../core/services/maps_availability.dart';
+import '../../core/services/time_zone_service.dart';
+import '../../../add_kids/domain/repositories/kids_repository.dart';
 import '../../domain/entities/picked_address.dart';
 import '../../domain/entities/place_suggestion.dart';
 import '../providers/map_address_picker_provider.dart';
@@ -126,19 +128,67 @@ class _MapAddressPickerViewState extends State<_MapAddressPickerView> {
     super.dispose();
   }
 
-  Future<void> _moveTo(PickedAddress address) async {
+  /// A camera move asked for before the map existed (the location can come
+  /// back before the native map is ready); applied in onMapCreated.
+  CameraUpdate? _pendingMove;
+
+  Future<void> _moveCamera(CameraUpdate update) async {
     _movedByUser = false;
-    await _map?.animateCamera(
-      CameraUpdate.newLatLngZoom(
-        LatLng(address.latitude, address.longitude),
-        _addressZoom,
-      ),
-    );
+    final map = _map;
+    if (map == null) {
+      _pendingMove = update;
+      return;
+    }
+    await map.animateCamera(update);
   }
 
+  Future<void> _moveTo(PickedAddress address) => _moveCamera(
+    CameraUpdate.newLatLngZoom(
+      LatLng(address.latitude, address.longitude),
+      _addressZoom,
+    ),
+  );
+
+  /// The phone's location; if it can't be found, the saved home address;
+  /// if there's none either, the user's region (from the time zone), so the
+  /// map never opens on the whole world.
   Future<void> _goToMyLocation() async {
     final here = await _provider.useMyLocation();
-    if (here != null && mounted) await _moveTo(here);
+    if (!mounted) return;
+    if (here != null) return _moveTo(here);
+
+    if (sl.isRegistered<KidsRepository>()) {
+      final home = (await sl<KidsRepository>().homeLocation()).toNullable();
+      if (!mounted) return;
+      if (home != null) {
+        await _moveCamera(
+          CameraUpdate.newLatLngZoom(
+            LatLng(home.latitude, home.longitude),
+            _addressZoom,
+          ),
+        );
+        await _provider.onMapSettled(home.latitude, home.longitude);
+        return;
+      }
+    }
+    final zone = sl.isRegistered<TimeZoneService>()
+        ? await sl<TimeZoneService>().current()
+        : '';
+    final region = _regionFor(zone);
+    if (region != null && mounted) {
+      await _moveCamera(CameraUpdate.newCameraPosition(region));
+    }
+  }
+
+  /// A country-level view for the phone's time zone.
+  static CameraPosition? _regionFor(String zone) {
+    if (zone == 'Asia/Kolkata' || zone == 'Asia/Calcutta') {
+      return const CameraPosition(target: LatLng(21.0, 79.0), zoom: 4.3);
+    }
+    if (zone.startsWith('America/') || zone.startsWith('US/')) {
+      return const CameraPosition(target: LatLng(39.5, -98.35), zoom: 3.4);
+    }
+    return null;
   }
 
   Future<void> _select(PlaceSuggestion suggestion) async {
@@ -184,7 +234,12 @@ class _MapAddressPickerViewState extends State<_MapAddressPickerView> {
                           target: LatLng(initial.latitude, initial.longitude),
                           zoom: _addressZoom,
                         ),
-                  onMapCreated: (c) => _map = c,
+                  onMapCreated: (c) {
+                    _map = c;
+                    final pending = _pendingMove;
+                    _pendingMove = null;
+                    if (pending != null) c.moveCamera(pending);
+                  },
                   onCameraMoveStarted: () => _movedByUser = true,
                   onCameraMove: (p) => _cameraTarget = p.target,
                   onCameraIdle: _onCameraIdle,
@@ -575,10 +630,12 @@ class _AddressCard extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            picked?.title ??
-                                error ??
-                                'Move the map or search an address',
-                            maxLines: 1,
+                            (picked != null && picked.title.trim().isEmpty)
+                                ? 'Pinned on the map'
+                                : picked?.title ??
+                                      error ??
+                                      'Move the map or search an address',
+                            maxLines: picked == null ? 2 : 1,
                             overflow: TextOverflow.ellipsis,
                             style: AppTextStyles.title,
                           ),

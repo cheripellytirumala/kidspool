@@ -10,11 +10,11 @@ import '../../domain/repositories/ride_alert_notifier.dart';
 import '../../domain/repositories/ride_alerts_repository.dart';
 import '../../domain/repositories/ride_location_sharing.dart';
 import '../../domain/repositories/ride_tracking_repository.dart';
+import '../../domain/usecases/cancel_active_ride.dart';
 import '../../domain/usecases/complete_ride.dart';
 import '../../domain/usecases/get_ride_alerts.dart';
 import '../../domain/usecases/get_ride_tracking.dart';
 import '../../domain/usecases/mark_picked_up.dart';
-import '../../domain/usecases/say_thank_you.dart';
 import '../../domain/usecases/start_ride.dart';
 import '../../domain/usecases/start_sharing_ride_location.dart';
 import '../../domain/usecases/stop_sharing_ride_location.dart';
@@ -56,9 +56,9 @@ void registerRideTrackingDependencies(GetIt sl) {
     ..registerLazySingleton<GetRideTracking>(() => GetRideTracking(sl()))
     ..registerLazySingleton<StartRide>(() => StartRide(sl()))
     ..registerLazySingleton<MarkPickedUp>(() => MarkPickedUp(sl()))
+    ..registerLazySingleton<CancelActiveRide>(() => CancelActiveRide(sl()))
     ..registerLazySingleton<CompleteRide>(() => CompleteRide(sl()))
     ..registerLazySingleton<TriggerRideSos>(() => TriggerRideSos(sl()))
-    ..registerLazySingleton<SayThankYou>(() => SayThankYou(sl()))
     ..registerLazySingleton<GetRideAlerts>(() => GetRideAlerts(sl()))
     ..registerLazySingleton<StartSharingRideLocation>(
       () => StartSharingRideLocation(sl()),
@@ -77,10 +77,11 @@ void registerRideTrackingDependencies(GetIt sl) {
         startSharing: sl(),
         stopSharing: sl(),
         driverPosition: () => sl<RideLocationSharing>().lastPosition,
+        cancelActiveRide: sl(),
       ),
     )
     ..registerFactory<RideCompletedProvider>(
-      () => RideCompletedProvider(getRideTracking: sl(), sayThankYou: sl()),
+      () => RideCompletedProvider(getRideTracking: sl()),
     )
     ..registerFactory<RideAlertsProvider>(
       () => RideAlertsProvider(

@@ -271,7 +271,9 @@ class _ParentHero extends StatelessWidget {
             iconSize: 16,
             text: [
               if (at != null) RideFormat.clock(at),
-              '$driver confirmed drop-off',
+              t.autoEnded
+                  ? 'Closed automatically after 3 hours'
+                  : '$driver confirmed drop-off',
             ].join(' · '),
             style: RideTextStyles.body15,
           ),
@@ -322,6 +324,7 @@ class _DriverHero extends StatelessWidget {
           text: [
             t.destination.label,
             if (at != null) RideFormat.clock(at),
+            if (t.autoEnded) 'closed automatically',
           ].join(' · '),
           style: RideTextStyles.body17,
         ),

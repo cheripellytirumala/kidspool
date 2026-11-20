@@ -2,6 +2,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/error_handler.dart';
 import '../../../common/core/error/failures.dart';
+import '../../../common/domain/entities/my_status.dart';
 import '../../../common/domain/entities/picked_address.dart';
 import '../../domain/entities/profile_details.dart';
 import '../../domain/entities/ride_mode.dart';
@@ -61,4 +62,11 @@ class ProfileRepositoryImpl implements ProfileRepository {
         await _local.saveRideMode(mode);
         return mode;
       });
+
+  @override
+  Future<Either<Failure, Gender?>> setGender(Gender? gender) =>
+      ErrorHandler.guard(
+        tag: 'Profile.setGender',
+        () => _remote.setMyGender(gender),
+      );
 }

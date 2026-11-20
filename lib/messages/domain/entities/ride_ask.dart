@@ -5,7 +5,8 @@ enum RideAskStatus {
   /// Waiting for a driver to tap "I can help".
   open,
 
-  /// A driver tapped "I can help": the ride is booked with them.
+  /// A driver tapped "I can help": their offer waits for the parent to
+  /// accept ([RideAsk.awaitingParent]), then the ride is booked with them.
   taken,
   cancelled;
 
@@ -40,6 +41,11 @@ class RideAsk extends Equatable {
 
   /// The driver has started the ride: live tracking is worth opening.
   bool get rideStarted => rideStatus == 'in_progress';
+
+  /// A driver offered to help (`help_with_ride_ask` →
+  /// `waiting_for_parent`) and the parent hasn't accepted yet.
+  bool get awaitingParent =>
+      status == RideAskStatus.taken && rideStatus == 'open';
 
   /// Taken (or withdrawn) and not about the signed-in parent: the card
   /// disappears for them.

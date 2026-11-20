@@ -6,6 +6,7 @@ import '../../../common/core/error/failures.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../core/constants/ride_tracking_api_constants.dart';
 import '../../domain/entities/ride_tracking.dart';
+import '../../domain/usecases/cancel_active_ride.dart';
 import '../../domain/usecases/complete_ride.dart';
 import '../../domain/usecases/get_ride_tracking.dart';
 import '../../domain/usecases/mark_picked_up.dart';
@@ -31,8 +32,10 @@ class LiveTrackingProvider extends ChangeNotifier {
     required StartSharingRideLocation startSharing,
     required StopSharingRideLocation stopSharing,
     ({double latitude, double longitude})? Function()? driverPosition,
+    CancelActiveRide? cancelActiveRide,
     this.pollInterval = RideTrackingApiConstants.trackingPollInterval,
-  }) : _getRideTracking = getRideTracking,
+  }) : _cancelActiveRide = cancelActiveRide,
+       _getRideTracking = getRideTracking,
        _startRide = startRide,
        _markPickedUp = markPickedUp,
        _completeRide = completeRide,
@@ -47,6 +50,7 @@ class LiveTrackingProvider extends ChangeNotifier {
   /// Auto drop-off was already tried for this ride (once only).
   bool _autoDropTried = false;
 
+  final CancelActiveRide? _cancelActiveRide;
   final GetRideTracking _getRideTracking;
   final StartRide _startRide;
   final MarkPickedUp _markPickedUp;
@@ -62,6 +66,7 @@ class LiveTrackingProvider extends ChangeNotifier {
   String? _errorMessage;
   DriverRideAction? _busyAction;
   bool _sendingSos = false;
+  bool _cancelling = false;
 
   Timer? _poll;
   bool _paused = false;
@@ -81,6 +86,14 @@ class LiveTrackingProvider extends ChangeNotifier {
 
   DriverRideAction? get busyAction => _busyAction;
   bool get sendingSos => _sendingSos;
+  bool get cancelling => _cancelling;
+
+  /// Started, kids not in the car yet: parent or Ride Partner may cancel.
+  bool get canCancel =>
+      _cancelActiveRide != null && (_tracking?.canCancelBeforePickup ?? false);
+
+  /// "Picked up" needs the parent's 4-digit PIN.
+  bool get needsPickupPin => driverAction == DriverRideAction.pickedUp;
 
   /// The Ride Partner's next step, or null for the requesting parent.
   DriverRideAction? get driverAction {
@@ -222,6 +235,19 @@ class LiveTrackingProvider extends ChangeNotifier {
         previous != null &&
         (previous.status != fresh.status ||
             previous.pickedUp != fresh.pickedUp);
+    // The Ride Partner's own map follows their phone's GPS, not the
+    // last position that reached the server.
+    final mine = next.isDriver && next.started ? _driverPosition?.call() : null;
+    if (mine != null) {
+      next = next.copyWith(
+        location: RideLocation(
+          point: GeoPoint(mine.latitude, mine.longitude),
+          heading: next.location?.heading,
+          speed: next.location?.speed,
+          at: DateTime.now(),
+        ),
+      );
+    }
     _tracking = next;
 
     if (next.isDriver) {
@@ -244,9 +270,9 @@ class LiveTrackingProvider extends ChangeNotifier {
     _poll ??= Timer.periodic(pollInterval, (_) => _load());
   }
 
-  /// Runs the Ride Partner's [driverAction]. Returns an error message, or
-  /// null on success.
-  Future<String?> runDriverAction() async {
+  /// Runs the Ride Partner's [driverAction] ([pin]: the parent's pick-up
+  /// code for "Picked up"). Returns an error message, or null on success.
+  Future<String?> runDriverAction({String? pin}) async {
     final action = driverAction;
     final id = _requestId;
     if (action == null || id == null || _busyAction != null) return null;
@@ -257,6 +283,7 @@ class LiveTrackingProvider extends ChangeNotifier {
       DriverRideAction.start => (await _startRide(id)).getLeft().toNullable(),
       DriverRideAction.pickedUp => (await _markPickedUp(
         id,
+        pin: pin,
       )).getLeft().toNullable(),
       DriverRideAction.complete => (await _completeRide(
         id,
@@ -275,6 +302,28 @@ class LiveTrackingProvider extends ChangeNotifier {
     await _load();
     _busyAction = null;
     _notify();
+    return failure?.message;
+  }
+
+  /// Cancels a started ride before pick-up (either side). Returns an error
+  /// message, or null.
+  Future<String?> cancelRide({String? reason}) async {
+    final id = _requestId;
+    final cancel = _cancelActiveRide;
+    if (id == null || cancel == null || _cancelling) return null;
+    _cancelling = true;
+    _notify();
+    final result = await cancel(id, reason: reason);
+    _cancelling = false;
+    final failure = result.getLeft().toNullable();
+    if (_disposed) return failure?.message;
+    if (failure == null && (_tracking?.isDriver ?? false)) _stopSharing(id);
+    _needsPath = true;
+    while (_inFlight) {
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      if (_disposed) return failure?.message;
+    }
+    await _load();
     return failure?.message;
   }
 

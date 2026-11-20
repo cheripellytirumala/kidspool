@@ -16,6 +16,31 @@ enum OnboardingStatus {
   };
 }
 
+/// The user's own gender (optional; `profiles.gender`). Display-only.
+enum Gender {
+  female('female', 'Female'),
+  male('male', 'Male'),
+  nonBinary('non_binary', 'Non-binary'),
+  preferNotToSay('prefer_not_to_say', 'Prefer not to say');
+
+  const Gender(this.value, this.label);
+
+  /// Value sent to / read from the server.
+  final String value;
+  final String label;
+
+  /// `null` when not set (or an unknown value).
+  static Gender? parse(String? value) {
+    for (final gender in values) {
+      if (gender.value == value) return gender;
+    }
+    return null;
+  }
+
+  /// "Female" … or "Not set".
+  static String labelOf(Gender? gender) => gender?.label ?? 'Not set';
+}
+
 /// The signed-in user's onboarding state (`get_my_status`).
 class MyStatus extends Equatable {
   const MyStatus({
@@ -28,6 +53,7 @@ class MyStatus extends Equatable {
     required this.hasDefaultAddress,
     this.licenseStatus = OnboardingStatus.notStarted,
     this.licenseRejectionReason,
+    this.gender,
   });
 
   /// `parent`, `staff` or `null` while not chosen yet.
@@ -46,6 +72,9 @@ class MyStatus extends Equatable {
   final OnboardingStatus licenseStatus;
   final String? licenseRejectionReason;
 
+  /// Optional; `null` when not set.
+  final Gender? gender;
+
   /// A driver's license was checked and approved.
   bool get isLicenseVerified => licenseStatus == OnboardingStatus.approved;
 
@@ -55,6 +84,19 @@ class MyStatus extends Equatable {
   /// The ID was sent (in review or approved): the parent may use the app.
   bool get hasSubmittedId =>
       onboardingStatus == OnboardingStatus.pendingReview || isApproved;
+
+  MyStatus withGender(Gender? gender) => MyStatus(
+    role: role,
+    firstName: firstName,
+    lastName: lastName,
+    onboardingStatus: onboardingStatus,
+    rejectionReason: rejectionReason,
+    kidsCount: kidsCount,
+    hasDefaultAddress: hasDefaultAddress,
+    licenseStatus: licenseStatus,
+    licenseRejectionReason: licenseRejectionReason,
+    gender: gender,
+  );
 
   @override
   List<Object?> get props => [
@@ -67,5 +109,6 @@ class MyStatus extends Equatable {
     hasDefaultAddress,
     licenseStatus,
     licenseRejectionReason,
+    gender,
   ];
 }

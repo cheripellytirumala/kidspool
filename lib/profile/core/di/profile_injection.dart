@@ -5,6 +5,7 @@ import '../../data/data_sources/remote/profile_remote_data_source.dart';
 import '../../data/repositories/profile_repository_impl.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../../domain/usecases/add_saved_address.dart';
+import '../../domain/usecases/change_gender.dart';
 import '../../domain/usecases/change_ride_mode.dart';
 import '../../domain/usecases/delete_saved_address.dart';
 import '../../domain/usecases/get_profile_overview.dart';
@@ -42,6 +43,7 @@ void registerProfileDependencies(GetIt sl) {
       ),
     )
     ..registerLazySingleton<ChangeRideMode>(() => ChangeRideMode(sl()))
+    ..registerLazySingleton<ChangeGender>(() => ChangeGender(sl()))
     ..registerLazySingleton<AddSavedAddress>(() => AddSavedAddress(sl()))
     ..registerLazySingleton<SetDefaultAddress>(() => SetDefaultAddress(sl()))
     ..registerLazySingleton<DeleteSavedAddress>(() => DeleteSavedAddress(sl()))
@@ -56,6 +58,7 @@ void registerProfileDependencies(GetIt sl) {
         setDefaultAddress: sl(),
         deleteAddress: sl(),
         signOut: sl(),
+        changeGender: sl(),
       ),
     );
 }

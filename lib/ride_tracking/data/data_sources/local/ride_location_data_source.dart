@@ -72,7 +72,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
   static LocationSettings rideSettings(TargetPlatform platform) =>
       switch (platform) {
         TargetPlatform.iOS => AppleSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
           activityType: ActivityType.automotiveNavigation,
           pauseLocationUpdatesAutomatically: false,
@@ -80,7 +80,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
           allowBackgroundLocationUpdates: true,
         ),
         TargetPlatform.android => AndroidSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
           intervalDuration: RideTrackingApiConstants.locationInterval,
           foregroundNotificationConfig: const ForegroundNotificationConfig(
@@ -94,7 +94,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
           ),
         ),
         _ => const LocationSettings(
-          accuracy: LocationAccuracy.high,
+          accuracy: LocationAccuracy.bestForNavigation,
           distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
         ),
       };

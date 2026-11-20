@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../common/core/services/maps_availability.dart';
 import '../../../common/presentation/theme/app_colors.dart';
+import '../../core/constants/ride_map_style.dart';
 import '../../core/constants/ride_tracking_assets.dart';
 import '../../domain/entities/ride_tracking.dart' as ride;
 import 'ride_map_markers.dart';
@@ -14,8 +15,10 @@ import 'ride_styles.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../data/route_service.dart';
 
-/// Full-bleed dark map behind F22: driven route (lime), the way still to go
-/// (dotted), the car, home and school markers and the school zone.
+/// Full-bleed map behind F22: driven route, the way still to go, every
+/// alternative road route, the car, home and school markers and the school
+/// zone, on the normal Google map, and glides the car along the road
+/// between location fixes.
 ///
 /// Only creates a [GoogleMap] when [MapsAvailability] says the native SDK
 /// has a key (the iOS SDK crashes without one, and widget tests have no
@@ -36,11 +39,18 @@ class RideMap extends StatefulWidget {
   /// Space covered by the header and the bottom sheet.
   final EdgeInsets padding;
 
+  /// The nearest point to a GPS fix on a road route, and its distance in
+  /// metres (see the map's road snapping).
+  static (ride.GeoPoint, double) snapToRoute(
+    ride.GeoPoint p,
+    List<ride.GeoPoint> route,
+  ) => _RideMapState.snapToRoute(p, route);
+
   @override
   State<RideMap> createState() => _RideMapState();
 }
 
-class _RideMapState extends State<RideMap> {
+class _RideMapState extends State<RideMap> with SingleTickerProviderStateMixin {
   static const _fallbackCamera = CameraPosition(
     target: LatLng(37.7749, -122.4194),
     zoom: 13,
@@ -62,9 +72,23 @@ class _RideMapState extends State<RideMap> {
   DateTime? _routeFetchedAt;
   bool _routeLoading = false;
 
+  /// The car as drawn: glides from [_carPath]'s start to its end.
+  late final AnimationController _carAnim = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1600),
+  )..addListener(_onCarTick);
+  List<ride.GeoPoint> _carPath = const [];
+  List<double> _carPathCum = const [];
+  ride.GeoPoint? _carTarget;
+  ride.GeoPoint? _carShown;
+
+  /// Jumps instead of gliding past this (first fix, GPS teleport).
+  static const double _maxGlideMeters = 2000;
+
   @override
   void initState() {
     super.initState();
+    _carTarget = _carShown = widget.tracking?.location?.point;
     MapsAvailability.isNativeMapConfigured().then((ok) {
       if (!mounted) return;
       setState(() => _mapAvailable = ok);
@@ -84,7 +108,115 @@ class _RideMapState extends State<RideMap> {
     super.didUpdateWidget(oldWidget);
     _loadMarkers();
     _maybeFetchRoute();
+    _moveCar();
     _followCar();
+  }
+
+  /// Starts gliding the car to its newest fix, along the road route when
+  /// both ends lie on it.
+  void _moveCar() {
+    final to = widget.tracking?.location?.point;
+    if (to == _carTarget) return;
+    _carTarget = to;
+    final from = _carShown;
+    if (to == null || from == null || from.metersTo(to) > _maxGlideMeters) {
+      _carAnim.stop();
+      _carShown = to; // didUpdateWidget is followed by build.
+      return;
+    }
+    final path = _roadBetween(from, to);
+    final cum = <double>[0];
+    for (var i = 1; i < path.length; i++) {
+      cum.add(cum.last + path[i - 1].metersTo(path[i]));
+    }
+    _carPath = path;
+    _carPathCum = cum;
+    _carAnim.forward(from: 0);
+  }
+
+  /// [from] → [to] following the active route's points between them, or a
+  /// straight hop when either end is off the route.
+  List<ride.GeoPoint> _roadBetween(ride.GeoPoint from, ride.GeoPoint to) {
+    if (_routes.isEmpty) return [from, to];
+    final route = _routes[_activeRouteIndex(from)];
+    final (i, di) = _nearestIndex(from, route);
+    final (j, dj) = _nearestIndex(to, route);
+    if (di > 50 || dj > 50 || j <= i) return [from, to];
+    return [from, ...route.sublist(i + 1, j + 1), to];
+  }
+
+  /// GPS is off by 5–30 m in town: within [_snapMeters] of the route being
+  /// driven, the car is drawn on the road (like a navigation app).
+  static const double _snapMeters = 35;
+
+  ride.GeoPoint? get _carOnRoad {
+    final car = _carShown;
+    if (car == null || _routes.isEmpty) return car;
+    final snapped = snapToRoute(car, _routes[_activeRouteIndex(car)]);
+    return snapped.$2 <= _snapMeters ? snapped.$1 : car;
+  }
+
+  /// The nearest point to [p] on [route] (projected onto its segments) and
+  /// how far away it is, in metres.
+  static (ride.GeoPoint, double) snapToRoute(
+    ride.GeoPoint p,
+    List<ride.GeoPoint> route,
+  ) {
+    if (route.isEmpty) return (p, double.infinity);
+    if (route.length == 1) return (route.first, p.metersTo(route.first));
+    // Local flat projection around p: metres east / north.
+    const mPerDegLat = 111320.0;
+    final mPerDegLng = mPerDegLat * math.cos(p.latitude * math.pi / 180);
+    (double, double) xy(ride.GeoPoint q) => (
+      (q.longitude - p.longitude) * mPerDegLng,
+      (q.latitude - p.latitude) * mPerDegLat,
+    );
+    var best = route.first;
+    var bestD = double.infinity;
+    for (var i = 0; i < route.length - 1; i++) {
+      final (ax, ay) = xy(route[i]);
+      final (bx, by) = xy(route[i + 1]);
+      final dx = bx - ax, dy = by - ay;
+      final len2 = dx * dx + dy * dy;
+      final t = len2 == 0
+          ? 0.0
+          : ((-ax * dx - ay * dy) / len2).clamp(0.0, 1.0).toDouble();
+      final cx = ax + dx * t, cy = ay + dy * t;
+      final d = math.sqrt(cx * cx + cy * cy);
+      if (d < bestD) {
+        bestD = d;
+        best = ride.GeoPoint(
+          p.latitude + cy / mPerDegLat,
+          p.longitude + (mPerDegLng == 0 ? 0 : cx / mPerDegLng),
+        );
+      }
+    }
+    return (best, bestD);
+  }
+
+  void _onCarTick() {
+    final path = _carPath;
+    if (path.length < 2) return;
+    final total = _carPathCum.last;
+    final t = Curves.easeInOut.transform(_carAnim.value);
+    if (total <= 0 || t >= 1) {
+      setState(() => _carShown = path.last);
+      return;
+    }
+    final d = total * t;
+    var k = 1;
+    while (k < path.length - 1 && _carPathCum[k] < d) {
+      k++;
+    }
+    final a = path[k - 1], b = path[k];
+    final seg = _carPathCum[k] - _carPathCum[k - 1];
+    final f = seg <= 0 ? 1.0 : (d - _carPathCum[k - 1]) / seg;
+    setState(
+      () => _carShown = ride.GeoPoint(
+        a.latitude + (b.latitude - a.latitude) * f,
+        a.longitude + (b.longitude - a.longitude) * f,
+      ),
+    );
   }
 
   /// Fetches the road route again when the leg changes (picked up), when
@@ -106,7 +238,7 @@ class _RideMapState extends State<RideMap> {
     final offRoute =
         car != null &&
         _routes.isNotEmpty &&
-        _distanceToRoute(car, _routes.first) > 150;
+        _routes.every((r) => _distanceToRoute(car, r) > 150);
     final due =
         key != _routeKey ||
         (_routes.isEmpty && since > const Duration(minutes: 1)) ||
@@ -121,13 +253,40 @@ class _RideMapState extends State<RideMap> {
     });
   }
 
-  static double _distanceToRoute(ride.GeoPoint p, List<ride.GeoPoint> route) {
+  static double _distanceToRoute(ride.GeoPoint p, List<ride.GeoPoint> route) =>
+      _nearestIndex(p, route).$2;
+
+  static (int, double) _nearestIndex(
+    ride.GeoPoint p,
+    List<ride.GeoPoint> route,
+  ) {
+    var nearest = 0;
     var best = double.infinity;
-    for (final q in route) {
+    for (final (i, q) in route.indexed) {
       final d = p.metersTo(q);
-      if (d < best) best = d;
+      if (d < best) {
+        best = d;
+        nearest = i;
+      }
     }
-    return best;
+    return (nearest, best);
+  }
+
+  /// The route the car is driving on: the main one unless it's clearly on
+  /// an alternative (within 50 m of it and further from the main one).
+  int _activeRouteIndex(ride.GeoPoint? car) {
+    if (car == null || _routes.length < 2) return 0;
+    var index = 0;
+    var best = _distanceToRoute(car, _routes.first);
+    if (best <= 50) return 0;
+    for (var i = 1; i < _routes.length; i++) {
+      final d = _distanceToRoute(car, _routes[i]);
+      if (d <= 50 && d < best) {
+        best = d;
+        index = i;
+      }
+    }
+    return index;
   }
 
   /// The main route from the point nearest the car onwards, so the part
@@ -137,20 +296,13 @@ class _RideMapState extends State<RideMap> {
     List<ride.GeoPoint> route,
   ) {
     if (car == null || route.length < 2) return route;
-    var nearest = 0;
-    var best = double.infinity;
-    for (final (i, q) in route.indexed) {
-      final d = car.metersTo(q);
-      if (d < best) {
-        best = d;
-        nearest = i;
-      }
-    }
+    final (nearest, _) = _nearestIndex(car, route);
     return [car, ...route.sublist(nearest)];
   }
 
   @override
   void dispose() {
+    _carAnim.dispose();
     _controller?.dispose();
     super.dispose();
   }
@@ -172,7 +324,7 @@ class _RideMapState extends State<RideMap> {
     final t = widget.tracking;
     if (t == null) return const [];
     return [
-      ?t.location?.point,
+      ?(_carShown ?? t.location?.point),
       if (!t.pickedUp) ?t.pickup.point,
       ?t.destination.point,
     ].map(_ll).toList();
@@ -276,7 +428,7 @@ class _RideMapState extends State<RideMap> {
           // Pin tip sits at the bottom of the 34px icon (y = 51 of 60).
           anchor: const Offset(0.5, 51 / 60),
         ),
-      if (t.location?.point case final p?)
+      if (_carOnRoad case final p?)
         Marker(
           markerId: const MarkerId('car'),
           position: _ll(p),
@@ -287,18 +439,23 @@ class _RideMapState extends State<RideMap> {
     };
   }
 
+  /// The normal Google map (streets, labels) before, during and after the
+  /// ride: the black style is no longer used on the live map.
+  bool get _dark => false;
+
   Set<Polyline> _buildPolylines() {
     final t = widget.tracking;
     if (t == null) return const {};
-    final car = t.location?.point;
+    final dark = _dark;
+    final car = _carOnRoad;
     final driven = [...t.path, ?car];
     final lines = <Polyline>{
-      // Where the car has been: solid dark trail.
+      // Where the car has been: a solid trail (dimmed lime on the black map).
       if (driven.length > 1)
         Polyline(
           polylineId: const PolylineId('driven'),
           points: driven.map(_ll).toList(),
-          color: AppColors.ink,
+          color: dark ? AppColors.lime.withValues(alpha: 0.55) : AppColors.ink,
           width: 5,
           zIndex: 3,
           jointType: JointType.round,
@@ -309,27 +466,33 @@ class _RideMapState extends State<RideMap> {
     if (t.completed) return lines;
 
     if (_routes.isNotEmpty) {
-      // Other ways to get there, in grey under the main route.
-      for (final (i, alt) in _routes.skip(1).indexed) {
+      final active = _activeRouteIndex(car);
+      // Every other way to get there, in grey under the one being driven.
+      for (final (i, alt) in _routes.indexed) {
+        if (i == active) continue;
         lines.add(
           Polyline(
             polylineId: PolylineId('alt$i'),
             points: alt.map(_ll).toList(),
-            color: RideColors.routeAlternative,
+            color: dark
+                ? RideColors.routeAlternative.withValues(alpha: 0.6)
+                : RideColors.routeAlternative,
             width: 5,
             zIndex: 0,
             jointType: JointType.round,
           ),
         );
       }
-      final ahead = _aheadOf(car, _routes.first).map(_ll).toList();
+      final ahead = _aheadOf(car, _routes[active]).map(_ll).toList();
       lines
         ..add(
           Polyline(
             polylineId: const PolylineId('ahead-outline'),
             points: ahead,
-            color: AppColors.ink,
-            width: 9,
+            color: dark
+                ? AppColors.lime.withValues(alpha: 0.25)
+                : AppColors.ink,
+            width: dark ? 12 : 9,
             zIndex: 1,
             jointType: JointType.round,
             startCap: Cap.roundCap,
@@ -351,25 +514,43 @@ class _RideMapState extends State<RideMap> {
       return lines;
     }
 
-    // No road route (Routes API off / offline): dotted straight line.
+    // No road route (Routes API off / offline): a straight line from the
+    // car (or, before its first fix, the pickup) to the school, drawn like
+    // the route so it is always visible.
     final ahead = [
-      ?car,
-      if (!t.pickedUp) ?t.pickup.point,
+      car ?? t.pickup.point,
+      if (!t.pickedUp && car != null) ?t.pickup.point,
       ?t.destination.point,
-    ];
+    ].nonNulls.toList();
     if (ahead.length > 1) {
-      lines.add(
-        Polyline(
-          polylineId: const PolylineId('ahead'),
-          points: ahead.map(_ll).toList(),
-          color: AppColors.ink,
-          width: 4,
-          zIndex: 1,
-          patterns: _lengthMeters(ahead) <= _maxDottedMeters
-              ? [PatternItem.dot, PatternItem.gap(10)]
-              : const [],
-        ),
-      );
+      final points = ahead.map(_ll).toList();
+      final dotted = _lengthMeters(ahead) <= _maxDottedMeters;
+      lines
+        ..add(
+          Polyline(
+            polylineId: const PolylineId('ahead-outline'),
+            points: points,
+            color: AppColors.ink,
+            width: 9,
+            zIndex: 1,
+            jointType: JointType.round,
+            startCap: Cap.roundCap,
+            endCap: Cap.roundCap,
+          ),
+        )
+        ..add(
+          Polyline(
+            polylineId: const PolylineId('ahead'),
+            points: points,
+            color: AppColors.lime,
+            width: 6,
+            zIndex: 2,
+            jointType: JointType.round,
+            patterns: dotted
+                ? [PatternItem.dash(18), PatternItem.gap(10)]
+                : const [],
+          ),
+        );
     }
     return lines;
   }
@@ -399,7 +580,8 @@ class _RideMapState extends State<RideMap> {
       onPointerDown: (_) => _lastTouch = DateTime.now(),
       child: GoogleMap(
         initialCameraPosition: _initialCamera,
-        // The normal Google map (streets and labels), not the dark style.
+        // The normal Google map; '[]' (not null) resets any earlier style.
+        style: _dark ? RideMapStyle.dark : '[]',
         onMapCreated: (c) {
           _controller = c;
           _followCar(force: true);

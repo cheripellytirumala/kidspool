@@ -80,6 +80,10 @@ class RidePerson extends Equatable {
     this.carModel,
     this.plate,
     this.carSeats,
+    this.carColor,
+    this.carYear,
+    this.kidsOnRide,
+    this.gender,
   });
 
   final String? id;
@@ -91,6 +95,43 @@ class RidePerson extends Equatable {
 
   /// All seats in the driver's car (5 = a 5-seater), when saved.
   final int? carSeats;
+  final String? carColor;
+  final int? carYear;
+
+  /// Kids riding on this trip (seats taken besides the driver's).
+  final int? kidsOnRide;
+
+  /// `female` | `male` | `non_binary` | `prefer_not_to_say`, when set.
+  final String? gender;
+
+  /// "Female", "Male", "Non-binary"; null when not set or not shared.
+  String? get genderLabel => switch (gender) {
+    'female' => 'Female',
+    'male' => 'Male',
+    'non_binary' => 'Non-binary',
+    _ => null,
+  };
+
+  /// `Silver 2021 Toyota Innova` — what to look for at the kerb.
+  String? get carDescription {
+    final parts = [
+      carColor,
+      carYear?.toString(),
+      carModel,
+    ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
+    return parts.isEmpty ? null : parts.join(' ');
+  }
+
+  /// `2 of 6 kid seats taken` (all seats minus the driver's).
+  String? get seatsLine {
+    final seats = carSeats;
+    if (seats == null || seats < 2) return null;
+    final kidSeats = seats - 1;
+    final taken = kidsOnRide;
+    return taken == null
+        ? '$kidSeats kid seats'
+        : '$taken of $kidSeats kid seats taken';
+  }
 
   String get firstName => name.split(' ').first;
 
@@ -104,7 +145,7 @@ class RidePerson extends Equatable {
   /// `Blue Toyota · 5RTY 118 · 7-seater`, or null when no car is on file.
   String? get vehicleLine {
     final parts = [
-      carModel,
+      carDescription,
       plate,
       if (carSeats != null) '$carSeats-seater',
     ].whereType<String>().where((s) => s.trim().isNotEmpty).toList();
@@ -120,6 +161,10 @@ class RidePerson extends Equatable {
     carModel,
     plate,
     carSeats,
+    carColor,
+    carYear,
+    kidsOnRide,
+    gender,
   ];
 }
 
@@ -160,7 +205,14 @@ class RideTracking extends Equatable {
     this.parent,
     this.path = const [],
     this.sosOpen = false,
-    this.rated = false,
+    this.pickupPin,
+    this.pinRequired = false,
+    this.cancelledAt,
+    this.cancelledBy,
+    this.cancelReason,
+    this.autoEndedAt,
+    this.overdueAt,
+    this.autoEndAt,
   });
 
   final String requestId;
@@ -192,8 +244,38 @@ class RideTracking extends Equatable {
   final List<GeoPoint> path;
   final bool sosOpen;
 
-  /// The requesting parent already said thank you (`rate_ride`).
-  final bool rated;
+  /// 4-digit code the requesting parent gives the Ride Partner at pick-up
+  /// (only sent to that parent, until pick-up).
+  final String? pickupPin;
+
+  /// The server refuses "Picked up" without the parent's PIN.
+  final bool pinRequired;
+
+  final DateTime? cancelledAt;
+
+  /// `parent` | `driver` | `system` (auto-ended), for a cancelled ride.
+  final String? cancelledBy;
+  final String? cancelReason;
+
+  /// Closed by the server because it ran too long.
+  final DateTime? autoEndedAt;
+
+  /// From here on the ride counts as running late (1 h past drop-off).
+  final DateTime? overdueAt;
+
+  /// The server closes the ride by itself at this time (3 h after start).
+  final DateTime? autoEndAt;
+
+  /// Started but the kids aren't in the car yet: either side may cancel.
+  bool get canCancelBeforePickup => started && !pickedUp;
+
+  /// Still in progress past [overdueAt].
+  bool overdue({DateTime? now}) {
+    final at = overdueAt;
+    return started && at != null && !(now ?? DateTime.now()).isBefore(at);
+  }
+
+  bool get autoEnded => autoEndedAt != null;
 
   bool get started => status == RideTrackingStatus.inProgress;
   bool get pickedUp => pickedUpAt != null;
@@ -256,29 +338,37 @@ class RideTracking extends Equatable {
     return (to.difference(from).inSeconds / 60).ceil();
   }
 
-  RideTracking copyWith({List<GeoPoint>? path}) => RideTracking(
-    requestId: requestId,
-    status: status,
-    isDriver: isDriver,
-    pickupAt: pickupAt,
-    estimatedDropoffAt: estimatedDropoffAt,
-    startedAt: startedAt,
-    pickedUpAt: pickedUpAt,
-    completedAt: completedAt,
-    pickup: pickup,
-    school: school,
-    dropoff: dropoff,
-    location: location,
-    distanceMiles: distanceMiles,
-    plannedTripMiles: plannedTripMiles,
-    rideMinutes: rideMinutes,
-    kids: kids,
-    driver: driver,
-    parent: parent,
-    path: path ?? this.path,
-    sosOpen: sosOpen,
-    rated: rated,
-  );
+  RideTracking copyWith({List<GeoPoint>? path, RideLocation? location}) =>
+      RideTracking(
+        requestId: requestId,
+        status: status,
+        isDriver: isDriver,
+        pickupAt: pickupAt,
+        estimatedDropoffAt: estimatedDropoffAt,
+        startedAt: startedAt,
+        pickedUpAt: pickedUpAt,
+        completedAt: completedAt,
+        pickup: pickup,
+        school: school,
+        dropoff: dropoff,
+        location: location ?? this.location,
+        distanceMiles: distanceMiles,
+        plannedTripMiles: plannedTripMiles,
+        rideMinutes: rideMinutes,
+        kids: kids,
+        driver: driver,
+        parent: parent,
+        path: path ?? this.path,
+        sosOpen: sosOpen,
+        pickupPin: pickupPin,
+        pinRequired: pinRequired,
+        cancelledAt: cancelledAt,
+        cancelledBy: cancelledBy,
+        cancelReason: cancelReason,
+        autoEndedAt: autoEndedAt,
+        overdueAt: overdueAt,
+        autoEndAt: autoEndAt,
+      );
 
   @override
   List<Object?> get props => [
@@ -302,7 +392,14 @@ class RideTracking extends Equatable {
     parent,
     path,
     sosOpen,
-    rated,
+    pickupPin,
+    pinRequired,
+    cancelledAt,
+    cancelledBy,
+    cancelReason,
+    autoEndedAt,
+    overdueAt,
+    autoEndAt,
   ];
 }
 

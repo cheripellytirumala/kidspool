@@ -30,28 +30,51 @@ class _Remote implements RideTrackingRemoteDataSource {
 }
 
 void main() {
-  testWidgets('sends every 10 s, re-sending the last fix when standing still', (
-    tester,
-  ) async {
+  testWidgets(
+    'sends every interval, re-sending the last fix when standing still',
+    (tester) async {
+      final gps = _Gps();
+      final remote = _Remote();
+      final reporter = RideLocationReporter(location: gps, tracking: remote)
+        ..start('r1');
+
+      gps.controller.add(const RideFix(latitude: 11.0, longitude: 76.9));
+      await tester.pump();
+      expect(remote.sent, hasLength(1)); // first fix goes out at once
+
+      // Car stands still: one update every interval anyway.
+      const tick = RideLocationReporter.interval;
+      await tester.pump(tick);
+      await tester.pump(tick);
+      await tester.pump(tick);
+      expect(remote.sent, hasLength(4));
+      expect(remote.sent.every((f) => f.latitude == 11.0), isTrue);
+
+      reporter.stop();
+      await tester.pump(const Duration(seconds: 30));
+      expect(remote.sent, hasLength(4));
+      await gps.controller.close();
+    },
+  );
+
+  testWidgets('skips a poor GPS fix right after a good one', (tester) async {
     final gps = _Gps();
     final remote = _Remote();
     final reporter = RideLocationReporter(location: gps, tracking: remote)
       ..start('r1');
 
-    gps.controller.add(const RideFix(latitude: 11.0, longitude: 76.9));
+    gps.controller.add(
+      const RideFix(latitude: 11.0, longitude: 76.9, accuracy: 8),
+    );
     await tester.pump();
-    expect(remote.sent, hasLength(1)); // first fix goes out at once
-
-    // Car stands still for 30 s: one update every 10 s anyway.
-    await tester.pump(const Duration(seconds: 10));
-    await tester.pump(const Duration(seconds: 10));
-    await tester.pump(const Duration(seconds: 10));
-    expect(remote.sent, hasLength(4));
-    expect(remote.sent.every((f) => f.latitude == 11.0), isTrue);
+    // 300 m off, 200 m accuracy: ignored, the good fix is re-sent instead.
+    gps.controller.add(
+      const RideFix(latitude: 11.003, longitude: 76.9, accuracy: 200),
+    );
+    await tester.pump(RideLocationReporter.interval);
+    expect(remote.sent.map((f) => f.latitude), everyElement(11.0));
 
     reporter.stop();
-    await tester.pump(const Duration(seconds: 30));
-    expect(remote.sent, hasLength(4));
     await gps.controller.close();
   });
 }

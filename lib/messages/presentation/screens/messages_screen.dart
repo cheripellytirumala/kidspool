@@ -259,7 +259,7 @@ class _MessagesView extends StatelessWidget {
       context,
       outcome.confirmed
           ? 'Ride booked! $name has been told.'
-          : 'Offer sent. $name will confirm.',
+          : 'Offer sent — waiting for $name to accept.',
     );
     final me = provider.myUserId;
     if (me != null) {

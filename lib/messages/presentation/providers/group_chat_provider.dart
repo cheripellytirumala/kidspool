@@ -196,8 +196,9 @@ class GroupChatProvider extends ChangeNotifier {
   bool isHidden(GroupMessage message) =>
       _asks[message.id]?.hiddenForMe ?? false;
 
-  /// "I can help" on [ask]: the server creates the parent's request and
-  /// books it with this driver (first come, first served). Returns an
+  /// "I can help" on [ask]: the server creates the parent's request with
+  /// this driver's offer, which waits for the parent to accept
+  /// (`waiting_for_parent`; first come, first served). Returns an
   /// error message (null on success) and whether someone else already
   /// took it.
   Future<({String? error, bool taken})> help(RideAsk ask) async {

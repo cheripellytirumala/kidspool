@@ -6,10 +6,14 @@ import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
+import '../../../common/core/di/injection_container.dart';
+import '../../../ride_tracking/domain/entities/ride_tracking.dart';
+import '../../../ride_tracking/domain/repositories/ride_tracking_repository.dart';
+import '../../../ride_tracking/presentation/widgets/ride_map.dart';
 
-/// H3 "Map" card: a decorative dark map with the route from pickup to
-/// [destination], a chip saying who drives whom, the pickup time and a
-/// white "Track" button. The map is static artwork (no platform view).
+/// H3 "Map" card: the ride's live Google map (route, car, home and
+/// school), a chip saying who drives whom, the pickup time and a white
+/// "Track" button. Shows the design's artwork until the ride loads.
 class HomeRideMapCard extends StatelessWidget {
   const HomeRideMapCard({
     super.key,
@@ -19,7 +23,12 @@ class HomeRideMapCard extends StatelessWidget {
     required this.pickupLabel,
     required this.onTrack,
     this.avatarUrl,
+    this.requestId,
   });
+
+  /// The ride shown: when set, the card shows the live Google map of it
+  /// (route, car, home and school) instead of the artwork.
+  final String? requestId;
 
   /// "Jen drives Emma"
   final String headline;
@@ -59,27 +68,37 @@ class HomeRideMapCard extends StatelessWidget {
             child: Stack(
               clipBehavior: Clip.hardEdge,
               children: [
-                // Map/Dark tile, offset as in the design.
-                Positioned(
-                  left: -250,
-                  top: -330,
-                  width: 800,
-                  height: 900,
-                  child: SvgPicture.asset(
-                    AppAssets.mapDark,
-                    width: 800,
-                    height: 900,
-                  ),
-                ),
-                // Route, pins and car marker: scaled down with the card on
-                // narrow screens, never up.
                 Positioned.fill(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.topLeft,
-                    child: SizedBox.fromSize(
-                      size: _designSize,
-                      child: _RouteLayer(destination: destination),
+                  child: _CardMap(
+                    requestId: requestId,
+                    artwork: Stack(
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        // Map/Dark tile, offset as in the design.
+                        Positioned(
+                          left: -250,
+                          top: -330,
+                          width: 800,
+                          height: 900,
+                          child: SvgPicture.asset(
+                            AppAssets.mapDark,
+                            width: 800,
+                            height: 900,
+                          ),
+                        ),
+                        // Route, pins and car: scaled down on narrow
+                        // screens, never up.
+                        Positioned.fill(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.topLeft,
+                            child: SizedBox.fromSize(
+                              size: _designSize,
+                              child: _RouteLayer(destination: destination),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -276,6 +295,57 @@ class _TrackButton extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// The ride's live Google map (the same one as the tracking screen); the
+/// design's artwork until it loads, or when it can't.
+class _CardMap extends StatefulWidget {
+  const _CardMap({required this.requestId, required this.artwork});
+
+  final String? requestId;
+  final Widget artwork;
+
+  @override
+  State<_CardMap> createState() => _CardMapState();
+}
+
+class _CardMapState extends State<_CardMap> {
+  RideTracking? _tracking;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  @override
+  void didUpdateWidget(_CardMap old) {
+    super.didUpdateWidget(old);
+    if (old.requestId != widget.requestId) _load();
+  }
+
+  Future<void> _load() async {
+    final id = widget.requestId;
+    if (id == null || !sl.isRegistered<RideTrackingRepository>()) return;
+    final result = await sl<RideTrackingRepository>().getTracking(id);
+    if (!mounted || widget.requestId != id) return;
+    setState(() => _tracking = result.toNullable());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = _tracking;
+    if (t == null) return widget.artwork;
+    // Taps go to the card (Track), not the map.
+    return IgnorePointer(
+      child: RideMap(
+        tracking: t,
+        // Room for the driver chip (top) and the Track button (bottom).
+        padding: const EdgeInsets.fromLTRB(16, 64, 16, 64),
+        fallback: widget.artwork,
       ),
     );
   }

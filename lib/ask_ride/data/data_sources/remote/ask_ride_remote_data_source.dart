@@ -138,7 +138,8 @@ class AskRideRemoteDataSourceImpl implements AskRideRemoteDataSource {
         'pickupAddress': pickupJson(p.pickupAddress!),
       'note': note.isEmpty ? null : note,
       'repeatSchoolDays': false,
-      'requireApproval': false,
+      // Offers always wait for the parent to accept (QA #4).
+      'requireApproval': true,
       if (dropoff != null) 'dropoffAddress': dropoffJson(dropoff),
     };
   }

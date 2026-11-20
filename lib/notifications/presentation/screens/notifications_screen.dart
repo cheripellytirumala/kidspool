@@ -46,16 +46,23 @@ class _NotificationsView extends StatelessWidget {
       NotificationKind.rideConfirmed ||
       NotificationKind.rideStarted ||
       NotificationKind.pickedUp => (AppRoutes.liveTracking, RideArgs(id)),
-      NotificationKind.rideArrived => (AppRoutes.rideCompleted, RideArgs(id)),
+      NotificationKind.rideOverdue => (AppRoutes.liveTracking, RideArgs(id)),
+      NotificationKind.rideArrived ||
+      NotificationKind.rideAutoEnded => (AppRoutes.rideCompleted, RideArgs(id)),
       NotificationKind.rideRequest => (
         AppRoutes.rideRequestDetail,
         RideRequestArgs(requestId: id),
       ),
       NotificationKind.driverCancelled ||
       NotificationKind.rideMissed ||
-      NotificationKind.rideExpired => (
+      NotificationKind.rideExpired ||
+      NotificationKind.offerReceived => (
         AppRoutes.rideRequestDetail,
         RideRequestArgs(requestId: id, isMine: true),
+      ),
+      NotificationKind.rideCancelled => (
+        AppRoutes.rideRequestDetail,
+        RideRequestArgs(requestId: id, isMine: !n.iAmDriver),
       ),
       // The parent picked someone else: nothing left to act on.
       NotificationKind.offerDeclined || NotificationKind.other => null,

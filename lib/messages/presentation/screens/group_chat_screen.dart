@@ -152,7 +152,12 @@ class _GroupChatViewState extends State<_GroupChatView>
   bool _busyAddingRide = false;
 
   /// "I can help" on a ride card (first come, first served).
-  Future<void> _help(GroupChatProvider provider, RideAsk ask) async {
+  /// The offer then waits for [parentName] to accept.
+  Future<void> _help(
+    GroupChatProvider provider,
+    RideAsk ask,
+    String? parentName,
+  ) async {
     final (:error, :taken) = await provider.help(ask);
     if (!mounted) return;
     if (taken) {
@@ -177,8 +182,8 @@ class _GroupChatViewState extends State<_GroupChatView>
     showAppSnack(
       context,
       error ??
-          'You’re driving this ride. We’ll remind you 30 min before — '
-              'start it from Rides.',
+          'Offer sent — waiting for ${parentName ?? 'the parent'} to '
+              'accept. We’ll let you know.',
     );
   }
 
@@ -367,7 +372,7 @@ class _GroupChatViewState extends State<_GroupChatView>
                     ask: ask,
                     mine: mine,
                     busy: provider.helpingId == ask.id,
-                    onHelp: () => _help(provider, ask),
+                    onHelp: () => _help(provider, ask, m.sender?.firstName),
                     onTrack: ask.requestIds.isEmpty
                         ? null
                         : () => Navigator.of(context).pushNamed(

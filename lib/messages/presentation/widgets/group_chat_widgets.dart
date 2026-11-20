@@ -398,6 +398,13 @@ class RideAskFooter extends StatelessWidget {
 
   String? get _status => switch (ask.status) {
     RideAskStatus.taken when ask.rideStatus == 'completed' => 'Ride done ✅',
+    RideAskStatus.taken when ask.isHelper && ask.awaitingParent =>
+      'You offered to drive · waiting for the parent to accept',
+    RideAskStatus.taken when ask.isMine && ask.awaitingParent =>
+      '${ask.helperName ?? 'A parent'} offered to drive · '
+          'accept or decline in Messages',
+    RideAskStatus.taken when ask.awaitingParent =>
+      '${ask.helperName ?? 'A parent'} offered to drive',
     RideAskStatus.taken when ask.isHelper && ask.rideStarted =>
       'You’re driving this ride · on the way',
     RideAskStatus.taken when ask.isHelper =>
