@@ -28,6 +28,8 @@ class LocationService {
 
   final Geocoding? _override;
 
+  static const Duration _lookupTimeout = Duration(seconds: 8);
+
   // Created on first use: the platform geocoder isn't available in tests.
   late final Geocoding _geocoding = _override ?? Geocoding();
 
@@ -66,15 +68,14 @@ class LocationService {
     }
     if (position == null) {
       throw const DeviceException(
-        'We couldn’t find your location. Search your address or move the pin.',
+        'Location not found. Search your address or move the pin.',
       );
     }
 
     try {
-      final marks = await _geocoding.placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
-      );
+      final marks = await _geocoding
+          .placemarkFromCoordinates(position.latitude, position.longitude)
+          .timeout(_lookupTimeout);
       final mark = marks.isEmpty ? null : marks.first;
       final street = [
         mark?.subThoroughfare,
@@ -101,10 +102,11 @@ class LocationService {
   /// Always returns the coordinates; address parts are blank if unknown.
   Future<ResolvedAddress> addressAt(double latitude, double longitude) async {
     try {
-      final marks = await _geocoding.placemarkFromCoordinates(
-        latitude,
-        longitude,
-      );
+      // The OS geocoder can stall (no network, rate limit): don't wait
+      // forever, the coordinates are what matter.
+      final marks = await _geocoding
+          .placemarkFromCoordinates(latitude, longitude)
+          .timeout(_lookupTimeout);
       final mark = marks.isEmpty ? null : marks.first;
       final street = [
         mark?.subThoroughfare,
@@ -134,7 +136,9 @@ class LocationService {
   }) async {
     final query = '$street, $city, $stateCode $zip, USA';
     try {
-      final locations = await _geocoding.locationFromAddress(query);
+      final locations = await _geocoding
+          .locationFromAddress(query)
+          .timeout(_lookupTimeout);
       if (locations.isNotEmpty) {
         final l = locations.first;
         return ResolvedAddress(

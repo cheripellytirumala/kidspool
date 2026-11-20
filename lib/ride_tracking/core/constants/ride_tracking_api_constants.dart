@@ -22,8 +22,13 @@ abstract final class RideTrackingApiConstants {
   /// heading?, speed?, accuracy?)` → `{distanceMiles}`.
   static const String updateRideLocation = 'update_ride_location';
 
-  /// Ride Partner: `mark_picked_up(requestId, latitude?, longitude?)`.
+  /// Ride Partner: `mark_picked_up(requestId, latitude?, longitude?, pin?)`
+  /// → `{status: picked_up}` or `{status: wrong_pin, attemptsLeft}`.
   static const String markPickedUp = 'mark_picked_up';
+
+  /// Parent or Ride Partner: `cancel_active_ride(requestId, reason?)` —
+  /// a started ride, before pick-up.
+  static const String cancelActiveRide = 'cancel_active_ride';
 
   /// Ride Partner: `complete_ride(requestId, latitude?, longitude?)` →
   /// `{completedAt, distanceMiles, rideMinutes, distanceFromSchoolMeters}`.
@@ -32,10 +37,6 @@ abstract final class RideTrackingApiConstants {
   /// Parent or Ride Partner: `trigger_sos(requestId, latitude?, longitude?,
   /// note?)` → the open SOS event.
   static const String triggerSos = 'trigger_sos';
-
-  /// Requesting parent: `rate_ride(requestId, rating 1–5, thankYou, comment?)`
-  /// — once per completed ride.
-  static const String rateRide = 'rate_ride';
 
   /// `get_my_notifications()` → `[{id, kind, title, body, data, readAt,
   /// createdAt}]`, newest first (max 100).
@@ -51,12 +52,17 @@ abstract final class RideTrackingApiConstants {
 
   /// How often the live screen re-reads `get_ride_tracking` while visible
   /// (replaces the old app's Realtime channel).
-  static const Duration trackingPollInterval = Duration(seconds: 10);
+  static const Duration trackingPollInterval = Duration(seconds: 5);
 
   /// The Ride Partner's position goes out every this often while the ride
   /// is in progress (also when the car hasn't moved, so the parent's map
   /// stays current).
-  static const Duration locationInterval = Duration(seconds: 10);
+  static const Duration locationInterval = Duration(seconds: 5);
+
+  /// GPS fixes less accurate than this (metres) aren't sent while a
+  /// better one came in recently ([staleFixAfter]).
+  static const double maxFixAccuracyMeters = 50;
+  static const Duration staleFixAfter = Duration(seconds: 30);
 
   /// Minimum movement between GPS fixes from the position stream.
   static const int locationDistanceFilterMeters = 10;
@@ -67,6 +73,11 @@ abstract final class RideTrackingApiConstants {
 
   /// Ride alerts older than this are not shown as banners.
   static const Duration alertFreshness = Duration(minutes: 3);
+
+  /// "Arrived" stays news for longer: a parent who opens the app after the
+  /// drop-off still gets the banner and the system notification (QA #5;
+  /// without FCM push there is no alert while the app is closed).
+  static const Duration arrivedAlertFreshness = Duration(hours: 1);
 
   /// The Ride Partner can drop off (button) — and the ride drops off by
   /// itself — once the car is within this distance of the drop-off.

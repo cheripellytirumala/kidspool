@@ -380,7 +380,8 @@ class _ChatViewState extends State<_ChatView> with WidgetsBindingObserver {
         '$name needs a ride',
         RideCardActions(
           primary: 'I can help',
-          onPrimary: () => _act(p.offer, 'Offer sent to $name.'),
+          onPrimary: () =>
+              _act(p.offer, 'Offer sent — waiting for $name to accept.'),
         ),
       );
     }

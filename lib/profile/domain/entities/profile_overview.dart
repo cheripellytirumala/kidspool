@@ -70,10 +70,11 @@ class ProfileOverview extends Equatable {
   bool get isLicenseVerified => status.isLicenseVerified;
 
   ProfileOverview copyWith({
+    MyStatus? status,
     RideMode? rideMode,
     List<SavedAddress>? addresses,
   }) => ProfileOverview(
-    status: status,
+    status: status ?? this.status,
     rideMode: rideMode ?? this.rideMode,
     details: details,
     kids: kids,

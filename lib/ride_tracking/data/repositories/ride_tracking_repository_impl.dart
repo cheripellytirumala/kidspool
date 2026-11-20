@@ -39,11 +39,24 @@ class RideTrackingRepositoryImpl implements RideTrackingRepository {
       }, tag: _tag);
 
   @override
-  Future<Either<Failure, Unit>> markPickedUp(String requestId) =>
+  Future<Either<Failure, Unit>> markPickedUp(String requestId, {String? pin}) =>
       ErrorHandler.guard(() async {
-        await _remote.markPickedUp(requestId, await _location.currentFix());
+        await _remote.markPickedUp(
+          requestId,
+          await _location.currentFix(),
+          pin: pin,
+        );
         return unit;
       }, tag: _tag);
+
+  @override
+  Future<Either<Failure, Unit>> cancelActiveRide(
+    String requestId, {
+    String? reason,
+  }) => ErrorHandler.guard(() async {
+    await _remote.cancelActiveRide(requestId, reason: reason);
+    return unit;
+  }, tag: _tag);
 
   @override
   Future<Either<Failure, RideCompletion>> completeRide(String requestId) =>
@@ -59,13 +72,4 @@ class RideTrackingRepositoryImpl implements RideTrackingRepository {
         await _remote.triggerSos(requestId, await _location.currentFix());
         return unit;
       }, tag: _tag);
-
-  @override
-  Future<Either<Failure, Unit>> sayThankYou(
-    String requestId, {
-    required int rating,
-  }) => ErrorHandler.guard(() async {
-    await _remote.rateRide(requestId, rating: rating, thankYou: true);
-    return unit;
-  }, tag: _tag);
 }

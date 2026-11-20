@@ -25,6 +25,7 @@ abstract final class MyStatusModel {
       licenseRejectionReason: driver is Map
           ? Map<String, dynamic>.from(driver).readString('rejectionReason')
           : null,
+      gender: Gender.parse(map.readString('gender')),
     );
   }
 }

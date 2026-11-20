@@ -28,8 +28,9 @@ abstract final class MessagesApiConstants {
   /// openDaysInSeries, youAreBusy, myOffer}]`.
   static const String getOpenRequests = 'get_open_requests';
 
-  /// `offer_ride(requestId, scope)` → `{groupId, status: confirmed |
-  /// waiting_for_parent, offers: [{offerId, requestId, status}]}`.
+  /// `offer_ride(requestId, scope)` → `{groupId, status:
+  /// waiting_for_parent, offers: [{offerId, requestId, status}]}` — the
+  /// parent always accepts or declines.
   static const String offerRide = 'offer_ride';
 
   /// `withdraw_offer(offerId, scope)`.

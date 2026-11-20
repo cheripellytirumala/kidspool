@@ -16,7 +16,12 @@ class UsPhoneNumberFormatter extends TextInputFormatter {
     final national = text.startsWith('+1')
         ? text.substring(2)
         : text.replaceFirst(RegExp(r'^\+'), '');
-    final digits = national.replaceAll(RegExp(r'\D'), '');
+    // US numbers never start with 1: a leading 1 is the country code typed
+    // again ("1 999 999 9999"), which would otherwise become part of the
+    // number and sign in to a different (new) account.
+    final digits = national
+        .replaceAll(RegExp(r'\D'), '')
+        .replaceFirst(RegExp(r'^1+'), '');
     return digits.length > AuthFlowProvider.phoneLength
         ? digits.substring(0, AuthFlowProvider.phoneLength)
         : digits;

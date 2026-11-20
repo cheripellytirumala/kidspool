@@ -28,7 +28,10 @@ class _FakeTracking implements RideTrackingRepository {
       isDriver: true,
       pickupAt: DateTime.now().add(const Duration(minutes: 20)),
       startedAt: started ? DateTime.now() : null,
-      pickup: const RideStop(label: 'Home', point: GeoPoint(37.7599, -122.4148)),
+      pickup: const RideStop(
+        label: 'Home',
+        point: GeoPoint(37.7599, -122.4148),
+      ),
       // Far-away school (US home → Hyderabad) to reproduce long routes.
       school: const RideStop(
         label: "St Paul's School",
@@ -50,18 +53,13 @@ class _FakeTracking implements RideTrackingRepository {
       const Right(unit);
 
   @override
-  Future<Either<Failure, RideCompletion>> completeRide(String requestId) async =>
-      const Right(RideCompletion());
+  Future<Either<Failure, RideCompletion>> completeRide(
+    String requestId,
+  ) async => const Right(RideCompletion());
 
   @override
   Future<Either<Failure, Unit>> triggerSos(String requestId) async =>
       const Right(unit);
-
-  @override
-  Future<Either<Failure, Unit>> sayThankYou(
-    String requestId, {
-    required int rating,
-  }) async => const Right(unit);
 }
 
 Future<void> main() async {

@@ -1,6 +1,7 @@
 import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/failures.dart';
+import '../../../common/domain/entities/my_status.dart';
 import '../../../common/domain/entities/picked_address.dart';
 import '../entities/profile_details.dart';
 import '../entities/ride_mode.dart';
@@ -32,4 +33,8 @@ abstract interface class ProfileRepository {
   RideMode getRideMode();
 
   Future<Either<Failure, RideMode>> setRideMode(RideMode mode);
+
+  /// Sets (or clears, with `null`) the user's optional gender. Returns the
+  /// saved value.
+  Future<Either<Failure, Gender?>> setGender(Gender? gender);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../common/domain/entities/my_status.dart';
 import '../../../common/presentation/theme/app_assets.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
@@ -58,6 +59,44 @@ Future<RideMode?> showRideModeSheet(BuildContext context, RideMode current) {
           selected: current == RideMode.seeker,
           onTap: () => Navigator.pop(context, RideMode.seeker),
         ),
+      ],
+    ),
+  );
+}
+
+/// Optional gender picker. Returns `(gender: …)` with the choice (`null`
+/// = clear), or `null` when dismissed.
+Future<({Gender? gender})?> showGenderSheet(
+  BuildContext context,
+  Gender? current,
+) {
+  return _sheet<({Gender? gender})>(
+    context,
+    (context) => Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text('Gender', style: AppTextStyles.headingH3),
+        const SizedBox(height: 4),
+        Text(
+          'Optional · you can change or clear it any time.',
+          style: AppTextStyles.body,
+        ),
+        const SizedBox(height: 16),
+        for (final gender in Gender.values) ...[
+          AppSelectCard(
+            title: gender.label,
+            selected: current == gender,
+            onTap: () => Navigator.pop(context, (gender: gender)),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (current != null)
+          AppButton(
+            label: 'Clear',
+            variant: AppButtonVariant.outline,
+            onPressed: () => Navigator.pop(context, (gender: null)),
+          ),
       ],
     ),
   );

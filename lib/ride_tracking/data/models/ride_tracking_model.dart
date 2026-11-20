@@ -75,7 +75,14 @@ abstract final class RideTrackingModel {
             GeoPoint((p[0] as num).toDouble(), (p[1] as num).toDouble()),
       ],
       sosOpen: json['openSos'] is Map,
-      rated: json['rating'] is Map,
+      pickupPin: json.readString('pickupPin'),
+      pinRequired: json['pinRequired'] == true,
+      cancelledAt: _time(json['cancelledAt']),
+      cancelledBy: json.readString('cancelledBy'),
+      cancelReason: json.readString('cancelReason'),
+      autoEndedAt: _time(json['autoEndedAt']),
+      overdueAt: _time(json['overdueAt']),
+      autoEndAt: _time(json['autoEndAt']),
     );
   }
 
@@ -110,6 +117,10 @@ abstract final class RideTrackingModel {
       carModel: vehicle.readString('model'),
       plate: vehicle.readString('plateNumber'),
       carSeats: vehicle.readInt('carSeats'),
+      carColor: vehicle.readString('color'),
+      carYear: vehicle.readInt('year'),
+      kidsOnRide: vehicle.readInt('kidsOnRide'),
+      gender: m.readString('gender'),
     );
   }
 

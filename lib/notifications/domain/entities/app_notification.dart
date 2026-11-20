@@ -11,6 +11,21 @@ enum NotificationKind {
   rideMissed('ride_missed'),
   rideExpired('ride_expired'),
 
+  /// A Ride Partner offered to drive the parent's own request (waiting for
+  /// the parent to accept).
+  offerReceived('offer_received'),
+
+  // Either side
+  /// A started ride was cancelled before pickup (by either parent, or
+  /// automatically).
+  rideCancelled('ride_cancelled'),
+
+  /// The ride is running more than an hour late.
+  rideOverdue('ride_overdue'),
+
+  /// The ride was ended automatically.
+  rideAutoEnded('ride_auto_ended'),
+
   // As a Ride Partner
   rideRequest('ride_request'),
   offerDeclined('offer_declined'),

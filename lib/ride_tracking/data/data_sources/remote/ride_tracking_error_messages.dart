@@ -39,18 +39,29 @@ abstract final class RideTrackingErrorMessages {
         return 'Mark the kids as picked up first.';
       case 'ride_not_active':
         return 'This ride isn’t active, so SOS can’t be sent.';
-      case 'ride_not_completed':
-        return 'You can say thank you once the ride is completed.';
-      case 'already_rated':
-        return 'You already thanked them for this ride.';
       case 'ride_request_not_found':
         return 'We couldn’t find this ride.';
+      case 'pin_required':
+        return 'Ask the parent for their 4-digit pick-up PIN.';
+      case 'pin_locked':
+        return 'Too many wrong PINs. Wait 10 minutes, or call the parent.';
+      case 'wrong_pin':
+        return wrongPin(null);
+      case 'cannot_cancel':
+        return 'This ride can’t be cancelled any more.';
       case 'invalid_field':
         return 'Your location looks wrong. Please try again.';
       default:
         return null;
     }
   }
+
+  static String wrongPin(int? attemptsLeft) => switch (attemptsLeft) {
+    null => 'That PIN isn’t right. Check it with the parent.',
+    0 => 'That PIN isn’t right. Too many tries — wait 10 minutes.',
+    1 => 'That PIN isn’t right. 1 try left.',
+    final n => 'That PIN isn’t right. $n tries left.',
+  };
 
   /// Rewrites a [ServerException]'s message for ride codes; other
   /// exceptions are returned unchanged.

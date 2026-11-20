@@ -9,6 +9,7 @@ import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
+import '../../../common/presentation/widgets/app_toggle.dart';
 import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
 import '../../domain/entities/child.dart';
@@ -16,6 +17,7 @@ import '../providers/add_child_form_provider.dart';
 import '../providers/kids_provider.dart';
 import 'where_kids_go_screen.dart' show WhereKidsGoArgs;
 import '../widgets/dashed_add_button.dart';
+import '../widgets/icon_disc.dart';
 import '../widgets/kid_avatar.dart';
 import '../widgets/kid_field_tile.dart';
 import '../widgets/kid_summary_card.dart';
@@ -367,6 +369,10 @@ class _ChildFormCard extends StatelessWidget {
               value: schoolName,
               onTap: onChangeSchool,
             ),
+          _BoosterSeatRow(
+            value: form.needsBooster,
+            onChanged: form.setNeedsBooster,
+          ),
           KidFieldTile(
             icon: KidsAssets.heart,
             label: 'Medical notes (optional)',
@@ -380,6 +386,58 @@ class _ChildFormCard extends StatelessWidget {
             onPressed: form.canSave ? onSave : null,
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// "Booster seat needed" switch, styled like [KidFieldTile]. Turned on by
+/// the age for new kids under 8 until the parent switches it.
+class _BoosterSeatRow extends StatelessWidget {
+  const _BoosterSeatRow({required this.value, required this.onChanged});
+
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  static const String helper =
+      'Recommended until the adult seat belt fits — usually around age '
+      '8–12 or 4′9″ (145 cm).';
+
+  @override
+  Widget build(BuildContext context) {
+    return MergeSemantics(
+      child: Material(
+        color: AppColors.screen,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
+          onTap: () => onChanged(!value),
+          borderRadius: BorderRadius.circular(22),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
+            child: Row(
+              spacing: 10,
+              children: [
+                const IconDisc(
+                  asset: AppAssets.iconKid,
+                  size: 40,
+                  iconSize: 20,
+                  color: AppColors.screen,
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: 2,
+                    children: [
+                      Text('Booster seat needed', style: KidsTextStyles.labelL),
+                      Text(helper, style: KidsTextStyles.captionM),
+                    ],
+                  ),
+                ),
+                AppToggle(value: value, onChanged: onChanged),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

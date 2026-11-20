@@ -179,7 +179,7 @@ void main() {
         'pickupAddressId': 'a1',
         'note': null,
         'repeatSchoolDays': false,
-        'requireApproval': false,
+        'requireApproval': true,
       });
     });
 

@@ -2,6 +2,8 @@ import '../../../../common/core/error/exceptions.dart';
 import '../../../../common/core/network/api_client.dart';
 import '../../../../common/core/network/api_error_messages.dart';
 import '../../../../common/core/network/auth_token_provider.dart';
+import '../../../../common/core/utils/json_parser.dart';
+import '../../../../common/domain/entities/my_status.dart';
 import '../../../../common/domain/entities/picked_address.dart';
 import '../../../core/constants/profile_api_constants.dart';
 import '../../../domain/entities/profile_details.dart';
@@ -24,6 +26,9 @@ abstract interface class ProfileRemoteDataSource {
   Future<void> setDefaultAddress(String addressId);
 
   Future<void> deleteAddress(String addressId);
+
+  /// `set_my_gender`; returns the saved value (`null` = not set).
+  Future<Gender?> setMyGender(Gender? gender);
 }
 
 class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
@@ -94,5 +99,14 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     ProfileApiConstants.deleteAddress,
     params: {ProfileApiConstants.pAddressId: addressId},
     parser: (_) {},
+  );
+
+  @override
+  Future<Gender?> setMyGender(Gender? gender) => _api.rpc(
+    ProfileApiConstants.setMyGender,
+    params: {ProfileApiConstants.pGender: gender?.value},
+    parser: (json) => json is Map
+        ? Gender.parse(Map<String, dynamic>.from(json).readString('gender'))
+        : gender,
   );
 }

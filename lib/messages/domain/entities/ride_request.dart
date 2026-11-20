@@ -204,7 +204,8 @@ class OfferOutcome extends Equatable {
 
   final String? offerId;
 
-  /// The parent didn't ask to approve: the ride is booked straight away.
+  /// The ride was booked straight away. Offers now always wait for the
+  /// parent (`waiting_for_parent`), so this is false in practice.
   final bool confirmed;
 
   @override

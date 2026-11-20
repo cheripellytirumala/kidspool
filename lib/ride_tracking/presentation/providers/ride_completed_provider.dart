@@ -3,36 +3,25 @@ import 'package:flutter/foundation.dart';
 import '../../../common/presentation/state/view_state.dart';
 import '../../domain/entities/ride_tracking.dart';
 import '../../domain/usecases/get_ride_tracking.dart';
-import '../../domain/usecases/say_thank_you.dart';
 
-/// F23 · Ride completed — one `get_ride_tracking` read, plus "Say thank you"
-/// (`rate_ride`) for the requesting parent.
+/// F23 · Ride completed — one `get_ride_tracking` read. Parents don't rate
+/// the Ride Partner.
 class RideCompletedProvider extends ChangeNotifier {
-  RideCompletedProvider({
-    required GetRideTracking getRideTracking,
-    required SayThankYou sayThankYou,
-  }) : _getRideTracking = getRideTracking,
-       _sayThankYou = sayThankYou;
+  RideCompletedProvider({required GetRideTracking getRideTracking})
+    : _getRideTracking = getRideTracking;
 
   final GetRideTracking _getRideTracking;
-  final SayThankYou _sayThankYou;
 
   String? _requestId;
   RideTracking? _tracking;
   ViewStatus _status = ViewStatus.initial;
   String? _errorMessage;
-  bool _thanking = false;
-  bool _thanked = false;
   bool _disposed = false;
 
   RideTracking? get tracking => _tracking;
   ViewStatus get status => _status;
   String? get errorMessage => _errorMessage;
   bool get hasRide => _requestId != null;
-  bool get thanking => _thanking;
-
-  /// Thanks already sent (now or earlier).
-  bool get thanked => _thanked || (_tracking?.rated ?? false);
 
   Future<void> open(String? requestId) async {
     _requestId = requestId;
@@ -61,20 +50,6 @@ class RideCompletedProvider extends ChangeNotifier {
   }
 
   Future<void> retry() => open(_requestId);
-
-  /// Returns an error message, or null when the thanks went out.
-  Future<String?> sayThankYou(int rating) async {
-    final id = _requestId;
-    if (id == null || _thanking || thanked) return null;
-    _thanking = true;
-    _notify();
-    final result = await _sayThankYou(SayThankYouParams(id, rating: rating));
-    _thanking = false;
-    final failure = result.getLeft().toNullable();
-    if (failure == null || failure.code == 'already_rated') _thanked = true;
-    _notify();
-    return failure?.message;
-  }
 
   void _notify() {
     if (!_disposed) notifyListeners();

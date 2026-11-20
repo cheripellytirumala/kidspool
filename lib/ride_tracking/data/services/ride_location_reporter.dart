@@ -11,7 +11,7 @@ import '../models/ride_fix.dart';
 
 /// Sends the Ride Partner's position with `update_ride_location` from
 /// `start_ride` until `complete_ride`, every
-/// [RideTrackingApiConstants.locationInterval] (10 s) — the last known fix
+/// [RideTrackingApiConstants.locationInterval] (5 s) — the last known fix
 /// again when the car hasn't moved. A move that came in sooner goes out on the next tick, so the
 /// parent's map never lags more than that. Foreground only: the app has no
 /// background-location setup.
@@ -42,6 +42,7 @@ class RideLocationReporter implements RideLocationSharing {
   }
 
   DateTime? _lastSent;
+  DateTime? _lastGoodAt;
 
   bool _sending = false;
 
@@ -56,6 +57,21 @@ class RideLocationReporter implements RideLocationSharing {
     AppLogger.debug('sharing location for $requestId', tag: 'Tracking');
     _fixes = _location.fixes().listen(
       (fix) {
+        // A poor fix (tunnel, urban canyon) would make the car jump; skip it
+        // unless nothing better has come in for a while.
+        final acc = fix.accuracy;
+        final goodAt = _lastGoodAt;
+        if (acc != null &&
+            acc > RideTrackingApiConstants.maxFixAccuracyMeters &&
+            goodAt != null &&
+            DateTime.now().difference(goodAt) <
+                RideTrackingApiConstants.staleFixAfter) {
+          return;
+        }
+        if (acc == null ||
+            acc <= RideTrackingApiConstants.maxFixAccuracyMeters) {
+          _lastGoodAt = DateTime.now();
+        }
         _pending = fix;
         _latest = fix;
         final last = _lastSent;
@@ -82,6 +98,7 @@ class RideLocationReporter implements RideLocationSharing {
     _pending = null;
     _latest = null;
     _lastSent = null;
+    _lastGoodAt = null;
     _requestId = null;
   }
 

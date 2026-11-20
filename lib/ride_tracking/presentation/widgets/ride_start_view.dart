@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../common/core/services/external_maps_launcher.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
@@ -88,6 +89,14 @@ class RideStartView extends StatelessWidget {
                         ],
                       ),
                       const Spacer(),
+                      const SizedBox(height: 12),
+                      RidePillButton(
+                        label: 'Navigate to pickup',
+                        icon: RideTrackingAssets.locationPin,
+                        lime: false,
+                        onPressed: () =>
+                            ExternalMapsLauncher.launchNavigation(t.pickup),
+                      ),
                       const SizedBox(height: 12),
                       AppButton(
                         label: 'Start ride',

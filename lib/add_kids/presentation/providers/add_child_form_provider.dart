@@ -4,6 +4,7 @@ import '../../../common/core/error/exceptions.dart';
 import '../../../common/core/services/photo_picker.dart';
 import '../../domain/entities/child.dart';
 import '../../domain/entities/place.dart';
+import '../../../ask_ride/domain/entities/ask_ride_kid.dart';
 import 'kids_provider.dart';
 import '../../domain/entities/grade_age.dart';
 
@@ -33,6 +34,10 @@ class AddChildFormProvider extends ChangeNotifier {
   String? _grade;
   Place? _school;
   bool _needsBooster = false;
+
+  /// The parent switched the booster seat themselves (or is editing a kid
+  /// with a saved value): the age no longer sets it.
+  bool _boosterTouched = false;
 
   /// Current photo source (signed URL or new local file).
   String? _photo;
@@ -128,10 +133,24 @@ class AddChildFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setDateOfBirth(DateTime value) => _change(() => _dateOfBirth = value);
+  /// Sets the date of birth. On a new kid whose booster seat the parent
+  /// hasn't switched, kids under [AskRideKid.boosterUntilAge] get it on
+  /// (and older kids off).
+  void setDateOfBirth(DateTime value) => _change(() {
+    _dateOfBirth = value;
+    if (!_boosterTouched) _needsBooster = boosterRecommendedFor(value);
+  });
+
+  /// Booster seat recommended at this date of birth (under 8).
+  static bool boosterRecommendedFor(DateTime dateOfBirth, [DateTime? today]) =>
+      Child.ageOn(dateOfBirth, today) < AskRideKid.boosterUntilAge;
+
   void setGrade(String value) => _change(() => _grade = value);
   void setSchool(Place value) => _change(() => _school = value);
-  void setNeedsBooster(bool value) => _change(() => _needsBooster = value);
+  void setNeedsBooster(bool value) => _change(() {
+    _needsBooster = value;
+    _boosterTouched = true;
+  });
 
   /// Picks the kid's photo. Returns an error message or `null`.
   Future<String?> pickPhoto({required bool fromCamera}) async {
@@ -239,6 +258,9 @@ class AddChildFormProvider extends ChangeNotifier {
     final schoolId = child?.schoolId;
     _school = schoolId == null ? null : _kids.placeById(schoolId);
     _needsBooster = child?.needsBooster ?? false;
+    // An existing kid keeps their saved value; a new one follows the age
+    // until the parent switches it.
+    _boosterTouched = child != null;
     _photo = child?.photo;
     _newPhotoPath = null;
     _newSchoolIdCardPath = null;

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/ride_tracking_api_constants.dart';
+import '../../../common/core/services/external_maps_launcher.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/widgets/app_button.dart';
+import '../../core/constants/ride_tracking_api_constants.dart';
 import '../../core/constants/ride_tracking_assets.dart';
 import '../../core/utils/ride_format.dart';
 import '../../domain/entities/ride_tracking.dart';
 import '../providers/live_tracking_provider.dart';
 import 'ride_avatar.dart';
 import 'ride_buttons.dart';
+import 'ride_safety_widgets.dart';
 import 'ride_styles.dart';
 
 /// F22 bottom "Sheet": ETA + route, stats card, the other grown-up, and the
@@ -25,7 +27,14 @@ class LiveTrackingSheet extends StatelessWidget {
     required this.onCall,
     this.canDropOff = true,
     this.metersToDropoff,
+    this.onCancel,
+    this.cancelling = false,
   });
+
+  /// Shown as "Cancel ride" while the ride may be cancelled (started, not
+  /// picked up yet).
+  final VoidCallback? onCancel;
+  final bool cancelling;
 
   /// Within 100 m of the drop-off (no distance hint then).
   final bool canDropOff;
@@ -76,7 +85,22 @@ class LiveTrackingSheet extends StatelessWidget {
           const SizedBox(height: 16),
           _Stats(tracking: tracking),
           const SizedBox(height: 16),
+          if (tracking.overdue()) ...[
+            RideOverdueBanner(tracking: tracking),
+            const SizedBox(height: 12),
+          ],
           _PersonRow(tracking: tracking, onMessage: onMessage, onCall: onCall),
+          if (!tracking.isDriver && DriverCarCard.hasInfo(tracking.driver)) ...[
+            const SizedBox(height: 12),
+            DriverCarCard(driver: tracking.driver!),
+          ],
+          if (!tracking.isDriver && tracking.pickupPin != null) ...[
+            const SizedBox(height: 12),
+            PickupPinCard(
+              pin: tracking.pickupPin!,
+              driverName: tracking.driver?.firstName,
+            ),
+          ],
           if (action != null) ...[
             const SizedBox(height: 16),
             if (action == DriverRideAction.complete && !canDropOff) ...[
@@ -87,12 +111,28 @@ class LiveTrackingSheet extends StatelessWidget {
               ),
               const SizedBox(height: 8),
             ],
-            AppButton(
-              label: _actionLabel(action, tracking),
-              isLoading: busyAction != null,
-              onPressed: onDriverAction,
+            Row(
+              children: [
+                RideIconButton(
+                  icon: RideTrackingAssets.locationPin,
+                  semanticLabel: 'Navigate',
+                  background: AppColors.surface,
+                  onPressed: () =>
+                      ExternalMapsLauncher.launchNavigation(tracking.nextStop),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: AppButton(
+                    label: _actionLabel(action, tracking),
+                    isLoading: busyAction != null,
+                    onPressed: onDriverAction,
+                  ),
+                ),
+              ],
             ),
           ],
+          if (onCancel != null)
+            CancelRideLink(onPressed: onCancel!, busy: cancelling),
         ],
       ),
     );

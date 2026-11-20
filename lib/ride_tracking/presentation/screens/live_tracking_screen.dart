@@ -19,6 +19,7 @@ import '../widgets/live_tracking_sheet.dart';
 import '../widgets/ride_buttons.dart';
 import '../widgets/ride_contact.dart';
 import '../widgets/ride_map.dart';
+import '../widgets/ride_safety_widgets.dart';
 import '../widgets/ride_start_view.dart';
 import '../widgets/ride_state_view.dart';
 import '../widgets/ride_styles.dart';
@@ -96,8 +97,38 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
   }
 
   Future<void> _onDriverAction() async {
-    final error = await _provider.runDriverAction();
+    String? pin;
+    final t = _provider.tracking;
+    if (_provider.needsPickupPin && t != null) {
+      pin = await RideSafetyDialogs.askPickupPin(
+        context,
+        parentName: t.parent?.firstName ?? 'the parent',
+        // Until the server requires it, a parent on an older app (no PIN
+        // shown) doesn't block the pick-up.
+        allowSkip: !t.pinRequired,
+      );
+      if (pin == null || !mounted) return;
+    }
+    final error = await _provider.runDriverAction(
+      pin: pin == null || pin.isEmpty ? null : pin,
+    );
     if (error != null && mounted) showAppSnack(context, error);
+  }
+
+  Future<void> _onCancel(RideTracking t) async {
+    final other = _otherPerson(t);
+    final reason = await RideSafetyDialogs.confirmCancel(
+      context,
+      isDriver: t.isDriver,
+      otherName:
+          other?.firstName ?? (t.isDriver ? 'The parent' : 'Your Ride Partner'),
+    );
+    if (reason == null || !mounted) return;
+    final error = await _provider.cancelRide(
+      reason: reason.isEmpty ? null : reason,
+    );
+    if (!mounted) return;
+    showAppSnack(context, error ?? 'Ride cancelled.');
   }
 
   Future<void> _onSos(RideTracking tracking) async {
@@ -118,6 +149,28 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
   }
 
   RidePerson? _otherPerson(RideTracking t) => t.isDriver ? t.parent : t.driver;
+
+  static String _closedMessage(RideTracking t) {
+    if (t.status != RideTrackingStatus.cancelled || t.startedAt == null) {
+      return 'There’s nothing to track for this ride any more.';
+    }
+    final who = switch (t.cancelledBy) {
+      'system' =>
+        'It wasn’t picked up within 3 hours of starting, so it '
+            'was closed automatically',
+      'driver' when t.isDriver => 'You cancelled it before pick-up',
+      'driver' =>
+        '${t.driver?.firstName ?? 'Your Ride Partner'} cancelled '
+            'it before pick-up',
+      'parent' when !t.isDriver => 'You cancelled it before pick-up',
+      'parent' =>
+        '${t.parent?.firstName ?? 'The parent'} cancelled it '
+            'before pick-up',
+      _ => 'It was cancelled before pick-up',
+    };
+    final reason = t.cancelReason;
+    return reason == null || reason.isEmpty ? '$who.' : '$who · $reason.';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -149,7 +202,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
           RideTrackingStatus.missed => 'This ride was missed',
           _ => 'This ride has expired',
         },
-        message: 'There’s nothing to track for this ride any more.',
+        message: _closedMessage(tracking),
       );
     }
 
@@ -214,6 +267,10 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
                       onDriverAction: _onDriverAction,
                       onMessage: onMessage,
                       onCall: onCall,
+                      cancelling: provider.cancelling,
+                      onCancel: provider.canCancel
+                          ? () => _onCancel(tracking)
+                          : null,
                     ),
                   ],
                 );

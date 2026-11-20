@@ -26,6 +26,11 @@ abstract final class ProfileApiConstants {
   /// remaining address.
   static const String deleteAddress = 'delete_address';
 
+  /// `set_my_gender(gender)` → `{gender}`; `female`, `male`, `non_binary`,
+  /// `prefer_not_to_say` or null to clear.
+  static const String setMyGender = 'set_my_gender';
+
   // Params
+  static const String pGender = 'gender';
   static const String pAddressId = 'addressId';
 }

@@ -30,7 +30,11 @@ Future<void> _render(
   }
   if (markFraction != null) {
     final m = s * markFraction;
-    final rect = Rect.fromCenter(center: Offset(s / 2, s / 2), width: m, height: m);
+    final rect = Rect.fromCenter(
+      center: Offset(s / 2, s / 2),
+      width: m,
+      height: m,
+    );
     canvas.drawRRect(
       RRect.fromRectAndRadius(rect, Radius.circular(m * 36 / 104)),
       Paint()..color = _lime,
@@ -54,17 +58,31 @@ void main() {
   testWidgets('generate brand images', (tester) async {
     await tester.runAsync(() async {
       // iOS / legacy icon: full-bleed lime, glyph at the Figma mark ratio.
-      await _render('assets/brand/app_icon.png', 1024,
-          glyphFraction: 56 / 104, background: _lime);
+      await _render(
+        'assets/brand/app_icon.png',
+        1024,
+        glyphFraction: 56 / 104,
+        background: _lime,
+      );
       // Android adaptive foreground (108dp canvas, 72dp visible).
-      await _render('assets/brand/app_icon_foreground.png', 1024,
-          glyphFraction: 56 / 104 * 72 / 108);
+      await _render(
+        'assets/brand/app_icon_foreground.png',
+        1024,
+        glyphFraction: 56 / 104 * 72 / 108,
+      );
       // Native splash logo: the lime mark, 104dp at 4x.
-      await _render('assets/brand/splash_logo.png', 416,
-          glyphFraction: 56 / 104, markFraction: 1);
+      await _render(
+        'assets/brand/splash_logo.png',
+        416,
+        glyphFraction: 56 / 104,
+        markFraction: 1,
+      );
       // Android 12+ splash icon: 960px, shown inside a lime circle.
-      await _render('assets/brand/splash_android12.png', 960,
-          glyphFraction: 0.42);
+      await _render(
+        'assets/brand/splash_android12.png',
+        960,
+        glyphFraction: 0.42,
+      );
     });
   });
 }
