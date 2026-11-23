@@ -49,8 +49,16 @@ class _FakeTracking implements RideTrackingRepository {
   }
 
   @override
-  Future<Either<Failure, Unit>> markPickedUp(String requestId) async =>
-      const Right(unit);
+  Future<Either<Failure, Unit>> markPickedUp(
+    String requestId, {
+    String? pin,
+  }) async => const Right(unit);
+
+  @override
+  Future<Either<Failure, Unit>> cancelActiveRide(
+    String requestId, {
+    String? reason,
+  }) async => const Right(unit);
 
   @override
   Future<Either<Failure, RideCompletion>> completeRide(
