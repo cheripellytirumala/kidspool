@@ -602,7 +602,9 @@ void main() {
       await setUpProvider();
       final m = provider.chatMessage;
       expect(m, startsWith('🚗 I asked for a ride: Emma · '));
-      expect(m, contains('Home · 24 Maple St → Lincoln Elementary'));
+      expect(m, contains('Home → Lincoln Elementary'));
+      // The street stays private until a ride is booked.
+      expect(m, isNot(contains('Maple St')));
       expect(m, endsWith('Can you help?'));
     });
 

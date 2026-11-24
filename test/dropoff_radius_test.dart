@@ -154,7 +154,7 @@ void main() {
     expect(android.foregroundNotificationConfig?.setOngoing, isTrue);
     expect(
       android.foregroundNotificationConfig?.notificationTitle,
-      'KidPool is sharing your location',
+      'KidsPool is sharing your location',
     );
   });
 }

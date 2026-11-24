@@ -16,19 +16,22 @@ class AuthInterceptor extends QueuedInterceptor {
     required Dio dio,
     required String supabaseUrl,
     required String publishableKey,
+    Dio? refreshDio,
   }) : _tokenProvider = tokenProvider,
        _dio = dio,
-       _refreshDio = Dio(
-         BaseOptions(
-           baseUrl: supabaseUrl,
-           connectTimeout: ApiConstants.connectTimeout,
-           receiveTimeout: ApiConstants.receiveTimeout,
-           headers: {
-             ApiConstants.headerApiKey: publishableKey,
-             ApiConstants.headerContentType: ApiConstants.contentTypeJson,
-           },
-         ),
-       );
+       _refreshDio =
+           refreshDio ??
+           Dio(
+             BaseOptions(
+               baseUrl: supabaseUrl,
+               connectTimeout: ApiConstants.connectTimeout,
+               receiveTimeout: ApiConstants.receiveTimeout,
+               headers: {
+                 ApiConstants.headerApiKey: publishableKey,
+                 ApiConstants.headerContentType: ApiConstants.contentTypeJson,
+               },
+             ),
+           );
 
   final AuthTokenProvider _tokenProvider;
 
@@ -72,7 +75,15 @@ class AuthInterceptor extends QueuedInterceptor {
         options.extra[ApiConstants.extraRetried] != true;
     if (!canRetry) return handler.next(err);
 
-    final refreshed = await _refresh(session);
+    // Several requests often fail together (the app was in the background
+    // and the token expired). Only the first refreshes; the rest replay
+    // with the session it saved, instead of each refreshing again (that
+    // burst got rate-limited by Supabase, 429, and every screen failed).
+    final sent = options.headers[ApiConstants.headerAuthorization];
+    final current = '${ApiConstants.bearerPrefix} ${session.accessToken}';
+    final refreshed = sent != current && !session.isExpiring()
+        ? session
+        : await _refresh(session);
     if (refreshed == null) return handler.next(err);
 
     try {
@@ -86,9 +97,26 @@ class AuthInterceptor extends QueuedInterceptor {
     }
   }
 
-  /// Exchanges the refresh token for a new session. Clears the stored
-  /// session when the refresh token is no longer valid.
-  Future<AuthSession?> _refresh(AuthSession current) async {
+  /// The refresh in flight, shared by everyone who needs one meanwhile.
+  Future<AuthSession?>? _refreshing;
+
+  /// When the last refresh was rate-limited (429): don't retry before.
+  DateTime? _retryRefreshAfter;
+
+  /// Exchanges the refresh token for a new session, once for all callers
+  /// waiting at the same time.
+  Future<AuthSession?> _refresh(AuthSession current) {
+    final wait = _retryRefreshAfter;
+    if (wait != null && DateTime.now().isBefore(wait)) {
+      return Future.value(null);
+    }
+    return _refreshing ??= _doRefresh(
+      current,
+    ).whenComplete(() => _refreshing = null);
+  }
+
+  /// Clears the stored session when the refresh token is no longer valid.
+  Future<AuthSession?> _doRefresh(AuthSession current) async {
     try {
       final response = await _refreshDio.post<Map<String, dynamic>>(
         ApiConstants.refreshTokenPath,
@@ -115,6 +143,9 @@ class AuthInterceptor extends QueuedInterceptor {
     } on DioException catch (e) {
       final code = e.response?.statusCode;
       AppLogger.warning('Session refresh failed ($code)', tag: _tag);
+      if (code == 429) {
+        _retryRefreshAfter = DateTime.now().add(const Duration(seconds: 15));
+      }
       if (code == 400 || code == 401 || code == 403) {
         await _tokenProvider.clear();
       }

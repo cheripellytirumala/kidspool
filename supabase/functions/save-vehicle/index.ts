@@ -9,7 +9,11 @@
 //   kidSeats     3                           seats free for kids, 1 … carSeats−1
 //   boosterSeat  true / false
 //   vehiclePhoto JPEG / PNG ≤ 1 MB           optional (keeps the saved one)
-// Saves one car per parent (public.vehicles) and returns it.
+//   removePhoto  true                        deletes the saved photo
+// Saves one car per parent (public.vehicles) and returns it, with
+// `photoUrl` (signed, 1 h) when there is a photo.
+//
+// GET /functions/v1/save-vehicle → { photoUrl } for the caller's car photo.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -20,7 +24,7 @@ const MAX_BYTES = 1024 * 1024;
 const cors = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 const json = (status: number, body: Record<string, unknown>) =>
   new Response(JSON.stringify(body), { status, headers: { ...cors, "Content-Type": "application/json" } });
@@ -34,7 +38,9 @@ const kindOf = (b: Uint8Array) =>
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
-  if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
+  if (req.method !== "POST" && req.method !== "GET") {
+    return json(405, { error: "method_not_allowed" });
+  }
 
   const header = req.headers.get("Authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7).trim() : "";
@@ -45,6 +51,17 @@ Deno.serve(async (req) => {
   const { data: auth, error: authError } = await db.auth.getUser(token);
   if (authError || !auth.user) return json(401, { error: "not_authenticated" });
   const uid = auth.user.id;
+
+  const signedPhoto = async (path: string | null | undefined) => {
+    if (!path) return null;
+    const { data } = await db.storage.from(BUCKET).createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  };
+
+  if (req.method === "GET") {
+    const { data } = await db.from("vehicles").select("photo_path").eq("owner_id", uid).maybeSingle();
+    return json(200, { photoUrl: await signedPhoto(data?.photo_path) });
+  }
 
   let form: FormData;
   try {
@@ -61,6 +78,7 @@ Deno.serve(async (req) => {
   const carSeats = Number(text("carSeats"));
   const kidSeats = Number(text("kidSeats"));
   const booster = ["true", "1"].includes(text("boosterSeat").toLowerCase());
+  const removePhoto = ["true", "1"].includes(text("removePhoto").toLowerCase());
 
   if (!model) return json(400, { error: "missing_field", field: "model" });
   if (model.length > 50) return json(400, { error: "invalid_field", field: "model" });
@@ -108,7 +126,13 @@ Deno.serve(async (req) => {
     has_booster: booster,
     updated_at: new Date().toISOString(),
   };
-  if (photoPath) row.photo_path = photoPath;
+  if (photoPath) {
+    row.photo_path = photoPath;
+  } else if (removePhoto) {
+    const { data: old } = await db.from("vehicles").select("photo_path").eq("owner_id", uid).maybeSingle();
+    if (old?.photo_path) await db.storage.from(BUCKET).remove([old.photo_path]);
+    row.photo_path = null;
+  }
   const { data, error } = await db.from("vehicles")
     .upsert(row, { onConflict: "owner_id" })
     .select("model, color, year, plate_number, car_seats, kid_seats, has_booster, photo_path")
@@ -124,5 +148,6 @@ Deno.serve(async (req) => {
     kidSeats: data.kid_seats,
     hasBooster: data.has_booster,
     hasPhoto: !!data.photo_path,
+    photoUrl: await signedPhoto(data.photo_path),
   });
 });

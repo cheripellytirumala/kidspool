@@ -17,8 +17,8 @@ abstract final class ApiErrorMessages {
     // Session / profile
     'not_authenticated': 'Your session has expired. Please sign in again.',
     'profile_not_found': 'We couldn’t find your profile. Please sign in again.',
-    'invalid_role': 'Choose what you want to do on KidPool.',
-    'role_required': 'Tell us what you want to do on KidPool first.',
+    'invalid_role': 'Choose what you want to do on KidsPool.',
+    'role_required': 'Tell us what you want to do on KidsPool first.',
     'not_a_parent': 'Only parent accounts can do this.',
     'not_approved': 'Your ID is still being reviewed. We’ll let you know soon.',
     'school_required':

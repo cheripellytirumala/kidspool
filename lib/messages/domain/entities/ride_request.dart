@@ -78,6 +78,7 @@ class RideRequest extends Equatable {
     this.note,
     this.openDaysInSeries = 1,
     this.needsBooster = false,
+    this.needsCarSeat = false,
     this.youAreBusy = false,
   });
 
@@ -110,6 +111,9 @@ class RideRequest extends Equatable {
   final String? note;
   final int openDaysInSeries;
   final bool needsBooster;
+
+  /// A kid on this ride needs a harness car seat.
+  final bool needsCarSeat;
   final bool youAreBusy;
 
   bool get isOpen => status == RideRequestStatus.open;
@@ -152,6 +156,7 @@ class RideRequest extends Equatable {
       note: note,
       openDaysInSeries: openDaysInSeries,
       needsBooster: needsBooster,
+      needsCarSeat: needsCarSeat,
       youAreBusy: youAreBusy,
     );
   }
@@ -175,6 +180,7 @@ class RideRequest extends Equatable {
     note,
     openDaysInSeries,
     needsBooster,
+    needsCarSeat,
     youAreBusy,
   ];
 }

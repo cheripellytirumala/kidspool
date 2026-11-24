@@ -12,6 +12,7 @@ class Child {
     this.schoolId,
     this.schoolName,
     this.needsBooster = false,
+    this.needsCarSeat = false,
     this.hasSchoolIdCard = false,
   });
 
@@ -33,6 +34,9 @@ class Child {
   final String? schoolId;
   final String? schoolName;
   final bool needsBooster;
+
+  /// A harness car seat (toddlers), instead of a booster.
+  final bool needsCarSeat;
   final bool hasSchoolIdCard;
 
   String get initials {
@@ -76,6 +80,7 @@ class ChildDraft {
     this.schoolId,
     required this.medicalNotes,
     required this.needsBooster,
+    this.needsCarSeat = false,
     this.newPhotoPath,
     this.newSchoolIdCardPath,
   });
@@ -91,6 +96,7 @@ class ChildDraft {
   final String? schoolId;
   final String medicalNotes;
   final bool needsBooster;
+  final bool needsCarSeat;
 
   /// Local files picked in this session (only uploaded when set).
   final String? newPhotoPath;

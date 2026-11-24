@@ -636,8 +636,16 @@ class FamiliesNearYouProvider extends ChangeNotifier {
 
   /// Prefilled group name: "Home → Lincoln Elementary".
   String get suggestedGroupName {
+    // A Hi to one parent reads as a chat with them, not a route group.
+    final only = _selectedIds.length == 1
+        ? familyById(_selectedIds.first)?.parentName.trim()
+        : null;
     final place = groupPlace?.name;
-    final name = place == null ? 'Our ride group' : 'Home → $place';
+    final name = only != null && only.isNotEmpty
+        ? only
+        : place == null
+        ? 'Our ride group'
+        : 'Home → $place';
     return name.length <= MessagesApiConstants.maxGroupNameLength
         ? name
         : name.substring(0, MessagesApiConstants.maxGroupNameLength);

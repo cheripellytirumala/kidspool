@@ -204,6 +204,7 @@ class _RidesView extends StatelessWidget {
       chips: [
         if (ride.distanceMiles != null)
           '${MessagesFormat.miles(ride.distanceMiles!)} from you',
+        if (ride.needsCarSeat) 'Car seat',
         if (ride.needsBooster) 'Booster seat',
         if (ride.youAreBusy) 'You have a ride then',
       ],

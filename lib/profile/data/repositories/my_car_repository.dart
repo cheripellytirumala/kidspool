@@ -3,6 +3,7 @@ import 'package:fpdart/fpdart.dart';
 
 import '../../../common/core/error/error_handler.dart';
 import '../../../common/core/error/failures.dart';
+import '../../../common/core/constants/api_constants.dart';
 import '../../../common/core/network/api_client.dart';
 import '../../domain/entities/my_car.dart';
 
@@ -42,6 +43,7 @@ class MyCarRepository {
     String? color,
     int? year,
     String? photoPath,
+    bool removePhoto = false,
   }) => ErrorHandler.guard(
     tag: 'Profile.saveVehicle',
     () async => _api.invokeFunction(
@@ -55,11 +57,27 @@ class MyCarRepository {
         'color': ?color,
         if (year != null) 'year': '$year',
         if (photoPath != null)
-          'vehiclePhoto': await MultipartFile.fromFile(photoPath),
+          'vehiclePhoto': await MultipartFile.fromFile(photoPath)
+        else if (removePhoto)
+          'removePhoto': 'true',
       }),
       parser: parse,
     ),
   );
+
+  /// A short-lived link to the saved car photo, or `null` without one.
+  Future<String?> photoUrl() async {
+    final result = await ErrorHandler.guard(
+      tag: 'Profile.carPhotoUrl',
+      () => _api.get(
+        ApiConstants.function('save-vehicle'),
+        parser: (json) => json is Map && json['photoUrl'] is String
+            ? json['photoUrl'] as String
+            : null,
+      ),
+    );
+    return result.toNullable();
+  }
 
   static MyCar? parse(dynamic json) {
     if (json is! Map) return null;
@@ -80,6 +98,7 @@ class MyCarRepository {
       year: year is num ? year.toInt() : null,
       plateNumber: text('plateNumber'),
       hasPhoto: json['hasPhoto'] == true,
+      photoUrl: text('photoUrl'),
     );
   }
 }

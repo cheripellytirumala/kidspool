@@ -28,6 +28,7 @@ abstract final class KidsAssets {
   static const String person = '$_icons/kids_person.svg';
   static const String cake = '$_icons/kids_cake.svg';
   static const String heart = '$_icons/kids_heart.svg';
+  static const String medical = '$_icons/kids_medical.svg';
 
   // People (tips)
   static const String people17 = '$_icons/kids_people_17.svg';

@@ -126,7 +126,12 @@ class _GroupChatViewState extends State<_GroupChatView>
     if (_busyAddingRide) return;
     _busyAddingRide = true;
     try {
-      final rides = await _provider.myOpenRides();
+      // Never leave the tap without a response: a slow or failed load
+      // goes straight to asking for a new ride.
+      final rides = await _provider.myOpenRides().timeout(
+        const Duration(seconds: 6),
+        onTimeout: () => const [],
+      );
       if (!mounted) return;
       if (rides.isEmpty) return _askForRide();
       const shown = 6;
@@ -191,7 +196,13 @@ class _GroupChatViewState extends State<_GroupChatView>
   /// is created when a driver taps "I can help".
   Future<void> _askForRide() async {
     final groupId = _provider.groupId;
-    if (groupId == null) return;
+    if (groupId == null) {
+      showAppSnack(
+        context,
+        'This chat is still loading. Try “+ Ride” again in a moment.',
+      );
+      return;
+    }
     _provider.stopPolling();
     final posted = await Navigator.of(
       context,

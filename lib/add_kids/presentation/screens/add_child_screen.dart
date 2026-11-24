@@ -9,7 +9,6 @@ import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
-import '../../../common/presentation/widgets/app_toggle.dart';
 import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
 import '../../domain/entities/child.dart';
@@ -369,16 +368,25 @@ class _ChildFormCard extends StatelessWidget {
               value: schoolName,
               onTap: onChangeSchool,
             ),
-          _BoosterSeatRow(
-            value: form.needsBooster,
-            onChanged: form.setNeedsBooster,
+          _SeatNeedPicker(
+            value: form.seatNeed,
+            recommended: form.recommendedSeat,
+            onChanged: form.setSeatNeed,
           ),
           KidFieldTile(
-            icon: KidsAssets.heart,
+            icon: KidsAssets.medical,
             label: 'Medical notes (optional)',
             hint: 'Allergies, medication…',
             controller: form.medicalNotes,
             textInputAction: TextInputAction.done,
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              'Only you can see these notes, and the Ride Partner once they '
+              'confirm a ride for this child, until the ride ends.',
+              style: KidsTextStyles.captionM,
+            ),
           ),
           AppButton(
             label: form.isEditing ? 'Update' : 'Save',
@@ -391,53 +399,86 @@ class _ChildFormCard extends StatelessWidget {
   }
 }
 
-/// "Booster seat needed" switch, styled like [KidFieldTile]. Turned on by
-/// the age for new kids under 8 until the parent switches it.
-class _BoosterSeatRow extends StatelessWidget {
-  const _BoosterSeatRow({required this.value, required this.onChanged});
+/// "Seat needed": Car seat / Booster / Seat belt, preset from the age,
+/// with what each means and a hint when the choice doesn't match the age.
+class _SeatNeedPicker extends StatelessWidget {
+  const _SeatNeedPicker({
+    required this.value,
+    required this.recommended,
+    required this.onChanged,
+  });
 
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  static const String helper =
-      'Recommended until the adult seat belt fits — usually around age '
-      '8–12 or 4′9″ (145 cm).';
+  final SeatNeed value;
+  final SeatNeed? recommended;
+  final ValueChanged<SeatNeed> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return MergeSemantics(
-      child: Material(
+    final hint = recommended;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+      decoration: BoxDecoration(
         color: AppColors.screen,
         borderRadius: BorderRadius.circular(22),
-        child: InkWell(
-          onTap: () => onChanged(!value),
-          borderRadius: BorderRadius.circular(22),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 10, 14, 10),
-            child: Row(
-              spacing: 10,
-              children: [
-                const IconDisc(
-                  asset: AppAssets.iconKid,
-                  size: 40,
-                  iconSize: 20,
-                  color: AppColors.screen,
-                ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: 8,
+        children: [
+          Row(
+            spacing: 10,
+            children: [
+              const IconDisc(
+                asset: AppAssets.iconKid,
+                size: 40,
+                iconSize: 20,
+                color: AppColors.screen,
+              ),
+              Text('Seat needed', style: KidsTextStyles.labelL),
+            ],
+          ),
+          Row(
+            spacing: 8,
+            children: [
+              for (final seat in SeatNeed.values)
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: 2,
-                    children: [
-                      Text('Booster seat needed', style: KidsTextStyles.labelL),
-                      Text(helper, style: KidsTextStyles.captionM),
-                    ],
+                  child: Semantics(
+                    button: true,
+                    selected: seat == value,
+                    label: seat.label,
+                    excludeSemantics: true,
+                    child: Material(
+                      color: seat == value ? AppColors.ink : AppColors.surface,
+                      shape: const StadiumBorder(),
+                      child: InkWell(
+                        customBorder: const StadiumBorder(),
+                        onTap: () => onChanged(seat),
+                        child: SizedBox(
+                          height: 44,
+                          child: Center(
+                            child: Text(
+                              seat.label,
+                              style: KidsTextStyles.labelL.copyWith(
+                                color: seat == value
+                                    ? AppColors.textOnDark
+                                    : AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
-                AppToggle(value: value, onChanged: onChanged),
-              ],
-            ),
+            ],
           ),
-        ),
+          Text(value.helper, style: KidsTextStyles.captionM),
+          if (hint != null && hint != value)
+            Text(
+              'For this age we recommend: ${hint.label}.',
+              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
+            ),
+        ],
       ),
     );
   }

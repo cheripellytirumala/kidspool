@@ -115,6 +115,7 @@ class KidsRepositoryImpl implements KidsRepository {
       schoolId: schoolMap?.readString('id'),
       schoolName: schoolMap?.readString('name'),
       needsBooster: json.readBool('needsBooster') ?? false,
+      needsCarSeat: json.readBool('needsCarSeat') ?? false,
       hasSchoolIdCard: json.readString('schoolIdCardPath') != null,
     );
   }

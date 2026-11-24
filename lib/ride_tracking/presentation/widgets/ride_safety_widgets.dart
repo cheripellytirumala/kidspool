@@ -292,7 +292,7 @@ class _PinDialogState extends State<_PinDialog> {
       Text('Pick-up PIN', style: AppTextStyles.headingH3),
       const SizedBox(height: 8),
       Text(
-        'Ask ${widget.parentName} for the 4-digit PIN in their KidPool app.',
+        'Ask ${widget.parentName} for the 4-digit PIN in their KidsPool app.',
         style: AppTextStyles.bodyL,
       ),
       const SizedBox(height: 16),

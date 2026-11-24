@@ -84,7 +84,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
           distanceFilter: RideTrackingApiConstants.locationDistanceFilterMeters,
           intervalDuration: RideTrackingApiConstants.locationInterval,
           foregroundNotificationConfig: const ForegroundNotificationConfig(
-            notificationTitle: 'KidPool is sharing your location',
+            notificationTitle: 'KidsPool is sharing your location',
             notificationText:
                 'Only during this ride, so the parent can follow it. '
                 'Stops at drop-off.',

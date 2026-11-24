@@ -48,19 +48,19 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>KidPool uses the camera to photograph your driver's license, your profile photo and your child's school ID card.</string>
+	<string>KidsPool uses the camera to photograph your driver's license, your profile photo and your child's school ID card.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>location</string>
 	</array>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>KidPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is. It also uses your location to fill in your home address.</string>
+	<string>KidsPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is. It also uses your location to fill in your home address.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>KidPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is.</string>
+	<string>KidsPool uses your location while you drive a ride, including in the background until drop-off, so the parent can see where the car is.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>KidPool uses your location to fill in your home address and, while you drive a ride, to show the parent where the car is (also in the background, until drop-off).</string>
+	<string>KidsPool uses your location to fill in your home address and, while you drive a ride, to show the parent where the car is (also in the background, until drop-off).</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>KidPool lets you choose photos of your license, yourself and your child from your library.</string>
+	<string>KidsPool lets you choose photos of your license, yourself and your child from your library.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

@@ -5,6 +5,8 @@
 /// older than typical are still accepted.
 abstract final class GradeAge {
   static int? typicalAge(String grade) {
+    if (grade == 'Daycare') return 2;
+    if (grade == 'Preschool') return 3;
     if (grade == 'Pre-K') return 4;
     if (grade == 'Kindergarten') return 5;
     final match = RegExp(r'^Grade (\d{1,2})$').firstMatch(grade);
@@ -16,7 +18,9 @@ abstract final class GradeAge {
   static String? mismatch({required int age, required String grade}) {
     final typical = typicalAge(grade);
     if (typical == null) return null;
-    if (age >= typical - 1 && age <= typical + 2) return null;
+    // Daycare takes babies and toddlers.
+    final youngest = grade == 'Daycare' ? 0 : typical - 1;
+    if (age >= youngest && age <= typical + 2) return null;
     final years = age == 1 ? 'year' : 'years';
     return 'A child who is $age $years old usually isn’t in $grade. '
         'Check the age or the grade.';

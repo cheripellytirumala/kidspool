@@ -33,6 +33,7 @@ abstract final class RideRequestModel {
       ],
       note: _text(json['note']),
       needsBooster: json.readBool('needsBooster') ?? false,
+      needsCarSeat: _anyCarSeat(json),
     );
   }
 
@@ -77,6 +78,7 @@ abstract final class RideRequestModel {
       note: _text(json['note']),
       openDaysInSeries: json.readInt('openDaysInSeries') ?? 1,
       needsBooster: json.readBool('needsBooster') ?? false,
+      needsCarSeat: _anyCarSeat(json),
       youAreBusy: json.readBool('youAreBusy') ?? false,
     );
   }
@@ -156,6 +158,13 @@ abstract final class RideRequestModel {
         _text(school['name']) ??
         'School';
   }
+
+  static bool _anyCarSeat(Map<String, dynamic> json) =>
+      json['needsCarSeat'] == true ||
+      (json['kids'] is List &&
+          (json['kids'] as List).any(
+            (k) => k is Map && k['needsCarSeat'] == true,
+          ));
 
   static List<ChatKid> _kids(Map<String, dynamic> json) => [
     for (final k in (json['kids'] is List ? json['kids'] as List : const []))

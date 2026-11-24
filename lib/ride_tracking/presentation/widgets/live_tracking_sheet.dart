@@ -285,13 +285,20 @@ class _Stats extends StatelessWidget {
       ),
       _ => (RideFormat.shortClock(t.pickupAt), 'Pickup'),
     };
-    final meters = t.metersToGo;
+    // Before the Ride Partner taps Start ride there is no car to follow:
+    // no "On route" and no live distance yet.
+    final waiting = t.startedAt == null && !t.started && !t.completed;
+    final meters = waiting ? null : t.metersToGo;
     final miles = meters != null
         ? meters / RideFormat.metersPerMile
         : t.plannedTripMiles;
-    final second = (miles == null ? '—' : RideFormat.miles(miles), 'To go');
+    final second = waiting
+        ? (miles == null ? '—' : RideFormat.miles(miles), 'Trip')
+        : (miles == null ? '—' : RideFormat.miles(miles), 'To go');
     final third = t.sosOpen
         ? ('SOS', 'Alert open')
+        : waiting
+        ? ('—', 'Not started')
         : ('Safe', t.inSchoolZone ? 'Class zone' : 'On route');
 
     return Container(

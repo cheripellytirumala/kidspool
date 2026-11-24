@@ -34,6 +34,7 @@ class AddChildFormProvider extends ChangeNotifier {
   String? _grade;
   Place? _school;
   bool _needsBooster = false;
+  bool _needsCarSeat = false;
 
   /// The parent switched the booster seat themselves (or is editing a kid
   /// with a saved value): the age no longer sets it.
@@ -48,6 +49,8 @@ class AddChildFormProvider extends ChangeNotifier {
   bool _filling = false;
 
   static const List<String> grades = [
+    'Daycare',
+    'Preschool',
     'Pre-K',
     'Kindergarten',
     'Grade 1',
@@ -71,6 +74,28 @@ class AddChildFormProvider extends ChangeNotifier {
   String? get grade => _grade;
   Place? get school => _school;
   bool get needsBooster => _needsBooster;
+  bool get needsCarSeat => _needsCarSeat;
+
+  /// The seat chosen for this child.
+  SeatNeed get seatNeed => _needsCarSeat
+      ? SeatNeed.carSeat
+      : _needsBooster
+      ? SeatNeed.booster
+      : SeatNeed.none;
+
+  /// What the age suggests, when the date of birth is known.
+  SeatNeed? get recommendedSeat =>
+      _dateOfBirth == null ? null : seatFor(Child.ageOn(_dateOfBirth!));
+
+  /// Car seat with a harness until about 4, then a booster until the adult
+  /// belt fits (about 8+), then the seat belt.
+  static SeatNeed seatFor(int age) => age < carSeatUntilAge
+      ? SeatNeed.carSeat
+      : age < AskRideKid.boosterUntilAge
+      ? SeatNeed.booster
+      : SeatNeed.none;
+
+  static const int carSeatUntilAge = 4;
   String? get photo => _photo;
   bool get hasSchoolIdCard => _hasSchoolIdCard || _newSchoolIdCardPath != null;
   bool get isSaving => _kids.isSaving;
@@ -138,7 +163,17 @@ class AddChildFormProvider extends ChangeNotifier {
   /// (and older kids off).
   void setDateOfBirth(DateTime value) => _change(() {
     _dateOfBirth = value;
-    if (!_boosterTouched) _needsBooster = boosterRecommendedFor(value);
+    if (!_boosterTouched) _applySeat(seatFor(Child.ageOn(value)));
+  });
+
+  void _applySeat(SeatNeed seat) {
+    _needsCarSeat = seat == SeatNeed.carSeat;
+    _needsBooster = seat == SeatNeed.booster;
+  }
+
+  void setSeatNeed(SeatNeed seat) => _change(() {
+    _applySeat(seat);
+    _boosterTouched = true;
   });
 
   /// Booster seat recommended at this date of birth (under 8).
@@ -205,6 +240,7 @@ class AddChildFormProvider extends ChangeNotifier {
         schoolId: _school?.id,
         medicalNotes: medicalNotes.text,
         needsBooster: _needsBooster,
+        needsCarSeat: _needsCarSeat,
         newPhotoPath: _newPhotoPath,
         newSchoolIdCardPath: _newSchoolIdCardPath,
       ),
@@ -258,6 +294,7 @@ class AddChildFormProvider extends ChangeNotifier {
     final schoolId = child?.schoolId;
     _school = schoolId == null ? null : _kids.placeById(schoolId);
     _needsBooster = child?.needsBooster ?? false;
+    _needsCarSeat = child?.needsCarSeat ?? false;
     // An existing kid keeps their saved value; a new one follows the age
     // until the parent switches it.
     _boosterTouched = child != null;
@@ -288,4 +325,22 @@ class AddChildFormProvider extends ChangeNotifier {
     medicalNotes.dispose();
     super.dispose();
   }
+}
+
+/// Which seat a child rides in.
+enum SeatNeed {
+  carSeat('Car seat', 'Harness car seat — babies and toddlers, until about 4.'),
+  booster(
+    'Booster',
+    'Booster seat — until the adult belt fits, about age 8–12 or 145 cm.',
+  ),
+  none(
+    'Seat belt',
+    'Adult seat belt — fits across the shoulder and low on the hips.',
+  );
+
+  const SeatNeed(this.label, this.helper);
+
+  final String label;
+  final String helper;
 }

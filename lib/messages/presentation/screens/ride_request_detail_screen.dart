@@ -318,6 +318,7 @@ class _IncomingBody extends StatelessWidget {
           runSpacing: 6,
           children: [
             if (request.repeats) const _Chip('Repeats weekly'),
+            if (request.needsCarSeat) const _Chip('Car seat'),
             if (request.needsBooster) const _Chip('Booster seat'),
             if (request.youAreBusy) const _Chip('You have a ride then'),
             if (request.offered) const _Chip('Offer sent'),

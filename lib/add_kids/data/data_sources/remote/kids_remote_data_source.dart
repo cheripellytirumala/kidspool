@@ -232,6 +232,7 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
     if (d.schoolId != null) 'schoolId': d.schoolId,
     'healthNotes': d.medicalNotes.trim(),
     'needsBooster': d.needsBooster.toString(),
+    'needsCarSeat': d.needsCarSeat.toString(),
   };
 
   static String _date(DateTime d) =>

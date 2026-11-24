@@ -15,6 +15,7 @@ import '../../core/constants/messages_api_constants.dart';
 import '../../domain/entities/ride_chat.dart';
 import '../../domain/entities/ride_group.dart';
 import '../../domain/entities/ride_request.dart';
+import '../../domain/usecases/mark_group_read.dart';
 import '../providers/messages_provider.dart';
 import '../widgets/group_chat_widgets.dart';
 import '../widgets/messages_common.dart';
@@ -243,6 +244,9 @@ class _MessagesView extends StatelessWidget {
       AppRoutes.groupChat,
       arguments: GroupChatArgs(groupId: group.id, name: group.name),
     );
+    // The chat marks itself read in the background; finish that before
+    // reloading so the list doesn't show it unread again.
+    await sl<MarkGroupRead>()(group.id);
     await provider.load();
   }
 

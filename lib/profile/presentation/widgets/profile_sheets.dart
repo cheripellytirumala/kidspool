@@ -42,7 +42,7 @@ Future<RideMode?> showRideModeSheet(BuildContext context, RideMode current) {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('How you use KidPool', style: AppTextStyles.headingH3),
+        Text('How you use KidsPool', style: AppTextStyles.headingH3),
         const SizedBox(height: 16),
         AppSelectCard(
           title: RideMode.both.title,

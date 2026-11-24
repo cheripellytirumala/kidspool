@@ -231,7 +231,7 @@ class _ReportSheetState extends State<_ReportSheet> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Only the KidPool safety team sees this. $name isn’t told.',
+                'Only the KidsPool safety team sees this. $name isn’t told.',
                 style: AppTextStyles.body.copyWith(
                   color: AppColors.textSecondary,
                 ),

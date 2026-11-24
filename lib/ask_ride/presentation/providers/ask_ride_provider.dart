@@ -380,6 +380,14 @@ class AskRideProvider extends ChangeNotifier {
     _ => 'Choose the days yourself',
   };
 
+  /// Pick-up as written in chat messages: the label only ("Home"), never
+  /// the street — addresses are shared only once a ride is booked.
+  String get _pickupForMessage {
+    final name = _draft.pickup?.name.trim() ?? '';
+    final label = name.split(' · ').first.trim();
+    return label.isEmpty ? 'Pick-up' : label;
+  }
+
   /// The ride just asked for, as a chat message ("+ Ride" from a chat):
   /// `🚗 I asked for a ride: Casey · Saved → Lincoln Elementary ·
   /// Wednesday, Nov 12 | 8:00 AM. Can you help?`
@@ -389,7 +397,7 @@ class AskRideProvider extends ChangeNotifier {
     final kids = [for (final k in _selectedKids) k.name].join(' & ');
     final parts = [
       if (kids.isNotEmpty) kids,
-      '${d.pickup?.name ?? 'Pick-up'} → ${d.dropOff?.name ?? 'Drop-off'}',
+      '$_pickupForMessage → ${d.dropOff?.name ?? 'Drop-off'}',
       when,
     ];
     return '🚗 I asked for a ride: ${parts.join(' · ')}. Can you help?';
@@ -636,7 +644,7 @@ class AskRideProvider extends ChangeNotifier {
     final kids = [for (final k in _selectedKids) k.name].join(' & ');
     final parts = [
       if (kids.isNotEmpty) kids,
-      '${d.pickup?.name ?? 'Pick-up'} → ${d.dropOff?.name ?? 'Drop-off'}',
+      '$_pickupForMessage → ${d.dropOff?.name ?? 'Drop-off'}',
       '${RideDateFormat.long(date)} | ${d.pickupTime?.format() ?? ''}',
     ];
     return '🚗 Ride needed: ${parts.join(' · ')}. Can anyone help?';

@@ -113,7 +113,7 @@ abstract final class RideContact {
               ),
               const SizedBox(height: 12),
               Text(
-                'You can also alert $otherName and KidPool about this ride.',
+                'You can also alert $otherName and KidsPool about this ride.',
                 style: AppTextStyles.body,
               ),
               const SizedBox(height: 16),

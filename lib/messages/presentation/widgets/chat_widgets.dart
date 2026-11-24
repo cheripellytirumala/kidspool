@@ -145,7 +145,7 @@ class SafetyTip extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Keep chats in KidPool. Addresses are shared only after a ride '
+              'Keep chats in KidsPool. Addresses are shared only after a ride '
               'is booked.',
               style: MessagesStyles.labelS.copyWith(
                 color: AppColors.textPrimary,

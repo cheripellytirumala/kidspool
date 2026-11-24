@@ -273,7 +273,26 @@ class RideChatProvider extends ChangeNotifier {
   Future<String?> offer() async {
     final r = _ride;
     if (r == null || !r.isOpen || r.offered || _busy) return null;
-    return _run(() => _offerRide(r.id));
+    _busy = true;
+    _notify();
+    final result = await _offerRide(r.id);
+    final outcome = result.getRight().toNullable();
+    if (outcome != null) {
+      await loadRide();
+      // Never offer "I can help" again for an offer that went through,
+      // even if the reload didn't come back with it yet.
+      final now = _ride;
+      final offerId = outcome.offerId;
+      if (now != null && !now.offered && now.id == r.id && offerId != null) {
+        _ride = now.copyWith(
+          myOfferId: offerId,
+          status: outcome.confirmed ? RideRequestStatus.confirmed : null,
+        );
+      }
+    }
+    _busy = false;
+    _notify();
+    return result.getLeft().toNullable()?.message;
   }
 
   /// Ride Partner: take back the pending offer.

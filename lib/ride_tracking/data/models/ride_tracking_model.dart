@@ -1,5 +1,6 @@
 import '../../../common/core/error/exceptions.dart';
 import '../../../common/core/utils/json_parser.dart';
+import '../../../common/core/utils/zoned_time.dart';
 import '../../core/utils/ride_format.dart';
 import '../../domain/entities/ride_tracking.dart';
 
@@ -21,6 +22,9 @@ abstract final class RideTrackingModel {
   }) {
     final requestId = json.readString('requestId');
     if (requestId == null) throw const ParsingException();
+    // Times read on the ride's own clock (a New York ride at 11:20 AM
+    // shows 11:20 AM on every phone).
+    _zone = json.readString('timeZone');
 
     final school = _map(json['school']);
     final dropoff = _map(json['dropoff']);
@@ -145,6 +149,10 @@ abstract final class RideTrackingModel {
     return lat == null || lng == null ? null : GeoPoint(lat, lng);
   }
 
-  static DateTime? _time(Object? v) =>
-      v is String ? DateTime.tryParse(v)?.toLocal() : null;
+  static String? _zone;
+
+  static DateTime? _time(Object? v) {
+    final t = v is String ? DateTime.tryParse(v) : null;
+    return t == null ? null : ZonedTime.inZone(t.toUtc(), _zone);
+  }
 }

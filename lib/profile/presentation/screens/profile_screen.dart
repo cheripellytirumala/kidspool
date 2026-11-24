@@ -147,7 +147,7 @@ class _ProfileView extends StatelessWidget {
       ),
 
       // How you use KidPool
-      const ProfileSectionLabel('How you use KidPool'),
+      const ProfileSectionLabel('How you use KidsPool'),
       ProfileRow(
         background: AppColors.limeTint,
         icon: const AppIcon(ProfileAssets.swap22, size: 22),
