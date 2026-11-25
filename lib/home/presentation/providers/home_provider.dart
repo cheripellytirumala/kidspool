@@ -67,6 +67,7 @@ class HomeProvider extends ChangeNotifier {
   Failure? _failure;
   HomeRole _role = HomeRole.both;
   String _firstName = '';
+  bool _licenseApproved = false;
   List<UpcomingRide> _rides = const [];
   List<UpcomingRide> _drives = const [];
   RideActivity? _activity;
@@ -80,6 +81,10 @@ class HomeProvider extends ChangeNotifier {
 
   /// Needs rides (H1e) or both (H3e), as chosen on About you.
   HomeRole get role => _role;
+
+  /// An approved Ride Partner: gives rides and the review team approved
+  /// their driving licence. Only they get the "Available" switch.
+  bool get isDriver => _role == HomeRole.both && _licenseApproved;
 
   void setRole(HomeRole role) {
     if (role == _role) return;
@@ -130,7 +135,10 @@ class HomeProvider extends ChangeNotifier {
       _repository.hasUnseenNotifications(),
       _getFamiliesNearMe(const GetFamiliesNearMeParams()),
     ).wait;
-    results.$1.match((_) {}, (me) => _firstName = me.firstName);
+    results.$1.match((_) {}, (me) {
+      _firstName = me.firstName;
+      _licenseApproved = me.isLicenseVerified;
+    });
     _drives = results.$3.getOrElse((_) => const []);
     if (results.$3.isRight()) _onDrivesLoaded?.call(_drives);
     _hasUnseenNotifications = results.$4.getOrElse((_) => false);

@@ -215,6 +215,7 @@ class _MessagesView extends StatelessWidget {
     iAmDriver: chat.iAmDriver,
     otherName: chat.other.firstName,
     otherInitials: chat.other.initials,
+    otherAvailable: chat.other.available,
   );
 
   // ------------------------------------------------------------ actions

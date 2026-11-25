@@ -12,6 +12,13 @@ abstract final class HomeApiConstants {
   /// `get_my_drives(scope)` — `upcoming` returns `{drives, pendingOffers}`.
   static const String getMyDrives = 'get_my_drives';
 
+  /// Ride Partner: `set_driver_available(available)` → `{available}`. While
+  /// off, no new ride requests reach them (booked rides are unaffected).
+  static const String setDriverAvailable = 'set_driver_available';
+
+  /// How often the app tells the server the driver is still available.
+  static const Duration availabilityHeartbeat = Duration(minutes: 5);
+
   /// `get_request_activity(requestId)` — `{notifiedCount, driver, …}`.
   static const String getRequestActivity = 'get_request_activity';
 

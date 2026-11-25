@@ -7,6 +7,10 @@ import '../../data/data_sources/remote/home_remote_data_source.dart';
 import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../../domain/usecases/get_families_near_me.dart';
+import '../../domain/usecases/set_driver_available.dart';
+import '../../domain/repositories/driver_availability_repository.dart';
+import '../../data/repositories/driver_availability_repository_impl.dart';
+import '../../presentation/providers/driver_availability_provider.dart';
 import '../../presentation/providers/families_near_you_provider.dart';
 import '../../presentation/providers/home_provider.dart';
 import '../../../ask_ride/domain/entities/ride_schedule.dart';
@@ -32,6 +36,15 @@ void registerHomeDependencies(GetIt sl) {
     )
     // Use cases
     ..registerLazySingleton<GetFamiliesNearMe>(() => GetFamiliesNearMe(sl()))
+    // Ride Partner "Available" switch: one per app launch (starts off).
+    ..registerLazySingleton<DriverAvailabilityRepository>(
+      () => DriverAvailabilityRepositoryImpl(sl()),
+    )
+    ..registerLazySingleton<SetDriverAvailable>(() => SetDriverAvailable(sl()))
+    ..registerLazySingleton<DriverAvailabilityProvider>(
+      () => DriverAvailabilityProvider(setDriverAvailable: sl()),
+      dispose: (p) => p.dispose(),
+    )
     // Providers
     // Shared across screens (role survives navigation).
     ..registerLazySingleton<HomeProvider>(

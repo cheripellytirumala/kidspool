@@ -7,6 +7,7 @@ import '../../../ask_ride/core/di/ask_ride_injection.dart';
 import '../../../ask_ride/presentation/providers/ask_ride_provider.dart';
 import '../../../auth/presentation/providers/auth_flow_provider.dart';
 import '../../../home/presentation/providers/home_provider.dart';
+import '../../../home/presentation/providers/driver_availability_provider.dart';
 import '../../../auth/core/di/auth_injection.dart';
 import '../../../home/core/di/home_injection.dart';
 import '../../../add_kids/core/di/kids_injection.dart';
@@ -150,6 +151,7 @@ void resetSessionState() {
     () => sl.resetLazySingleton<AuthFlowProvider>(),
     () => sl.resetLazySingleton<AskRideProvider>(),
     () => sl.resetLazySingleton<HomeProvider>(),
+    () => sl.resetLazySingleton<DriverAvailabilityProvider>(),
   ]) {
     reset();
   }

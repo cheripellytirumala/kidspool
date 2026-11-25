@@ -79,4 +79,10 @@ class AuthRepositoryImpl implements AuthRepository {
         await _remote.submitIdentity(submission);
         return unit;
       });
+
+  @override
+  Future<Either<Failure, bool>> licenseAutoCheck() => ErrorHandler.guard(
+    tag: 'Auth.licenseAutoCheck',
+    _remote.licenseAutoCheck,
+  );
 }

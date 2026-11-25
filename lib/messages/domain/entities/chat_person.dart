@@ -13,6 +13,7 @@ class ChatPerson extends Equatable {
     this.distanceMiles,
     this.ridesGiven = 0,
     this.kidsAtSchool = const [],
+    this.available = false,
   });
 
   /// `profiles.id`; `driver_request_json.parent` has none.
@@ -32,6 +33,24 @@ class ChatPerson extends Equatable {
   /// First names of this parent's kids at the ride's school.
   final List<String> kidsAtSchool;
 
+  /// A Ride Partner who switched "Available" on (green dot in Chats).
+  final bool available;
+
+  ChatPerson withAvailable(bool value) => value == available
+      ? this
+      : ChatPerson(
+          id: id,
+          firstName: firstName,
+          lastName: lastName,
+          initials: initials,
+          phone: phone,
+          photoUrl: photoUrl,
+          distanceMiles: distanceMiles,
+          ridesGiven: ridesGiven,
+          kidsAtSchool: kidsAtSchool,
+          available: value,
+        );
+
   /// `Jen P.` (or `Jen`).
   String get shortName {
     final last = lastName?.trim() ?? '';
@@ -49,6 +68,7 @@ class ChatPerson extends Equatable {
     distanceMiles,
     ridesGiven,
     kidsAtSchool,
+    available,
   ];
 }
 

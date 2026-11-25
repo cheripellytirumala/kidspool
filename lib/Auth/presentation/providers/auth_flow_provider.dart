@@ -552,6 +552,39 @@ class AuthFlowProvider extends ChangeNotifier {
 
   /// Details read from the photos, or `null` (not read yet / unreadable).
   LicenseDetails? get license => _license;
+
+  bool _licenseAutoCheck = true;
+
+  /// Server switch (`app_settings.license_auto_check`): true = the licence
+  /// must pass the on-device checks (name read and matching, not expired,
+  /// 18+) before it can be sent; false = what was read is only shown, and
+  /// the review team checks it. Stays true until the server says otherwise.
+  bool get licenseAutoCheck => _licenseAutoCheck;
+
+  /// Reads [licenseAutoCheck] from the server. Never throws; on any failure
+  /// the checks stay on.
+  Future<void> loadLicenseAutoCheck() async {
+    try {
+      final result = await _repository.licenseAutoCheck();
+      final on = result.getRight().toNullable() ?? true;
+      if (on != _licenseAutoCheck) _update(() => _licenseAutoCheck = on);
+    } catch (_) {
+      // Keep the checks on.
+    }
+  }
+
+  /// Whether "Yes, this is my license" can be tapped: photos taken and
+  /// read, and — while [licenseAutoCheck] is on — read, not expired, 18+
+  /// and with the typed first or last name on it.
+  bool get canSubmitLicense {
+    if (!hasIdPhotos || _isReadingLicense || !licenseChecked) return false;
+    if (!_licenseAutoCheck) return true;
+    final license = _license;
+    return !(license?.isExpired ?? false) &&
+        !(license?.isUnder18 ?? false) &&
+        licenseNameCheck == LicenseNameCheck.matches;
+  }
+
   bool get isReadingLicense => _isReadingLicense;
 
   /// True once the current photos were processed (even if nothing was read).

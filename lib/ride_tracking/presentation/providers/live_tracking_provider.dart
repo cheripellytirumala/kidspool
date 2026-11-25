@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../common/core/error/failures.dart';
 import '../../../common/presentation/state/view_state.dart';
+import '../../core/constants/ride_features.dart';
 import '../../core/constants/ride_tracking_api_constants.dart';
 import '../../domain/entities/ride_tracking.dart';
 import '../../domain/usecases/cancel_active_ride.dart';
@@ -34,6 +35,7 @@ class LiveTrackingProvider extends ChangeNotifier {
     ({double latitude, double longitude})? Function()? driverPosition,
     CancelActiveRide? cancelActiveRide,
     this.pollInterval = RideTrackingApiConstants.trackingPollInterval,
+    this.askDriverForPin = RideFeatures.driverPickupPin,
   }) : _cancelActiveRide = cancelActiveRide,
        _getRideTracking = getRideTracking,
        _startRide = startRide,
@@ -59,6 +61,9 @@ class LiveTrackingProvider extends ChangeNotifier {
   final StartSharingRideLocation _startSharing;
   final StopSharingRideLocation _stopSharing;
   final Duration pollInterval;
+
+  /// [RideFeatures.driverPickupPin]: show the PIN dialog on "Picked up".
+  final bool askDriverForPin;
 
   String? _requestId;
   RideTracking? _tracking;
@@ -92,8 +97,11 @@ class LiveTrackingProvider extends ChangeNotifier {
   bool get canCancel =>
       _cancelActiveRide != null && (_tracking?.canCancelBeforePickup ?? false);
 
-  /// "Picked up" needs the parent's 4-digit PIN.
-  bool get needsPickupPin => driverAction == DriverRideAction.pickedUp;
+  /// "Picked up" asks for the parent's 4-digit PIN: when the switch is on,
+  /// or when the server requires it (so the pick-up is never refused).
+  bool get needsPickupPin =>
+      driverAction == DriverRideAction.pickedUp &&
+      (askDriverForPin || (_tracking?.pinRequired ?? false));
 
   /// The Ride Partner's next step, or null for the requesting parent.
   DriverRideAction? get driverAction {

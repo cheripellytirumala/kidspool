@@ -27,6 +27,10 @@ abstract final class AuthApiConstants {
   /// label, addressLine2, isDefault)`.
   static const String addAddress = 'add_address';
 
+  /// `get_app_flags()` → `{licenseAutoCheck}`: server switches the app reads
+  /// (`docs/backend/2026-11-25_license_auto_check.sql`).
+  static const String getAppFlags = 'get_app_flags';
+
   // Values
   static const String roleParent = 'parent';
 

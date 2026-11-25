@@ -101,12 +101,16 @@ class RideChatProvider extends ChangeNotifier {
             (r.driver?.id == a.driverId ? r.driver : null);
       }
     }
-    if (person != null) return person;
+    // Green dot: from the ride (driver card) or from the Chats list row.
+    final available =
+        (person?.available ?? false) || (a?.otherAvailable ?? false);
+    if (person != null) return person.withAvailable(available);
     final name = a?.otherName?.trim();
     final first = name == null || name.isEmpty ? 'Parent' : name;
     return ChatPerson(
       firstName: first,
       initials: a?.otherInitials ?? MessagesFormat.initials(first),
+      available: available,
     );
   }
 

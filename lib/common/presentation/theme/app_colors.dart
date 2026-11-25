@@ -35,6 +35,9 @@ abstract final class AppColors {
   /// Inline error text (WCAG AA on white).
   static const Color danger = Color(0xFFC62828);
 
+  /// "Available" green dot on a Ride Partner's avatar.
+  static const Color available = Color(0xFF22C55E);
+
   /// Unread-count badge fill (bottom nav), with a white ring.
   static const Color badge = Color(0xFFFF4D3D);
 }

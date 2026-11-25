@@ -35,6 +35,7 @@ abstract final class RideChatModel {
         lastName: last,
         initials:
             _text(other['initials']) ?? MessagesFormat.initials(first, last),
+        available: other['available'] == true,
       ),
       lastMessage: _text(json['lastMessage']),
       lastAt: _time(json['lastAt']),

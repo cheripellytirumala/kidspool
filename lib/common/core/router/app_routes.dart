@@ -84,6 +84,7 @@ class RideChatArgs {
     required this.iAmDriver,
     this.otherName,
     this.otherInitials,
+    this.otherAvailable = false,
   });
 
   /// `ride_requests.id`.
@@ -98,6 +99,9 @@ class RideChatArgs {
   /// The other parent's first name / initials, shown before the ride loads.
   final String? otherName;
   final String? otherInitials;
+
+  /// The other person is a Ride Partner who is available (green dot).
+  final bool otherAvailable;
 }
 
 /// Route arguments for a ride group's chat and its info screen.

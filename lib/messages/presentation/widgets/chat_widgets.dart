@@ -51,6 +51,7 @@ class ChatHeader extends StatelessWidget {
                       photoUrl: person.photoUrl,
                       size: 40,
                       background: AppColors.surface,
+                      available: person.available,
                     ),
                     const SizedBox(width: 10),
                     Expanded(

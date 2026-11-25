@@ -227,6 +227,7 @@ class ChatListTile extends StatelessWidget {
               MessagesAvatar(
                 initials: chat.other.initials,
                 photoUrl: chat.other.photoUrl,
+                available: chat.other.available,
               ),
               const SizedBox(width: 12),
               Expanded(

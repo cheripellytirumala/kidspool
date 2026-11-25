@@ -27,6 +27,11 @@ abstract interface class AuthRemoteDataSource {
   Future<void> addAddress(HomeAddress address);
 
   Future<void> submitIdentity(IdentitySubmission submission);
+
+  /// Whether the app checks the driving licence before it's sent
+  /// (`app_settings.license_auto_check`). True while the server has no
+  /// `get_app_flags` yet.
+  Future<bool> licenseAutoCheck();
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -98,6 +103,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     } on ServerException catch (e) {
       // Older server without the function: keep the old behaviour.
       if (e.statusCode == 404 || e.data['code'] == 'PGRST202') return;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<bool> licenseAutoCheck() async {
+    try {
+      return await _apiClient.rpc<bool>(
+        AuthApiConstants.getAppFlags,
+        parser: (json) => json is! Map || json['licenseAutoCheck'] != false,
+      );
+    } on ServerException catch (e) {
+      if (e.statusCode == 404 || e.data['code'] == 'PGRST202') return true;
       rethrow;
     }
   }

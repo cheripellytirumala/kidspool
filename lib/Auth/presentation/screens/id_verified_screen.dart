@@ -49,6 +49,7 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
       // The name is checked against the license: restore it if the app
       // was restarted mid sign-up.
       flow.restoreFromProfile();
+      flow.loadLicenseAutoCheck();
       flow.readLicense();
     });
   }
@@ -124,7 +125,9 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
                           license: flow.license,
                           isReading: flow.isReadingLicense,
                         ),
-                        if (flow.licenseChecked) ...[
+                        // Checks switched off on the server: no red
+                        // notices; the review team checks the licence.
+                        if (flow.licenseChecked && flow.licenseAutoCheck) ...[
                           const SizedBox(height: 12),
                           _LicenseNotice(flow: flow),
                         ],
@@ -145,15 +148,8 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
                 child: AppButton(
                   label: uploaded ? 'Yes, this is my license' : 'Continue',
                   isLoading: flow.isSubmittingId,
-                  // Only once the license was read, isn't expired, the driver is 18+, and the
-                  // first or last name typed on About you is on it.
-                  onPressed:
-                      flow.hasIdPhotos &&
-                          !flow.isReadingLicense &&
-                          flow.licenseChecked &&
-                          !(flow.license?.isExpired ?? false) &&
-                          !(flow.license?.isUnder18 ?? false) &&
-                          flow.licenseNameCheck == LicenseNameCheck.matches
+                  // See AuthFlowProvider.canSubmitLicense (server switch).
+                  onPressed: flow.canSubmitLicense
                       ? () => _confirm(context)
                       : null,
                 ),

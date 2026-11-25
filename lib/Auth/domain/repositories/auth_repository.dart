@@ -29,4 +29,8 @@ abstract interface class AuthRepository {
 
   /// Uploads the selfie + ID photos; the profile moves to `pending_review`.
   Future<Either<Failure, Unit>> submitIdentity(IdentitySubmission submission);
+
+  /// Server switch: true = the app checks the licence (name, expiry, 18+)
+  /// before it can be sent; false = it only shows what it read.
+  Future<Either<Failure, bool>> licenseAutoCheck();
 }

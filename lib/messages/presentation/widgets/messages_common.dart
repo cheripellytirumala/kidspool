@@ -19,9 +19,13 @@ class MessagesAvatar extends StatelessWidget {
     this.size = 48,
     this.background = AppColors.screen,
     this.border,
+    this.available = false,
   });
 
   final String initials;
+
+  /// Green dot at the bottom right: a Ride Partner who is available now.
+  final bool available;
   final String? photoUrl;
   final double size;
   final Color background;
@@ -36,7 +40,7 @@ class MessagesAvatar extends StatelessWidget {
         style: MessagesStyles.labelL.copyWith(fontSize: size * 0.36),
       ),
     );
-    return Container(
+    final avatar = Container(
       width: size,
       height: size,
       clipBehavior: Clip.antiAlias,
@@ -52,6 +56,34 @@ class MessagesAvatar extends StatelessWidget {
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => fallback,
             ),
+    );
+    if (!available) return avatar;
+    final dot = size * 0.28;
+    return Semantics(
+      label: 'Available',
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            avatar,
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                key: const ValueKey('available-dot'),
+                width: dot,
+                height: dot,
+                decoration: BoxDecoration(
+                  color: AppColors.available,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -111,6 +111,7 @@ abstract final class RideRequestModel {
       photoUrl: _text(json['photoUrl']) ?? _text(json['avatarUrl']),
       distanceMiles: json.readDouble('distanceMiles'),
       ridesGiven: json.readInt('ridesGiven') ?? 0,
+      available: json['available'] == true,
       kidsAtSchool: [
         for (final k
             in (json['kidsAtSchool'] is List

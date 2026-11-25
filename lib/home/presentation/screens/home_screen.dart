@@ -10,7 +10,6 @@ import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_dimens.dart';
 import '../../../common/presentation/widgets/app_badge.dart';
-import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_bottom_nav.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
@@ -22,9 +21,10 @@ import '../../core/constants/home_assets.dart';
 import '../../core/constants/home_text_styles.dart';
 import '../../domain/entities/upcoming_ride.dart' show RideStatus;
 import '../../domain/entities/home_role.dart';
+import '../providers/driver_availability_provider.dart';
 import '../providers/home_provider.dart';
 import '../widgets/ask_ride_action_card.dart';
-import '../widgets/circle_icon_button.dart';
+import '../widgets/home_header_controls.dart';
 import '../widgets/family_preview_card.dart';
 import '../widgets/home_hero_card.dart';
 import '../widgets/home_ride_map_card.dart';
@@ -45,8 +45,13 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = sl<HomeProvider>();
-    // Refresh name + upcoming rides whenever Home is (re)built as a route.
-    Future.microtask(provider.load);
+    // Refresh name + upcoming rides whenever Home is (re)built as a route,
+    // then the Ride Partner "Available" switch: off on every fresh launch,
+    // and off for anyone who isn't an approved driver.
+    Future.microtask(() async {
+      await provider.load();
+      await sl<DriverAvailabilityProvider>().sync(isDriver: provider.isDriver);
+    });
     // Signed in and on Home: ask for notification permission (once), register
     // for push, open a ride from a tapped notification.
     Future.microtask(sl<RideNotifications>().onHomeShown);
@@ -289,6 +294,9 @@ class _Header extends StatelessWidget {
       confirmLabel: 'Log out',
     );
     if (!ok || !context.mounted) return;
+    // Stop new ride requests for this account before the session ends.
+    await sl<DriverAvailabilityProvider>().turnOff();
+    if (!context.mounted) return;
     final result = await sl<SignOut>()(const NoParams());
     if (!context.mounted) return;
     final failure = result.getLeft().toNullable();
@@ -299,8 +307,14 @@ class _Header extends StatelessWidget {
     ).pushNamedAndRemoveUntil(AppRoutes.phoneNumber, (_) => false);
   }
 
+  Future<void> _openNotifications(BuildContext context) => Navigator.pushNamed(
+    context,
+    AppRoutes.notifications,
+  ).then((_) => provider.load());
+
   @override
   Widget build(BuildContext context) {
+    final size = compact ? 44.0 : 48.0;
     return Row(
       children: [
         Expanded(
@@ -318,51 +332,16 @@ class _Header extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 12),
-        SizedBox.square(
-          dimension: compact ? 44 : 48,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              CircleIconButton(
-                asset: compact ? HomeAssets.bell : HomeAssets.iconBell,
-                tooltip: provider.hasUnseenNotifications
-                    ? 'Notifications, new'
-                    : 'Notifications',
-                size: compact ? 44 : 48,
-                iconSize: compact ? 24 : 22,
-                onPressed: () => Navigator.pushNamed(
-                  context,
-                  AppRoutes.notifications,
-                ).then((_) => provider.load()),
-              ),
-              if (provider.hasUnseenNotifications)
-                Positioned(
-                  left: compact ? 30 : 33,
-                  top: 2,
-                  child: const IgnorePointer(
-                    child: AppIcon(HomeAssets.alertDot, size: 12),
-                  ),
-                ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        // Log out (was the initials avatar).
-        SizedBox.square(
-          dimension: compact ? 44 : 48,
-          child: Material(
-            color: AppColors.lime,
-            shape: const CircleBorder(),
-            child: IconButton(
-              tooltip: 'Log out',
-              onPressed: () => _logOut(context),
-              icon: const Icon(
-                Icons.power_settings_new_rounded,
-                color: AppColors.ink,
-                size: 24,
-              ),
-            ),
-          ),
+        // Ride Partners only: take new ride requests or not.
+        if (provider.isDriver) ...[
+          const AvailabilitySwitch(),
+          const SizedBox(width: 8),
+        ],
+        HomeMenuButton(
+          size: size,
+          hasUnseenNotifications: provider.hasUnseenNotifications,
+          onNotifications: () => _openNotifications(context),
+          onLogOut: () => _logOut(context),
         ),
       ],
     );
