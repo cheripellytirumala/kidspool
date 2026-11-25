@@ -190,13 +190,14 @@ class RideGroupInfoProvider extends ChangeNotifier {
   }
 
   /// Runs the [leaveLabel] action. Returns an error message or null.
-  Future<String?> leave() async {
+  /// [reason]: the parent's, when cancelling a booked ride.
+  Future<String?> leave({String? reason}) async {
     final r = _ride;
     if (r == null || _busy || leaveLabel == null) return null;
     _busy = true;
     _notify();
     final result = !iAmDriver
-        ? await _cancel(r.id)
+        ? await _cancel(r.id, reason: reason)
         : r.status.isBooked
         ? await _driverCancel(r.id)
         : await _withdraw(r.myOfferId!);

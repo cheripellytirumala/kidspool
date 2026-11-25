@@ -161,7 +161,8 @@ class _RideAlertsHostState extends State<RideAlertsHost>
                         },
                         child: RideAlertCard(
                           alert: alert,
-                          onOpen: alert.requestId == null
+                          onOpen:
+                              alert.requestId == null || !alert.kind.opensRide
                               ? null
                               : () => _open(alert),
                           onClose: _hide,

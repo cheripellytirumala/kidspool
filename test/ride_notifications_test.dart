@@ -128,6 +128,29 @@ void main() {
       expect(push.kindValue, 'driver_at_pickup');
       expect(RideAlertPayload.decode(push.encode()), push);
     });
+
+    test('driver: a cancelled ride alerts but opens nothing', () {
+      expect(
+        RideAlertKind.fromValue('ride_cancelled'),
+        RideAlertKind.cancelled,
+      );
+      expect(
+        RideAlertPayload.fromData({'kind': 'ride_cancelled', 'requestId': 'r'}),
+        isNull,
+      );
+      expect(
+        RideAlertPayload.fromAlert(
+          RideAlert(
+            id: 'ride_cancelled:r',
+            kind: RideAlertKind.cancelled,
+            title: 'Vivek cancelled the ride',
+            requestId: 'r',
+            createdAt: DateTime(2026, 11, 25),
+          ),
+        ),
+        isNull,
+      );
+    });
   });
 
   group('RideAlertsProvider + notifier', () {

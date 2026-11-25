@@ -149,11 +149,13 @@ class MessagesRepositoryImpl implements MessagesRepository {
   );
 
   @override
-  Future<Either<Failure, Unit>> cancelRideRequest(String requestId) =>
-      ErrorHandler.guard(() async {
-        await _remote.cancelRideRequest(requestId);
-        return unit;
-      }, tag: _tag);
+  Future<Either<Failure, Unit>> cancelRideRequest(
+    String requestId, {
+    String? reason,
+  }) => ErrorHandler.guard(() async {
+    await _remote.cancelRideRequest(requestId, reason: reason);
+    return unit;
+  }, tag: _tag);
 
   @override
   Future<Either<Failure, OfferOutcome>> offerRide(String requestId) =>

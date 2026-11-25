@@ -162,12 +162,13 @@ class RideRequestDetailProvider extends ChangeNotifier {
     return failure?.message;
   }
 
-  /// Cancels the user's own request (this day).
-  Future<String?> cancel() async {
+  /// Cancels the user's own request (this day). [reason]: why a booked
+  /// ride is cancelled, shown to the Ride Partner.
+  Future<String?> cancel({String? reason}) async {
     final r = _request;
     if (r == null || _busy) return null;
     _setBusy(true);
-    final result = await _cancel(r.id);
+    final result = await _cancel(r.id, reason: reason);
     if (result.isRight()) {
       _request = r.copyWith(status: RideRequestStatus.cancelled);
     }

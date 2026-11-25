@@ -15,6 +15,8 @@ import '../../core/utils/messages_format.dart';
 import '../../domain/entities/ride_request.dart';
 import '../providers/ride_group_info_provider.dart';
 import '../widgets/messages_common.dart';
+import '../../../ride_tracking/presentation/widgets/ride_safety_widgets.dart'
+    show RideSafetyDialogs;
 
 /// GC6 · Group info & members, for one ride chat. Reads [RideChatArgs].
 class RideGroupInfoScreen extends StatelessWidget {
@@ -36,6 +38,26 @@ class _GroupInfoView extends StatelessWidget {
 
   Future<void> _leave(BuildContext context, String label) async {
     final provider = context.read<RideGroupInfoProvider>();
+    final ride = provider.ride;
+    // Parent cancelling a booked ride: "Cancel this ride?" with a reason,
+    // like on the live ride; the Ride Partner is told.
+    if (!provider.iAmDriver && ride != null && !ride.isOpen) {
+      final driver = ride.driver?.firstName;
+      final reason = await RideSafetyDialogs.confirmCancel(
+        context,
+        isDriver: false,
+        otherName: driver ?? 'Your Ride Partner',
+      );
+      if (reason == null || !context.mounted) return;
+      final error = await provider.leave(reason: reason);
+      if (!context.mounted) return;
+      showAppSnack(
+        context,
+        error ??
+            'Ride cancelled. ${driver ?? 'Your Ride Partner'} has been told.',
+      );
+      return;
+    }
     final ok = await confirmMessagesAction(
       context,
       title: '$label?',

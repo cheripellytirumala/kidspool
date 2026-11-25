@@ -15,6 +15,8 @@ import '../../domain/entities/ride_request.dart';
 import '../providers/ride_request_detail_provider.dart';
 import '../widgets/messages_common.dart';
 import '../widgets/messages_list_widgets.dart';
+import '../../../ride_tracking/presentation/widgets/ride_safety_widgets.dart'
+    show RideSafetyDialogs;
 
 /// Route arguments for [RideRequestDetailScreen] (A7a).
 class RideRequestArgs {
@@ -386,16 +388,35 @@ class _MineBody extends StatelessWidget {
 
   Future<void> _cancel(BuildContext context) async {
     final provider = context.read<RideRequestDetailProvider>();
-    final ok = await confirmMessagesAction(
+    if (request.isOpen) {
+      final ok = await confirmMessagesAction(
+        context,
+        title: 'Cancel this request?',
+        message: 'Ride Partners won’t see it any more.',
+        confirm: 'Cancel request',
+      );
+      if (!ok || !context.mounted) return;
+      final error = await provider.cancel();
+      if (!context.mounted) return;
+      showAppSnack(context, error ?? 'Request cancelled.');
+      return;
+    }
+    // A Ride Partner is booked: same "Cancel this ride?" as on the live
+    // ride, with a reason, and the Ride Partner is told.
+    final driver = request.driver?.firstName;
+    final reason = await RideSafetyDialogs.confirmCancel(
       context,
-      title: 'Cancel this request?',
-      message: 'Ride Partners won’t see it any more.',
-      confirm: 'Cancel request',
+      isDriver: false,
+      otherName: driver ?? 'Your Ride Partner',
     );
-    if (!ok || !context.mounted) return;
-    final error = await provider.cancel();
+    if (reason == null || !context.mounted) return;
+    final error = await provider.cancel(reason: reason);
     if (!context.mounted) return;
-    showAppSnack(context, error ?? 'Request cancelled.');
+    showAppSnack(
+      context,
+      error ??
+          'Ride cancelled. ${driver ?? 'Your Ride Partner'} has been told.',
+    );
   }
 
   @override

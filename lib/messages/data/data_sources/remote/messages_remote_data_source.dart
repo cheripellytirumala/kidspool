@@ -38,7 +38,9 @@ abstract interface class MessagesRemoteDataSource {
 
   Future<ChatPerson?> respondToOffer(String offerId, {required bool approve});
 
-  Future<void> cancelRideRequest(String requestId);
+  /// [reason] is saved when the parent cancels a ride a Ride Partner is
+  /// booked on, and shown to them.
+  Future<void> cancelRideRequest(String requestId, {String? reason});
 
   Future<OfferOutcome> offerRide(String requestId);
 
@@ -190,12 +192,28 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
       );
 
   @override
-  Future<void> cancelRideRequest(String requestId) => _call(
-    MessagesApiConstants.cancelRideRequest,
-    {'requestId': requestId, 'scope': MessagesApiConstants.scopeThis},
-    'We couldn’t cancel your request. Please try again.',
-    (_) {},
-  );
+  Future<void> cancelRideRequest(String requestId, {String? reason}) async {
+    final why = reason?.trim();
+    Future<void> send({required bool withReason}) => _call(
+      MessagesApiConstants.cancelRideRequest,
+      {
+        'requestId': requestId,
+        'scope': MessagesApiConstants.scopeThis,
+        if (withReason) 'reason': why,
+      },
+      'We couldn’t cancel this ride. Please try again.',
+      (_) {},
+    );
+    if (why == null || why.isEmpty) return send(withReason: false);
+    try {
+      await send(withReason: true);
+    } on ServerException catch (e) {
+      // A server without the reason yet (2026-11-25_cancel_after_accept):
+      // still cancel, just without it.
+      if (!isMissingFunction(e)) rethrow;
+      await send(withReason: false);
+    }
+  }
 
   // ----------------------------------------------------- Ride Partner
 

@@ -119,7 +119,13 @@ class FakeMessagesRepository implements MessagesRepository {
 
   @override
   Future<Either<Failure, RideRequest>> getMyRequest(String id) async =>
-      Right(_myRequest);
+      Right(myRequest);
+
+  /// The parent's own request; a booked one for the cancel test.
+  RideRequest myRequest = _myRequest;
+
+  /// The reason sent with the last cancel ('' = none given).
+  String? cancelReason;
 
   @override
   Future<Either<Failure, RideRequest>> getDriveRequest(String id) async =>
@@ -137,8 +143,13 @@ class FakeMessagesRepository implements MessagesRepository {
   }) async => const Right(_jen);
 
   @override
-  Future<Either<Failure, Unit>> cancelRideRequest(String id) async =>
-      const Right(unit);
+  Future<Either<Failure, Unit>> cancelRideRequest(
+    String id, {
+    String? reason,
+  }) async {
+    cancelReason = reason ?? '';
+    return const Right(unit);
+  }
 
   @override
   Future<Either<Failure, OfferOutcome>> offerRide(String id) async =>
@@ -473,6 +484,37 @@ void main() {
       await _dispose(tester);
     });
   }
+
+  testWidgets('cancelling a booked ride asks why and says the driver is told', (
+    tester,
+  ) async {
+    final repo = FakeMessagesRepository()
+      ..myRequest = _myRequest.copyWith(
+        status: RideRequestStatus.confirmed,
+        driver: _jen,
+      );
+    await _register(repo);
+    await _pump(
+      tester,
+      const RideRequestDetailScreen(),
+      arguments: const RideRequestArgs(requestId: 'mine-1', isMine: true),
+    );
+    await tester.ensureVisible(find.text('Cancel ride'));
+    await tester.tap(find.text('Cancel ride'));
+    await tester.pumpAndSettle();
+    // Not the open-request popup.
+    expect(find.text('Cancel this request?'), findsNothing);
+    expect(find.text('Cancel this ride?'), findsOneWidget);
+    expect(find.textContaining('Jen will be told'), findsOneWidget);
+    await tester.tap(find.text('Plans changed'));
+    await tester.pump();
+    await tester.tap(find.text('Cancel ride').last);
+    await tester.pumpAndSettle();
+    expect(repo.cancelReason, 'Plans changed');
+    expect(find.text('Ride cancelled. Jen has been told.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await _dispose(tester);
+  });
 
   testWidgets('chat SQL missing: cards work, composer explains, polling off', (
     tester,

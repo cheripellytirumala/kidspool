@@ -37,6 +37,7 @@ abstract final class RideAlertModel {
               RideAlertKind.started => 'Ride started 🚗',
               RideAlertKind.atPickup => 'Your Ride Partner has arrived 📍',
               RideAlertKind.arrived => 'Ride completed ✅',
+              RideAlertKind.cancelled => 'Ride cancelled',
             }
           : title,
       body: body == null || body.isEmpty ? null : body,

@@ -29,7 +29,8 @@ class RideAlertCard extends StatelessWidget {
   /// Car icon while the ride is under way (started, at the pick-up).
   bool get _started =>
       alert.kind == RideAlertKind.started ||
-      alert.kind == RideAlertKind.atPickup;
+      alert.kind == RideAlertKind.atPickup ||
+      alert.kind == RideAlertKind.cancelled;
 
   @override
   Widget build(BuildContext context) {
@@ -138,6 +139,7 @@ class RideAlertCard extends StatelessWidget {
                                   RideAlertKind.started ||
                                   RideAlertKind.atPickup => 'Track live',
                                   RideAlertKind.arrived => 'See ride summary',
+                                  RideAlertKind.cancelled => 'See ride',
                                 },
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,

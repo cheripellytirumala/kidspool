@@ -192,16 +192,14 @@ abstract final class RideSafetyDialogs {
   );
 
   /// Ride Partner: asks for the parent's 4-digit PIN before "Picked up".
-  /// Returns the PIN, `''` to go on without one (only when [allowSkip]:
-  /// the parent's app is too old to show it), or null when dismissed.
+  /// Returns the PIN, `''` when the driver chooses to skip it, or null
+  /// when dismissed.
   static Future<String?> askPickupPin(
     BuildContext context, {
     required String parentName,
-    required bool allowSkip,
   }) => showDialog<String>(
     context: context,
-    builder: (context) =>
-        _PinDialog(parentName: parentName, allowSkip: allowSkip),
+    builder: (context) => _PinDialog(parentName: parentName),
   );
 
   /// Either side: confirm cancelling a started ride. Returns the reason
@@ -268,10 +266,9 @@ abstract final class RideSafetyDialogs {
 }
 
 class _PinDialog extends StatefulWidget {
-  const _PinDialog({required this.parentName, required this.allowSkip});
+  const _PinDialog({required this.parentName});
 
   final String parentName;
-  final bool allowSkip;
 
   @override
   State<_PinDialog> createState() => _PinDialogState();
@@ -317,16 +314,15 @@ class _PinDialogState extends State<_PinDialog> {
             ? () => Navigator.of(context).pop(_controller.text)
             : null,
       ),
-      if (widget.allowSkip) ...[
-        const SizedBox(height: 4),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(''),
-          child: Text(
-            'Parent can’t see a PIN? Continue without',
-            style: RideTextStyles.labelM.copyWith(color: RideColors.muted),
-          ),
+      // The driver decides: enter the PIN, or carry on without it.
+      const SizedBox(height: 4),
+      TextButton(
+        onPressed: () => Navigator.of(context).pop(''),
+        child: Text(
+          'Skip PIN',
+          style: RideTextStyles.labelM.copyWith(color: RideColors.muted),
         ),
-      ],
+      ),
     ]);
   }
 }

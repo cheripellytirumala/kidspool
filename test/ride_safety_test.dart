@@ -1,4 +1,7 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:kidspool/common/presentation/theme/app_theme.dart';
+import 'package:kidspool/ride_tracking/presentation/widgets/ride_safety_widgets.dart';
 import 'package:kidspool/ride_tracking/data/data_sources/remote/ride_tracking_error_messages.dart';
 import 'package:kidspool/ride_tracking/data/models/ride_tracking_model.dart';
 import 'package:kidspool/ride_tracking/domain/entities/ride_alert.dart';
@@ -33,6 +36,41 @@ Map<String, dynamic> _ride({
 };
 
 void main() {
+  testWidgets('pick-up PIN dialog: enter the PIN or skip it', (tester) async {
+    String? result = 'unset';
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: AppTheme.light,
+        home: Builder(
+          builder: (context) => TextButton(
+            onPressed: () async =>
+                result = await RideSafetyDialogs.askPickupPin(
+                  context,
+                  parentName: 'Vivek',
+                ),
+            child: const Text('open'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('Pick-up PIN'), findsOneWidget);
+    expect(find.text('Skip PIN'), findsOneWidget);
+    await tester.enterText(find.byType(TextField), '0427');
+    await tester.pump();
+    await tester.tap(find.text('Confirm pick-up'));
+    await tester.pumpAndSettle();
+    expect(result, '0427');
+
+    // Skipping returns '' (picked up without a PIN).
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Skip PIN'));
+    await tester.pumpAndSettle();
+    expect(result, '');
+  });
+
   test('parses PIN, car colour, seats taken and gender (QA #6 #7 #9 #14)', () {
     final t = RideTrackingModel.fromJson(
       _ride(extra: {'pickupPin': '0427', 'pinRequired': false}),

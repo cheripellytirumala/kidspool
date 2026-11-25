@@ -103,10 +103,8 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
       pin = await RideSafetyDialogs.askPickupPin(
         context,
         parentName: t.parent?.firstName ?? 'the parent',
-        // Until the server requires it, a parent on an older app (no PIN
-        // shown) doesn't block the pick-up.
-        allowSkip: !t.pinRequired,
       );
+      // '' = skipped: picked up without a PIN.
       if (pin == null || !mounted) return;
     }
     final error = await _provider.runDriverAction(

@@ -12,7 +12,11 @@ enum RideAlertKind {
   atPickup,
 
   /// S20 · "Emma reached Lincoln Elementary ✅" → See ride summary.
-  arrived;
+  arrived,
+
+  /// The other side cancelled a booked or started ride ("Vivek cancelled
+  /// the ride"). Information only: nothing to open.
+  cancelled;
 
   /// `get_my_notifications().kind` → ride alert kind; null for notifications
   /// that aren't about a ride in progress (reviews, requests, offers…).
@@ -28,6 +32,7 @@ enum RideAlertKind {
     // ("picked_up" is no longer sent; "ride_overdue" is for the driver.)
     'ride_started' || 'started' || 'ride_overdue' => started,
     'driver_at_pickup' => atPickup,
+    'ride_cancelled' => cancelled,
     'school' ||
     'safe_zone' ||
     'checked_in' ||
@@ -39,6 +44,11 @@ enum RideAlertKind {
     'ride_auto_ended' => arrived,
     _ => null,
   };
+}
+
+extension RideAlertKindTarget on RideAlertKind {
+  /// Whether tapping the alert opens a ride screen.
+  bool get opensRide => this != RideAlertKind.cancelled;
 }
 
 /// One ride notification from `get_my_notifications`.

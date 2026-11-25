@@ -40,7 +40,10 @@ abstract interface class MessagesRepository {
     required bool approve,
   });
 
-  Future<Either<Failure, Unit>> cancelRideRequest(String requestId);
+  Future<Either<Failure, Unit>> cancelRideRequest(
+    String requestId, {
+    String? reason,
+  });
 
   Future<Either<Failure, OfferOutcome>> offerRide(String requestId);
 

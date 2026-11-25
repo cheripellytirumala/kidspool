@@ -19,7 +19,7 @@ class RideAlertPayload extends Equatable {
   /// From an alert the app already has; null when it names no ride.
   static RideAlertPayload? fromAlert(RideAlert alert) {
     final id = alert.requestId;
-    if (id == null || id.isEmpty) return null;
+    if (id == null || id.isEmpty || !alert.kind.opensRide) return null;
     return RideAlertPayload(kind: alert.kind, requestId: id);
   }
 
@@ -28,7 +28,9 @@ class RideAlertPayload extends Equatable {
   static RideAlertPayload? fromData(Map<String, dynamic> data) {
     final kind = RideAlertKind.fromValue(data['kind']?.toString());
     final id = (data['requestId'] ?? data['request_id'])?.toString();
-    if (kind == null || id == null || id.isEmpty) return null;
+    if (kind == null || !kind.opensRide || id == null || id.isEmpty) {
+      return null;
+    }
     return RideAlertPayload(kind: kind, requestId: id);
   }
 
@@ -56,6 +58,7 @@ class RideAlertPayload extends Equatable {
     RideAlertKind.started => 'ride_started',
     RideAlertKind.atPickup => 'driver_at_pickup',
     RideAlertKind.arrived => 'ride_arrived',
+    RideAlertKind.cancelled => 'ride_cancelled',
   };
 
   /// JSON payload for a local notification.
@@ -67,6 +70,8 @@ class RideAlertPayload extends Equatable {
     RideAlertKind.accepted => AppRoutes.rideRequestDetail,
     RideAlertKind.started || RideAlertKind.atPickup => AppRoutes.liveTracking,
     RideAlertKind.arrived => AppRoutes.rideCompleted,
+    // Never built (see opensRide); the ride's details otherwise.
+    RideAlertKind.cancelled => AppRoutes.rideRequestDetail,
   };
 
   Object get arguments => switch (kind) {

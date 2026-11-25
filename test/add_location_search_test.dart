@@ -23,7 +23,8 @@ class _Search implements SearchKidPlaces {
 
 class _Home implements GetHomeLocation {
   @override
-  Future<Either<Failure, GeoPoint?>> call(NoParams p) async => const Right(null);
+  Future<Either<Failure, GeoPoint?>> call(NoParams p) async =>
+      const Right(null);
 
   @override
   dynamic noSuchMethod(Invocation i) => super.noSuchMethod(i);
