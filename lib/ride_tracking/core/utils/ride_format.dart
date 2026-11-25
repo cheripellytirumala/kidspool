@@ -31,7 +31,7 @@ abstract final class RideFormat {
       '${_weekdays[time.weekday - 1]}, ${_months[time.month - 1]} ${time.day}';
 
   /// `Emma`, `Emma & Noah`, `Emma, Noah & Mia`.
-  static String names(List<String> names, {String fallback = 'Your kids'}) {
+  static String names(List<String> names, {String fallback = 'Your members'}) {
     final list = names.where((n) => n.trim().isNotEmpty).toList();
     if (list.isEmpty) return fallback;
     if (list.length == 1) return list.first;

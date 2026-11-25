@@ -16,12 +16,10 @@ import '../providers/add_child_form_provider.dart';
 import '../providers/kids_provider.dart';
 import 'where_kids_go_screen.dart' show WhereKidsGoArgs;
 import '../widgets/dashed_add_button.dart';
-import '../widgets/icon_disc.dart';
 import '../widgets/kid_avatar.dart';
 import '../widgets/kid_field_tile.dart';
 import '../widgets/kid_summary_card.dart';
 import '../widgets/kids_scaffold.dart';
-import '../widgets/kids_sheet.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 
 /// Route arguments for [AddChildScreen] when opened from F07: edit
@@ -165,8 +163,8 @@ class _AddChildViewState extends State<_AddChildView> {
 
     if (!_ready) {
       return KidsScaffold(
-        title: 'Add a child',
-        subtitle: 'Add each child who needs rides.',
+        title: 'Add a member',
+        subtitle: 'Add each member who needs rides.',
         onBack: _backToAboutYou,
         children: [
           if (kids.status.isFailure)
@@ -208,8 +206,8 @@ class _AddChildViewState extends State<_AddChildView> {
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: KidsScaffold(
-            title: 'Add a child',
-            subtitle: 'Add each child who needs rides.',
+            title: 'Add a member',
+            subtitle: 'Add each member who needs rides.',
             gap: 12,
             onBack: _backToAboutYou,
             bottom: AppButton(
@@ -219,7 +217,7 @@ class _AddChildViewState extends State<_AddChildView> {
             children: [
               ...cards,
               DashedAddButton(
-                label: 'Add another child',
+                label: 'Add another member',
                 onTap: () => _addAnother(form),
               ),
             ],
@@ -262,20 +260,9 @@ class _ChildFormCard extends StatelessWidget {
       fieldHintText: 'MM/DD/YYYY',
       fieldLabelText: 'Date of birth',
       errorFormatText: 'Enter a date like 05/14/2017',
-      errorInvalidText: 'Kids must be under 19',
+      errorInvalidText: 'Members must be under 19',
     );
     if (picked != null) form.setDateOfBirth(picked);
-  }
-
-  Future<void> _pickGrade(BuildContext context) async {
-    final grade = await showKidsOptionPicker<String>(
-      context,
-      title: 'Grade',
-      options: AddChildFormProvider.grades,
-      selected: form.grade,
-      labelOf: (grade) => grade,
-    );
-    if (grade != null) form.setGrade(grade);
   }
 
   /// "8 years" — the Figma "Age" value; the picker still asks for the date
@@ -325,54 +312,21 @@ class _ChildFormCard extends StatelessWidget {
             controller: form.lastName,
             textCapitalization: TextCapitalization.words,
           ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final dobTile = KidFieldTile(
-                icon: KidsAssets.cake,
-                label: 'Age',
-                hint: 'Select',
-                value: dob == null ? null : _ageLabel(dob),
-                onTap: () => _pickDateOfBirth(context),
-              );
-              final gradeTile = KidFieldTile(
-                icon: KidsAssets.grad20,
-                label: 'Grade',
-                hint: 'Select',
-                value: form.grade,
-                onTap: () => _pickGrade(context),
-              );
-              // Side by side as in Figma (each tile keeps ≥64px for the
-              // value); stacked on 320pt phones.
-              if (constraints.maxWidth < 318) {
-                return Column(spacing: 10, children: [dobTile, gradeTile]);
-              }
-              return Row(
-                spacing: 10,
-                children: [
-                  Expanded(child: dobTile),
-                  Expanded(child: gradeTile),
-                ],
-              );
-            },
+          KidFieldTile(
+            icon: KidsAssets.cake,
+            label: 'Age',
+            hint: 'Select',
+            value: dob == null ? null : _ageLabel(dob),
+            onTap: () => _pickDateOfBirth(context),
           ),
-          if (form.ageGradeError case final error?)
-            Text(
-              error,
-              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
-            ),
           if (onChangeSchool != null)
             KidFieldTile(
               icon: KidsAssets.grad20,
-              label: 'School',
-              hint: 'Add school',
+              label: 'Location',
+              hint: 'Add location',
               value: schoolName,
               onTap: onChangeSchool,
             ),
-          _SeatNeedPicker(
-            value: form.seatNeed,
-            recommended: form.recommendedSeat,
-            onChanged: form.setSeatNeed,
-          ),
           KidFieldTile(
             icon: KidsAssets.medical,
             label: 'Medical notes (optional)',
@@ -384,7 +338,7 @@ class _ChildFormCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'Only you can see these notes, and the Ride Partner once they '
-              'confirm a ride for this child, until the ride ends.',
+              'confirm a ride for this member, until the ride ends.',
               style: KidsTextStyles.captionM,
             ),
           ),
@@ -393,91 +347,6 @@ class _ChildFormCard extends StatelessWidget {
             isLoading: form.isSaving,
             onPressed: form.canSave ? onSave : null,
           ),
-        ],
-      ),
-    );
-  }
-}
-
-/// "Seat needed": Car seat / Booster / Seat belt, preset from the age,
-/// with what each means and a hint when the choice doesn't match the age.
-class _SeatNeedPicker extends StatelessWidget {
-  const _SeatNeedPicker({
-    required this.value,
-    required this.recommended,
-    required this.onChanged,
-  });
-
-  final SeatNeed value;
-  final SeatNeed? recommended;
-  final ValueChanged<SeatNeed> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final hint = recommended;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        color: AppColors.screen,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              const IconDisc(
-                asset: AppAssets.iconKid,
-                size: 40,
-                iconSize: 20,
-                color: AppColors.screen,
-              ),
-              Text('Seat needed', style: KidsTextStyles.labelL),
-            ],
-          ),
-          Row(
-            spacing: 8,
-            children: [
-              for (final seat in SeatNeed.values)
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: seat == value,
-                    label: seat.label,
-                    excludeSemantics: true,
-                    child: Material(
-                      color: seat == value ? AppColors.ink : AppColors.surface,
-                      shape: const StadiumBorder(),
-                      child: InkWell(
-                        customBorder: const StadiumBorder(),
-                        onTap: () => onChanged(seat),
-                        child: SizedBox(
-                          height: 44,
-                          child: Center(
-                            child: Text(
-                              seat.label,
-                              style: KidsTextStyles.labelL.copyWith(
-                                color: seat == value
-                                    ? AppColors.textOnDark
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Text(value.helper, style: KidsTextStyles.captionM),
-          if (hint != null && hint != value)
-            Text(
-              'For this age we recommend: ${hint.label}.',
-              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
-            ),
         ],
       ),
     );
@@ -505,7 +374,7 @@ class _PhotoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasPhoto = preview.photo != null;
-    final name = preview.firstName.isEmpty ? 'your child' : preview.firstName;
+    final name = preview.firstName.isEmpty ? 'them' : preview.firstName;
 
     return Semantics(
       button: true,

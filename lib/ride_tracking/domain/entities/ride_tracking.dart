@@ -129,8 +129,8 @@ class RidePerson extends Equatable {
     final kidSeats = seats - 1;
     final taken = kidsOnRide;
     return taken == null
-        ? '$kidSeats kid seats'
-        : '$taken of $kidSeats kid seats taken';
+        ? '$kidSeats member seats'
+        : '$taken of $kidSeats member seats taken';
   }
 
   String get firstName => name.split(' ').first;

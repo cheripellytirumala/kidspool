@@ -4,7 +4,6 @@ import '../../../common/core/error/exceptions.dart';
 import '../../../common/core/services/photo_picker.dart';
 import '../../domain/entities/child.dart';
 import '../../domain/entities/place.dart';
-import '../../../ask_ride/domain/entities/ask_ride_kid.dart';
 import 'kids_provider.dart';
 import '../../domain/entities/grade_age.dart';
 
@@ -35,10 +34,6 @@ class AddChildFormProvider extends ChangeNotifier {
   Place? _school;
   bool _needsBooster = false;
   bool _needsCarSeat = false;
-
-  /// The parent switched the booster seat themselves (or is editing a kid
-  /// with a saved value): the age no longer sets it.
-  bool _boosterTouched = false;
 
   /// Current photo source (signed URL or new local file).
   String? _photo;
@@ -76,26 +71,6 @@ class AddChildFormProvider extends ChangeNotifier {
   bool get needsBooster => _needsBooster;
   bool get needsCarSeat => _needsCarSeat;
 
-  /// The seat chosen for this child.
-  SeatNeed get seatNeed => _needsCarSeat
-      ? SeatNeed.carSeat
-      : _needsBooster
-      ? SeatNeed.booster
-      : SeatNeed.none;
-
-  /// What the age suggests, when the date of birth is known.
-  SeatNeed? get recommendedSeat =>
-      _dateOfBirth == null ? null : seatFor(Child.ageOn(_dateOfBirth!));
-
-  /// Car seat with a harness until about 4, then a booster until the adult
-  /// belt fits (about 8+), then the seat belt.
-  static SeatNeed seatFor(int age) => age < carSeatUntilAge
-      ? SeatNeed.carSeat
-      : age < AskRideKid.boosterUntilAge
-      ? SeatNeed.booster
-      : SeatNeed.none;
-
-  static const int carSeatUntilAge = 4;
   String? get photo => _photo;
   bool get hasSchoolIdCard => _hasSchoolIdCard || _newSchoolIdCardPath != null;
   bool get isSaving => _kids.isSaving;
@@ -110,9 +85,7 @@ class AddChildFormProvider extends ChangeNotifier {
       _isOpen &&
       !isSaving &&
       firstName.text.trim().isNotEmpty &&
-      _dateOfBirth != null &&
-      _grade != null &&
-      ageGradeError == null;
+      _dateOfBirth != null;
 
   /// Set when the age and the grade don't go together (e.g. 16 years and
   /// Grade 2); shown under them and blocks Save.
@@ -158,34 +131,11 @@ class AddChildFormProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sets the date of birth. On a new kid whose booster seat the parent
-  /// hasn't switched, kids under [AskRideKid.boosterUntilAge] get it on
-  /// (and older kids off).
-  void setDateOfBirth(DateTime value) => _change(() {
-    _dateOfBirth = value;
-    if (!_boosterTouched) _applySeat(seatFor(Child.ageOn(value)));
-  });
-
-  void _applySeat(SeatNeed seat) {
-    _needsCarSeat = seat == SeatNeed.carSeat;
-    _needsBooster = seat == SeatNeed.booster;
-  }
-
-  void setSeatNeed(SeatNeed seat) => _change(() {
-    _applySeat(seat);
-    _boosterTouched = true;
-  });
-
-  /// Booster seat recommended at this date of birth (under 8).
-  static bool boosterRecommendedFor(DateTime dateOfBirth, [DateTime? today]) =>
-      Child.ageOn(dateOfBirth, today) < AskRideKid.boosterUntilAge;
+  /// Sets the date of birth.
+  void setDateOfBirth(DateTime value) => _change(() => _dateOfBirth = value);
 
   void setGrade(String value) => _change(() => _grade = value);
   void setSchool(Place value) => _change(() => _school = value);
-  void setNeedsBooster(bool value) => _change(() {
-    _needsBooster = value;
-    _boosterTouched = true;
-  });
 
   /// Picks the kid's photo. Returns an error message or `null`.
   Future<String?> pickPhoto({required bool fromCamera}) async {
@@ -227,7 +177,6 @@ class AddChildFormProvider extends ChangeNotifier {
   /// Saves the open form on the server. Returns an error message, or `null`
   /// on success.
   Future<String?> save() async {
-    if (ageGradeError case final error?) return error;
     if (!canSave) return 'Please fill in the required fields.';
     final id = await _kids.saveChild(
       ChildDraft(
@@ -276,7 +225,7 @@ class AddChildFormProvider extends ChangeNotifier {
   /// form already open there is nothing to save, so ask for its details.
   Future<String?> addAnother() async {
     if (_isOpen && _editingId == null && !_dirty) {
-      return 'Fill in this child’s details first, then add another.';
+      return 'Fill in this member’s details first, then add another.';
     }
     return _saveThen(openNew);
   }
@@ -295,9 +244,6 @@ class AddChildFormProvider extends ChangeNotifier {
     _school = schoolId == null ? null : _kids.placeById(schoolId);
     _needsBooster = child?.needsBooster ?? false;
     _needsCarSeat = child?.needsCarSeat ?? false;
-    // An existing kid keeps their saved value; a new one follows the age
-    // until the parent switches it.
-    _boosterTouched = child != null;
     _photo = child?.photo;
     _newPhotoPath = null;
     _newSchoolIdCardPath = null;
@@ -325,22 +271,4 @@ class AddChildFormProvider extends ChangeNotifier {
     medicalNotes.dispose();
     super.dispose();
   }
-}
-
-/// Which seat a child rides in.
-enum SeatNeed {
-  carSeat('Car seat', 'Harness car seat — babies and toddlers, until about 4.'),
-  booster(
-    'Booster',
-    'Booster seat — until the adult belt fits, about age 8–12 or 145 cm.',
-  ),
-  none(
-    'Seat belt',
-    'Adult seat belt — fits across the shoulder and low on the hips.',
-  );
-
-  const SeatNeed(this.label, this.helper);
-
-  final String label;
-  final String helper;
 }

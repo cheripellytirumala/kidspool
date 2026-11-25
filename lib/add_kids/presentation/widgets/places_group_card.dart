@@ -58,10 +58,7 @@ class PlacesGroupCard extends StatelessWidget {
                     color: AppColors.ink,
                   ),
                   Expanded(
-                    child: Text(
-                      'Add school or activity',
-                      style: AppTextStyles.headingH3,
-                    ),
+                    child: Text('Add location', style: AppTextStyles.headingH3),
                   ),
                   const IconDisc(
                     asset: KidsAssets.plus16,

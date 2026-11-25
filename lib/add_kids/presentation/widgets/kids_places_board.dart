@@ -79,7 +79,7 @@ class KidsPlacesBoard extends StatelessWidget {
         if (kids.children.length > 1)
           const KidsTip(
             text:
-                'Another kid goes to the same place? Select them too—no need '
+                'Another member goes to the same place? Select them too—no need '
                 'to add it twice.',
           ),
       ],

@@ -34,7 +34,7 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
   late DateTime _month = _date ?? _today();
   late RideTime? _time = widget.initialTime;
 
-  /// "Ask at least 2 hours ahead" while the pick-up is too soon.
+  /// "That time has passed" while the pick-up is in the past.
   String? get _tooSoon => _date == null || _time == null
       ? null
       : RideLeadTime.tooSoonMessage([_date!], _time!);
@@ -119,19 +119,16 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
   bool _isSelected(DateTime day) =>
       _dates.contains(RideDateFormat.dateOnly(day));
 
-  /// Days of [weekday] in the month on screen that can still be picked.
+  /// Days of [weekday] in the weeks on screen that can still be picked.
   List<DateTime> _weekdayDays(int weekday) {
     final today = _today();
-    final last = DateTime(_month.year, _month.month + 1, 0).day;
     return [
-      for (var day = 1; day <= last; day++)
-        if (DateTime(_month.year, _month.month, day) case final d
-            when d.weekday == weekday && !d.isBefore(today))
-          d,
+      for (final d in RideCalendar.shownDays(_month))
+        if (d.weekday == weekday && !d.isBefore(today)) d,
     ];
   }
 
-  /// A chip is on when every pickable such day of the shown month is chosen.
+  /// A chip is on when every pickable such day of the shown weeks is chosen.
   bool _weekdaySelected(int weekday) {
     final days = _weekdayDays(weekday);
     return days.isNotEmpty && days.every(_dates.contains);
@@ -189,7 +186,7 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
   }
 }
 
-/// Red line under the time: the pick-up is less than 2 hours away.
+/// Red line under the time: the pick-up has already passed.
 class _TooSoonHint extends StatelessWidget {
   const _TooSoonHint(this.message);
 

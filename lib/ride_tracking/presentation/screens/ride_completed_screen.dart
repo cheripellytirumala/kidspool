@@ -241,7 +241,7 @@ class _ParentHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tracking;
-    final kids = RideFormat.names(t.kidNames, fallback: 'Your kids');
+    final kids = RideFormat.names(t.kidNames, fallback: 'Your members');
     final driver = t.driver?.firstName ?? 'Your Ride Partner';
     final at = t.completedAt;
     return Padding(
@@ -292,7 +292,7 @@ class _DriverHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tracking;
-    final kids = RideFormat.names(t.kidNames, fallback: 'The kids');
+    final kids = RideFormat.names(t.kidNames, fallback: 'The members');
     final verb = t.kids.length == 1 ? 'was' : 'were';
     final at = t.completedAt;
     return Column(
@@ -352,7 +352,7 @@ class _ParentToldCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final parent = tracking.parent;
     final name = parent?.firstName ?? 'The parent';
-    final kids = RideFormat.names(tracking.kidNames, fallback: 'The kids');
+    final kids = RideFormat.names(tracking.kidNames, fallback: 'The members');
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
       decoration: BoxDecoration(

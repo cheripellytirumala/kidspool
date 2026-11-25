@@ -40,8 +40,8 @@ Future<Place?> showPlaceSearchSheet(
   );
 }
 
-/// "Add school & activity" sheet: School/Activity switch, search field and
-/// results (schools and activities from Google Places Text Search).
+/// "Add location" sheet: search field and results (KidsPool's saved places,
+/// then any place from Google Places Text Search).
 class PlaceSearchSheet extends StatefulWidget {
   const PlaceSearchSheet({super.key, required this.height});
 
@@ -84,15 +84,11 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                'Add school & activity',
-                style: KidsTextStyles.headingH2,
-              ),
+              child: Text('Add location', style: KidsTextStyles.headingH2),
             ),
             const KidsSheetCloseButton(),
           ],
         ),
-        _KindSwitch(value: search.kind, onChanged: search.setKind),
         _SearchField(
           controller: _query,
           onChanged: search.setQuery,
@@ -102,7 +98,16 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
           },
         ),
         Expanded(
-          child: search.isSearching && results.isEmpty
+          child: search.isIdle
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    'Type a place, address or zip code to search.',
+                    textAlign: TextAlign.center,
+                    style: KidsTextStyles.captionM,
+                  ),
+                )
+              : search.isSearching && results.isEmpty
               ? const Center(child: AppLoader(size: 56))
               : results.isEmpty
               ? Padding(
@@ -141,95 +146,6 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
   }
 }
 
-/// "Kind" segmented control.
-class _KindSwitch extends StatelessWidget {
-  const _KindSwitch({required this.value, required this.onChanged});
-
-  final PlaceKind value;
-  final ValueChanged<PlaceKind> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: const ShapeDecoration(
-        color: AppColors.surface,
-        shape: StadiumBorder(),
-      ),
-      child: Row(
-        spacing: 4,
-        children: [
-          for (final (kind, icon, label) in const [
-            (PlaceKind.school, KidsAssets.grad16, 'School'),
-            (PlaceKind.activity, KidsAssets.ball16, 'Activity'),
-          ])
-            Expanded(
-              child: _KindSegment(
-                icon: icon,
-                label: label,
-                selected: kind == value,
-                onTap: () => onChanged(kind),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _KindSegment extends StatelessWidget {
-  const _KindSegment({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      selected: selected,
-      button: true,
-      child: Material(
-        color: selected ? AppColors.ink : Colors.transparent,
-        shape: const StadiumBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const StadiumBorder(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              spacing: 8,
-              children: [
-                AppIcon(
-                  icon,
-                  size: 16,
-                  color: selected ? AppColors.lime : AppColors.ink,
-                ),
-                Text(
-                  label,
-                  style: KidsTextStyles.labelM.copyWith(
-                    color: selected
-                        ? AppColors.textOnDark
-                        : AppColors.textPrimary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// "Search" pill: 2px ink border, search icon, clear button.
 class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
@@ -264,7 +180,7 @@ class _SearchField extends StatelessWidget {
               decoration: InputDecoration(
                 isCollapsed: true,
                 border: InputBorder.none,
-                hintText: 'Search with Names or Zip Code',
+                hintText: 'Search a place, address or zip',
                 hintStyle: KidsTextStyles.labelL.copyWith(
                   color: AppColors.textPrimary.withValues(alpha: 0.5),
                 ),

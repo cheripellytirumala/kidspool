@@ -1,7 +1,5 @@
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:kidspool/add_kids/domain/entities/grade_age.dart';
-import 'package:kidspool/add_kids/presentation/providers/add_child_form_provider.dart';
 import 'package:kidspool/auth/presentation/screens/vehicle_details_screen.dart';
 import 'package:kidspool/common/core/utils/zoned_time.dart';
 import 'package:kidspool/profile/domain/entities/my_car.dart';
@@ -44,24 +42,6 @@ void main() {
 
     test('colours are a fixed list with swatches', () {
       expect(MyCar.colors.map((c) => c.$1), containsAll(['White', 'Silver']));
-    });
-  });
-
-  group('Add a child', () {
-    test('seat follows the age: car seat, booster, belt', () {
-      expect(AddChildFormProvider.seatFor(2), SeatNeed.carSeat);
-      expect(AddChildFormProvider.seatFor(3), SeatNeed.carSeat);
-      expect(AddChildFormProvider.seatFor(4), SeatNeed.booster);
-      expect(AddChildFormProvider.seatFor(7), SeatNeed.booster);
-      expect(AddChildFormProvider.seatFor(9), SeatNeed.none);
-    });
-
-    test('daycare and preschool grades fit toddlers', () {
-      expect(AddChildFormProvider.grades.take(2), ['Daycare', 'Preschool']);
-      expect(GradeAge.mismatch(age: 2, grade: 'Daycare'), isNull);
-      expect(GradeAge.mismatch(age: 0, grade: 'Daycare'), isNull);
-      expect(GradeAge.mismatch(age: 2, grade: 'Preschool'), isNull);
-      expect(GradeAge.mismatch(age: 9, grade: 'Daycare'), isNotNull);
     });
   });
 

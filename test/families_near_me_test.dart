@@ -504,13 +504,16 @@ void main() {
       expect(p.emptyState, FamiliesEmptyState.noSchool);
       expect(
         p.emptyMessage,
-        'Add your kids’ school to see families going to the same places.',
+        'Add your members’ location to see families going to the same places.',
       );
 
       answer = const Right(FamiliesNearMe(families: [], hasSchool: true));
       await p.load();
       expect(p.emptyState, FamiliesEmptyState.noFamilies);
-      expect(p.emptyMessage, 'No families from your kids’ schools nearby yet.');
+      expect(
+        p.emptyMessage,
+        'No families from your members’ schools nearby yet.',
+      );
     });
 
     test('missing RPC shows the not-set-up message', () async {

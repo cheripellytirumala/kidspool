@@ -842,17 +842,17 @@ class _KidSeatStepper extends StatelessWidget {
       children: [
         SizedBox(
           width: 76,
-          child: Text('Kid seats', style: AppTextStyles.label),
+          child: Text('Member seats', style: AppTextStyles.label),
         ),
         button(
           Icons.remove_rounded,
-          'Fewer kid seats',
+          'Fewer member seats',
           value > 1 ? value - 1 : null,
         ),
         Expanded(
           child: Semantics(
             liveRegion: true,
-            label: '$value of $max kid seats',
+            label: '$value of $max member seats',
             excludeSemantics: true,
             child: Text.rich(
               TextSpan(
@@ -872,7 +872,7 @@ class _KidSeatStepper extends StatelessWidget {
         ),
         button(
           Icons.add_rounded,
-          'More kid seats',
+          'More member seats',
           value < max ? value + 1 : null,
         ),
       ],

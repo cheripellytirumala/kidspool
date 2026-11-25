@@ -240,7 +240,7 @@ class _RideRow extends StatelessWidget {
                 Text(when, style: MessagesStyles.labelL),
                 Text(
                   [
-                    MessagesFormat.names(ride.kidNames, fallback: 'Kids'),
+                    MessagesFormat.names(ride.kidNames, fallback: 'Members'),
                     ride.destinationName,
                   ].join(' · '),
                   style: MessagesStyles.meta,

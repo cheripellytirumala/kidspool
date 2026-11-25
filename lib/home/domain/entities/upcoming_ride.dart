@@ -71,7 +71,7 @@ class UpcomingRide extends Equatable {
 
   /// "Emma", "Emma & Noah", "Emma +2".
   String get kidsLabel => kidNames.isEmpty
-      ? 'your kid'
+      ? 'your member'
       : kidNames.length <= 2
       ? kidNames.join(' & ')
       : '${kidNames.first} +${kidNames.length - 1}';

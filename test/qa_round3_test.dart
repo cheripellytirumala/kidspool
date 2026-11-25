@@ -113,7 +113,7 @@ EXP 01/15/2030
     test('a 7-seater has room for 6 kids', () {
       const car = MyCar(carSeats: 7, hasBooster: true);
       expect(car.kidSeats, 6);
-      expect(car.summary, '7-seater · 6 kid seats free · booster');
+      expect(car.summary, '7-seater · 6 member seats free · booster');
     });
 
     test('kid seats free can be fewer than the car has', () {

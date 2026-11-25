@@ -175,7 +175,7 @@ class AskRideProvider extends ChangeNotifier {
       // No made-up return time: the parent types it when they turn the
       // return trip on.
       returnTime: null,
-      boosterSeat: kid?.boosterSuggested ?? false,
+      boosterSeat: false,
     );
   }
 
@@ -282,7 +282,7 @@ class AskRideProvider extends ChangeNotifier {
         kidIds: ids,
         pickup: rideHome ? setSchool : null,
         dropOff: rideHome ? null : setSchool,
-        boosterSeat: selected.any((k) => k.boosterSuggested),
+        boosterSeat: false,
       ),
     );
   }
@@ -444,7 +444,7 @@ class AskRideProvider extends ChangeNotifier {
   /// First problem with the form, or `null` when it can be sent.
   String? get validationError {
     final d = _draft;
-    if (d.kidIds.isEmpty) return 'Choose which kid needs the ride.';
+    if (d.kidIds.isEmpty) return 'Choose which member needs the ride.';
     if (d.pickup == null) return 'Choose where to pick up.';
     if (d.dropOff == null ||
         (d.dropOff!.isCustom && !d.dropOff!.hasCoordinates)) {
@@ -466,10 +466,12 @@ class AskRideProvider extends ChangeNotifier {
     // A custom place doesn't need the kids' school.
     if (away.kind == PlaceKind.school) {
       final schoolIds = {for (final k in _selectedKids) k.schoolId};
-      if (schoolIds.length > 1) return 'Pick kids who go to the same school.';
+      if (schoolIds.length > 1) {
+        return 'Pick members who go to the same school.';
+      }
       if (schoolIds.first != away.id) {
         final end = rideHome ? 'Pick-up' : 'Drop-off';
-        return '$end must be ${_selectedKids.first.name}’s school.';
+        return '$end must be ${_selectedKids.first.name}’s location.';
       }
     }
     if (d.kidIds.length > 4) return 'A ride can take up to 4 kids.';

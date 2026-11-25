@@ -307,7 +307,7 @@ class _Header extends StatelessWidget {
 
   (String, String) get _headline {
     final t = tracking;
-    final kids = RideFormat.names(t.kidNames, fallback: 'Your kids');
+    final kids = RideFormat.names(t.kidNames, fallback: 'Your members');
     final verb = t.kids.length > 1 ? 'are' : 'is';
     final driver = t.driver?.firstName ?? 'Your Ride Partner';
     if (t.isDriver) {

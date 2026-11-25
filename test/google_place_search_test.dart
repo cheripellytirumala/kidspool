@@ -163,7 +163,8 @@ void main() {
       );
       expect(
         PlaceSearchQuery.build(PlaceKind.school, 'Valencia St San Francisco'),
-        'schools near Valencia St San Francisco',
+        // Add location: an address finds that address, not schools near it.
+        'Valencia St San Francisco',
       );
       expect(PlaceSearchQuery.build(PlaceKind.school, ''), 'schools');
       expect(
@@ -173,8 +174,10 @@ void main() {
       expect(PlaceSearchQuery.build(PlaceKind.activity, 'swim'), 'swim');
     });
 
-    test('school tab sends includedType school, activity none', () {
+    test('only empty suggestions are limited to schools', () {
       expect(PlaceSearchQuery.includedType(PlaceKind.school), 'school');
+      expect(PlaceSearchQuery.includedType(PlaceKind.school, '94110'), isNull);
+      expect(PlaceSearchQuery.includedType(PlaceKind.school, 'NFC'), isNull);
       expect(PlaceSearchQuery.includedType(PlaceKind.activity), isNull);
     });
   });
@@ -318,7 +321,7 @@ void main() {
       );
       expect(
         result.getLeft().toNullable()?.message,
-        'School search isn’t set up on this build.',
+        'Location search isn’t set up on this build.',
       );
       expect(places.queries, isEmpty);
     });
@@ -332,7 +335,7 @@ void main() {
           near: GeoPoint(37.7, -122.4),
         ),
       );
-      expect(places.queries.single, ('schools in 94110', 'school', 37.7));
+      expect(places.queries.single, ('schools in 94110', null, 37.7));
       expect(result.toNullable()!.single.name, 'Lincoln Elementary School');
     });
 
@@ -359,7 +362,7 @@ void main() {
         );
         expect(
           empty.getLeft().toNullable()?.message,
-          'Type the school’s name to search.',
+          'Type the place’s name or address to search.',
         );
       },
     );

@@ -6,8 +6,10 @@ import '../../core/constants/ask_ride_assets.dart';
 import '../../core/utils/ride_date_format.dart';
 import 'ask_ride_text_styles.dart';
 
-/// Month grid from the "Select day?" / "Which days?" sheets. Weeks start on
-/// Sunday; days before [firstDate] are dimmed and not tappable.
+/// Two-week grid for the "Select day?" / "Which days?" sheets: the week
+/// containing [month] and the one after (current and next week by
+/// default). Weeks start on Sunday; days before [firstDate] are dimmed and
+/// not tappable. The arrows move two weeks at a time.
 class RideCalendar extends StatelessWidget {
   const RideCalendar({
     super.key,
@@ -19,26 +21,50 @@ class RideCalendar extends StatelessWidget {
     this.isWeekBanded,
   });
 
-  /// Any day in the month to show.
+  /// Any day in the first week to show.
   final DateTime month;
   final DateTime firstDate;
   final bool Function(DateTime day) isSelected;
   final ValueChanged<DateTime> onDayTap;
+
+  /// Called with a day in the newly shown first week.
   final ValueChanged<DateTime> onMonthChanged;
 
   /// Grey band behind a whole week (repeating weeks in "Which days?").
   /// Receives the Sunday that starts the week.
   final bool Function(DateTime weekStart)? isWeekBanded;
 
+  /// Weeks shown at once.
+  static const int weeks = 2;
+
   static const List<String> _letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
+  /// The Sunday starting [day]'s week.
+  static DateTime weekStart(DateTime day) =>
+      DateTime(day.year, day.month, day.day - day.weekday % 7);
+
+  /// The days on screen when the first week contains [day].
+  static List<DateTime> shownDays(DateTime day) {
+    final start = weekStart(day);
+    return [
+      for (var i = 0; i < weeks * 7; i++)
+        DateTime(start.year, start.month, start.day + i),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
-    final first = DateTime(month.year, month.month);
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final leading = first.weekday % 7; // Sunday → 0
-    final rows = ((leading + daysInMonth) / 7).ceil();
-    final canGoBack = first.isAfter(DateTime(firstDate.year, firstDate.month));
+    final start = weekStart(month);
+    final days = shownDays(month);
+    final last = days.last;
+    final canGoBack = start.isAfter(weekStart(firstDate));
+    final title = start.month == last.month
+        ? RideDateFormat.monthYear(start)
+        : start.year == last.year
+        ? '${RideDateFormat.monthYear(start).split(' ').first} – '
+              '${RideDateFormat.monthYear(last)}'
+        : '${RideDateFormat.monthYear(start)} – '
+              '${RideDateFormat.monthYear(last)}';
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -54,27 +80,32 @@ class RideCalendar extends StatelessWidget {
               children: [
                 _MonthArrow(
                   asset: AskRideAssets.monthPrev,
-                  tooltip: 'Previous month',
+                  tooltip: 'Previous weeks',
                   // The exported asset is the disabled grey; tint when active.
                   color: canGoBack ? AppColors.ink : null,
                   onTap: canGoBack
                       ? () => onMonthChanged(
-                          DateTime(month.year, month.month - 1),
+                          DateTime(
+                            start.year,
+                            start.month,
+                            start.day - weeks * 7,
+                          ),
                         )
                       : null,
                 ),
                 Expanded(
                   child: Text(
-                    RideDateFormat.monthYear(first),
+                    title,
                     textAlign: TextAlign.center,
                     style: AskRideTextStyles.month,
                   ),
                 ),
                 _MonthArrow(
                   asset: AskRideAssets.monthNext,
-                  tooltip: 'Next month',
-                  onTap: () =>
-                      onMonthChanged(DateTime(month.year, month.month + 1)),
+                  tooltip: 'Next weeks',
+                  onTap: () => onMonthChanged(
+                    DateTime(start.year, start.month, start.day + weeks * 7),
+                  ),
                 ),
               ],
             ),
@@ -98,23 +129,11 @@ class RideCalendar extends StatelessWidget {
               ],
             ],
           ),
-          for (var r = 0; r < rows; r++) ...[
+          for (var r = 0; r < weeks; r++) ...[
             const SizedBox(height: 6),
             _WeekRow(
-              banded:
-                  isWeekBanded?.call(
-                    DateTime(month.year, month.month, 1 - leading + r * 7),
-                  ) ??
-                  false,
-              days: [
-                for (var c = 0; c < 7; c++)
-                  () {
-                    final day = r * 7 + c - leading + 1;
-                    return day < 1 || day > daysInMonth
-                        ? null
-                        : DateTime(month.year, month.month, day);
-                  }(),
-              ],
+              banded: isWeekBanded?.call(days[r * 7]) ?? false,
+              days: days.sublist(r * 7, r * 7 + 7),
               firstDate: RideDateFormat.dateOnly(firstDate),
               isSelected: isSelected,
               onDayTap: onDayTap,

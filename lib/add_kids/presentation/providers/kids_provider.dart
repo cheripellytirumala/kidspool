@@ -368,7 +368,7 @@ class KidsProvider extends ChangeNotifier {
   /// message when the place can't be removed (every kid needs a school).
   String? removePlaceFor(String placeId, String childId) {
     if (_schools.containsKey(placeId)) {
-      return 'Every child needs a school. Pick another school to change it.';
+      return 'Every member needs a location. Pick another one to change it.';
     }
     _removeFromActivity(placeId, childId);
     _saveActivities();

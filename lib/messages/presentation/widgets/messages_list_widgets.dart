@@ -350,7 +350,7 @@ class IncomingRequestCard extends StatelessWidget {
     final parent = request.parent;
     final name = parent?.firstName ?? 'A parent';
     final meta = [
-      MessagesFormat.names(request.kidNames, fallback: 'Kids'),
+      MessagesFormat.names(request.kidNames, fallback: 'Members'),
       if (request.distanceMiles != null)
         MessagesFormat.miles(request.distanceMiles!),
     ].join(' · ');
@@ -483,7 +483,10 @@ class MyRequestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final kids = MessagesFormat.names(request.kidNames, fallback: 'your kids');
+    final kids = MessagesFormat.names(
+      request.kidNames,
+      fallback: 'your members',
+    );
     final hasOffers = request.offers.isNotEmpty;
     return Material(
       color: hasOffers ? MessagesStyles.limeSoft : AppColors.surface,

@@ -64,7 +64,7 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
       return Left(
         DeviceFailure(
           params.kind == PlaceKind.school
-              ? 'School search isn’t set up on this build.'
+              ? 'Location search isn’t set up on this build.'
               : 'Activity search isn’t set up on this build.',
         ),
       );
@@ -73,7 +73,7 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
       _places,
       textQuery: PlaceSearchQuery.build(params.kind, params.query),
       typed: params.query,
-      includedType: PlaceSearchQuery.includedType(params.kind),
+      includedType: PlaceSearchQuery.includedType(params.kind, params.query),
       nearLatitude: params.near?.latitude,
       nearLongitude: params.near?.longitude,
       radiusMeters: nearRadiusMeters,
@@ -84,7 +84,7 @@ class SearchKidPlaces implements UseCase<List<Place>, SearchKidPlacesParams> {
       return Left(
         DeviceFailure(
           params.kind == PlaceKind.school
-              ? 'Type the school’s name to search.'
+              ? 'Type the place’s name or address to search.'
               : 'Type the activity’s name to search.',
         ),
       );

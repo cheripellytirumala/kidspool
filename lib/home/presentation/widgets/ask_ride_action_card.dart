@@ -34,7 +34,7 @@ class AskRideActionCard extends StatelessWidget {
                       Text('Ask for a ride', style: HomeTextStyles.headingH2),
                       const SizedBox(height: 2),
                       Text(
-                        'Any child, any of their places',
+                        'Any member, any of their places',
                         style: HomeTextStyles.bodyM.copyWith(
                           color: AppColors.textPrimary,
                         ),

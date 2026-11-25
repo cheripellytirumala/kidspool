@@ -159,13 +159,11 @@ void main() {
       expect(p.createdRequestIds, isEmpty);
     });
 
-    test('a child under 8 gets the booster seat and a hint', () async {
+    test('no booster seat is asked for, whatever the age', () async {
       final young = await make(age: 6);
-      expect(young.draft.boosterSeat, isTrue);
-      expect(young.boosterHint, contains('Ivy is 6'));
+      expect(young.draft.boosterSeat, isFalse);
       final older = await make(age: 10);
       expect(older.draft.boosterSeat, isFalse);
-      expect(older.boosterHint, isNull);
     });
   });
 
@@ -256,7 +254,7 @@ void main() {
       expect(
         e.message,
         "Rides home and drop-offs at any place aren't set up on the server "
-        "yet. Ask for a ride to your kid's school for now.",
+        "yet. Ask for a ride to your member's location for now.",
       );
       expect(e.code, AskRideApiConstants.dropoffNotSupported);
     });
@@ -441,7 +439,10 @@ void main() {
         )
         ..toggleKid('k2'); // Emma + Jessie
       expect(provider.selectedKidsWithoutSchool.map((k) => k.name), ['Jessie']);
-      expect(provider.validationError, 'Pick kids who go to the same school.');
+      expect(
+        provider.validationError,
+        'Pick members who go to the same school.',
+      );
       expect(provider.siblingSchool, _lincoln);
 
       expect(

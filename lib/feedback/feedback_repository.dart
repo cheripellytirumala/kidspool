@@ -25,7 +25,7 @@ enum FeedbackKind {
 /// Part of the app the feedback is about (optional).
 enum FeedbackArea {
   signUp('sign_up', 'Sign-up'),
-  kids('kids', 'Kids, schools & activities'),
+  kids('kids', 'Members, schools & activities'),
   askRide('ask_ride', 'Asking for a ride'),
   families('families', 'Families near you'),
   messages('messages', 'Messages & groups'),

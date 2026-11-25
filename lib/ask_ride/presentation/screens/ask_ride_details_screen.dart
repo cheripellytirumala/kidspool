@@ -13,7 +13,6 @@ import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
-import '../../../common/presentation/widgets/app_toggle.dart';
 import '../../domain/entities/ride_schedule.dart';
 import '../providers/ask_ride_provider.dart';
 import '../providers/drop_off_search_provider.dart';
@@ -23,7 +22,6 @@ import '../widgets/drop_off_picker_sheet.dart';
 import '../widgets/frequency_option_card.dart';
 import '../widgets/kid_chip.dart';
 import '../widgets/place_picker_sheet.dart';
-import '../widgets/return_trip_details.dart';
 import '../widgets/ride_note_field.dart';
 import '../widgets/route_card.dart';
 import '../widgets/schedule_sheets.dart';
@@ -201,36 +199,6 @@ class _Form extends StatelessWidget {
         selected: schedule is CustomSchedule,
         onTap: () => _pickCustom(context),
       ),
-      ToggleRow(
-        label: 'Return trip',
-        value: draft.returnTrip,
-        onChanged: provider.setReturnTrip,
-        toggle: AppToggle(
-          value: draft.returnTrip,
-          onChanged: provider.setReturnTrip,
-        ),
-      ),
-      if (draft.returnTrip)
-        ReturnTripDetails(
-          from: draft.dropOff,
-          to: draft.pickup,
-          time: draft.returnTime,
-          onTimeChanged: provider.setReturnTime,
-        ),
-      ToggleRow(
-        label: 'One booster seat needed',
-        value: draft.boosterSeat,
-        onChanged: provider.setBoosterSeat,
-        toggle: AppToggle(
-          value: draft.boosterSeat,
-          onChanged: provider.setBoosterSeat,
-        ),
-      ),
-      if (provider.boosterHint case final hint?)
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(hint, style: AppTextStyles.caption),
-        ),
       RideNoteField(initialValue: draft.note, onChanged: provider.setNote),
       AppButton(
         label: 'Next: choose who to ask',
@@ -283,8 +251,8 @@ class _Form extends StatelessWidget {
                 title: title,
                 activities: provider.activityPlaces,
                 emptyMessage:
-                    'Add your child’s school first: Profile → your kid → '
-                    'Add school or activity.',
+                    'Add your member’s location first: Profile → your '
+                    'member → Add location.',
               ),
             ),
     );
@@ -444,7 +412,7 @@ class _NoSchoolCard extends StatelessWidget {
           TextButton(
             onPressed: busy ? null : onOtherSchool,
             child: Text(
-              same == null ? 'Add $kidName’s school' : 'No, another school',
+              same == null ? 'Add $kidName’s location' : 'No, another location',
               style: AppTextStyles.label,
             ),
           ),

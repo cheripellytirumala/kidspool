@@ -1,24 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kidspool/ask_ride/domain/entities/ride_lead_time.dart';
 import 'package:kidspool/ask_ride/domain/entities/ride_time.dart';
+import 'package:kidspool/ask_ride/presentation/widgets/ride_calendar.dart';
 
 void main() {
   final now = DateTime(2026, 11, 12, 9, 10);
   final today = DateTime(2026, 11, 12);
   final tomorrow = DateTime(2026, 11, 13);
 
-  test('pick-up less than 2 hours away is too soon', () {
+  test('no 2-hour notice: any time from now on is fine', () {
     expect(
-      RideLeadTime.isTooSoon(today, const RideTime(11, 0), now: now),
-      isTrue,
-    );
-    expect(
-      RideLeadTime.isTooSoon(today, const RideTime(11, 10), now: now),
+      RideLeadTime.isTooSoon(today, const RideTime(9, 30), now: now),
       isFalse,
     );
     expect(
-      RideLeadTime.isTooSoon(today, const RideTime(8, 0), now: now),
-      isTrue,
+      RideLeadTime.isTooSoon(today, const RideTime(9, 10), now: now),
+      isFalse,
     );
     expect(
       RideLeadTime.isTooSoon(tomorrow, const RideTime(8, 0), now: now),
@@ -26,33 +23,35 @@ void main() {
     );
   });
 
-  test('message names the earliest time today', () {
+  test('a time that has passed is still blocked', () {
     expect(
-      RideLeadTime.tooSoonMessage([today], const RideTime(10, 0), now: now),
-      'Ask at least 2 hours ahead. Today, pick a time after 11:10 AM.',
+      RideLeadTime.isTooSoon(today, const RideTime(8, 0), now: now),
+      isTrue,
     );
     expect(
-      RideLeadTime.tooSoonMessage([tomorrow], const RideTime(10, 0), now: now),
-      isNull,
+      RideLeadTime.tooSoonMessage([today], const RideTime(8, 0), now: now),
+      'That time has passed. Today, pick a time after 9:10 AM.',
     );
-  });
-
-  test('custom days: any day too soon blocks', () {
     expect(
       RideLeadTime.tooSoonMessage(
         [today, tomorrow],
-        const RideTime(9, 30),
+        const RideTime(9, 0),
         now: now,
       ),
       isNotNull,
     );
+    expect(
+      RideLeadTime.tooSoonMessage([tomorrow], const RideTime(8, 0), now: now),
+      isNull,
+    );
   });
 
-  test('late evening: earliest is tomorrow', () {
-    final late = DateTime(2026, 11, 12, 23, 0);
-    expect(
-      RideLeadTime.tooSoonMessage([tomorrow], const RideTime(0, 30), now: late),
-      'Ask at least 2 hours ahead. Pick a later day or time.',
-    );
+  test('calendar shows the current week and the next one', () {
+    // Tue Nov 24, 2026 → Sun Nov 22 … Sat Dec 5.
+    final days = RideCalendar.shownDays(DateTime(2026, 11, 24));
+    expect(days, hasLength(14));
+    expect(days.first, DateTime(2026, 11, 22));
+    expect(days.last, DateTime(2026, 12, 5));
+    expect(days.first.weekday, DateTime.sunday);
   });
 }

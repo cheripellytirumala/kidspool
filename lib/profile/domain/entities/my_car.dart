@@ -43,7 +43,7 @@ class MyCar extends Equatable {
   /// "7-seater · 3 kid seats free · booster".
   String get summary => [
     '$carSeats-seater',
-    '$kidSeats kid ${kidSeats == 1 ? 'seat' : 'seats'} free',
+    '$kidSeats member ${kidSeats == 1 ? 'seat' : 'seats'} free',
     if (hasBooster) 'booster',
   ].join(' · ');
 

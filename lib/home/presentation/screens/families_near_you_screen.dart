@@ -116,7 +116,7 @@ class _FamiliesView extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Going to the same places as your kids',
+                            'Going to the same places as your members',
                             style: HomeTextStyles.bodyM,
                           ),
                           const SizedBox(height: 12),
@@ -171,7 +171,7 @@ class _FamiliesView extends StatelessWidget {
                               actionLabel:
                                   provider.emptyState ==
                                       FamiliesEmptyState.noSchool
-                                  ? 'Add your kids’ school'
+                                  ? 'Add your members’ location'
                                   : null,
                               onAction: () => Navigator.pushNamed(
                                 context,

@@ -206,7 +206,7 @@ class HomeProvider extends ChangeNotifier {
 
   /// "Your kid’s ride" / "Your drive"
   String get featuredSectionTitle =>
-      featuredRide?.isDrive ?? false ? 'Your drive' : 'Your kid’s ride';
+      featuredRide?.isDrive ?? false ? 'Your drive' : 'Your member’s ride';
 
   /// "Partner confirmed" / "On the way" / "Confirmed"
   String get featuredBadge {

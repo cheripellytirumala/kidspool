@@ -37,6 +37,9 @@ class PlaceSearchProvider extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
   List<Place> get results => _results;
 
+  /// Nothing typed yet: the sheet shows a prompt, not suggestions.
+  bool get isIdle => _query.trim().isEmpty;
+
   bool _online = false;
 
   /// The list shows KidPool's saved places (not Google's): offer "Search
@@ -97,6 +100,14 @@ class PlaceSearchProvider extends ChangeNotifier {
   final Map<String, List<Place>> _cache = {};
 
   Future<void> _run() async {
+    if (isIdle) {
+      ++_requestId; // drop any search still running
+      _searching = false;
+      _errorMessage = null;
+      _results = const [];
+      _notify();
+      return;
+    }
     final cacheKey = '${_kind.name}|${_query.trim().toLowerCase()}|$_online';
     if (_cache[cacheKey] case final cached?) {
       ++_requestId;

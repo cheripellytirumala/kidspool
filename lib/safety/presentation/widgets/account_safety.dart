@@ -143,7 +143,7 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
             Text('Delete your account?', style: AppTextStyles.headingH3),
             const SizedBox(height: 8),
             Text(
-              'This permanently deletes your profile, your kids, addresses, '
+              'This permanently deletes your profile, your members, addresses, '
               'ride requests, chats and ride groups you’re in, and your ID '
               'and license photos. It can’t be undone.',
               style: AppTextStyles.body,

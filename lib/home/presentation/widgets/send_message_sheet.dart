@@ -207,7 +207,7 @@ class _PrivacyNote extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'All parents sees your first name, kids’ grades and shared '
+              'All parents see your first name, members’ grades and shared '
               'places — not your address. They can accept or decline.',
               style: HomeTextStyles.captionM.copyWith(
                 color: AppColors.textPrimary,

@@ -69,7 +69,7 @@ abstract final class MessagesFormat {
       a.year == b.year && a.month == b.month && a.day == b.day;
 
   /// `Emma`, `Emma & Noah`, `Emma, Noah & Mia`.
-  static String names(List<String> names, {String fallback = 'their kids'}) {
+  static String names(List<String> names, {String fallback = 'their members'}) {
     final list = names.where((n) => n.trim().isNotEmpty).toList();
     if (list.isEmpty) return fallback;
     if (list.length == 1) return list.first;

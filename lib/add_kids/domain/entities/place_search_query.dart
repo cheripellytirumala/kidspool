@@ -2,24 +2,25 @@ import 'place.dart';
 
 /// Turns what the parent typed in F09 into a Google Text Search query.
 ///
-/// * empty → "schools" / "kids activities" (biased near home)
+/// * empty → "schools" suggestions (biased near home)
 /// * zip code ("94110") → "schools in 94110"
-/// * address or street ("Valencia St San Francisco") →
-///   "schools near Valencia St San Francisco"
-/// * anything else (a name: "Lincoln Elementary") → sent as typed
+/// * anything else (a name or an address) → sent as typed, any place type
 abstract final class PlaceSearchQuery {
-  /// Google place type for the School tab (`includedType`).
+  /// Google place type for the suggestions shown before anything is typed.
   static const String schoolType = 'school';
 
-  static String? includedType(PlaceKind kind) =>
-      kind == PlaceKind.school ? schoolType : null;
+  /// "Add location": suggestions are nearby schools, but anything typed
+  /// finds any place (an office, a club, a relative's home).
+  static String? includedType(PlaceKind kind, [String typed = '']) =>
+      kind == PlaceKind.school && typed.trim().isEmpty ? schoolType : null;
 
   static String build(PlaceKind kind, String typed) {
     final q = typed.trim().replaceAll(RegExp(r'\s+'), ' ');
     final noun = kind == PlaceKind.school ? 'schools' : 'kids activities';
     if (q.isEmpty) return noun;
     if (isZipCode(q)) return '$noun in $q';
-    if (kind == PlaceKind.school && _namesASchool(q)) return q;
+    // A location: search what was typed (a name or an address).
+    if (kind == PlaceKind.school) return q;
     if (looksLikeAddress(q)) return '$noun near $q';
     return q;
   }
@@ -27,15 +28,6 @@ abstract final class PlaceSearchQuery {
   static final RegExp _zip = RegExp(r'^\d{5}(-\d{4})?$');
 
   static bool isZipCode(String q) => _zip.hasMatch(q.trim());
-
-  static final RegExp _schoolWords = RegExp(
-    r'\b(school|schools|elementary|middle|high|academy|prep|preparatory|'
-    r'montessori|preschool|pre-k|kindergarten|charter|daycare|'
-    r'learning|institute|college)\b',
-    caseSensitive: false,
-  );
-
-  static bool _namesASchool(String q) => _schoolWords.hasMatch(q);
 
   static final RegExp _streetWords = RegExp(
     r'\b(st|street|ave|avenue|blvd|boulevard|rd|road|dr|drive|ln|lane|way|'

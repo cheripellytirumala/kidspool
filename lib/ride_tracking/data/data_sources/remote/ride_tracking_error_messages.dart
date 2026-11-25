@@ -32,11 +32,11 @@ abstract final class RideTrackingErrorMessages {
       case 'ride_not_started':
         return 'Start the ride before marking the pickup.';
       case 'already_picked_up':
-        return 'The kids are already marked as picked up.';
+        return 'The members are already marked as picked up.';
       case 'ride_not_in_progress':
         return 'This ride isn’t in progress any more.';
       case 'not_picked_up':
-        return 'Mark the kids as picked up first.';
+        return 'Mark the members as picked up first.';
       case 'ride_not_active':
         return 'This ride isn’t active, so SOS can’t be sent.';
       case 'ride_request_not_found':

@@ -43,8 +43,8 @@ class _YourKidsView extends StatelessWidget {
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
       child: KidsScaffold(
-        title: 'Add a child',
-        subtitle: 'Add each child who needs rides.',
+        title: 'Add a member',
+        subtitle: 'Add each member who needs rides.',
         topPadding: 4,
         bottom: AppButton(
           label: 'Continue',
@@ -59,7 +59,7 @@ class _YourKidsView extends StatelessWidget {
               onEdit: () => _openEditor(context, childId: child.id),
             ),
           DashedAddButton(
-            label: 'Add another child',
+            label: 'Add another member',
             onTap: () => _openEditor(context),
           ),
         ],

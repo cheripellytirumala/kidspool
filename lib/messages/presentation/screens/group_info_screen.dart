@@ -167,7 +167,7 @@ class _GroupInfoView extends StatelessWidget {
                         title: 'Add parents',
                         subtitle: group.isFull
                             ? _fullMessage(group)
-                            : 'Parents from your kids’ schools',
+                            : 'Parents from your members’ schools',
                         enabled: !group.isFull,
                         onTap: () => _addParents(context),
                       ),
