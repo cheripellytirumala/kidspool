@@ -52,8 +52,20 @@ class _ScanBodyState extends State<_ScanBody> {
   @override
   void initState() {
     super.initState();
+    final flow = context.read<AuthFlowProvider>();
     // Restore the saved name (lost after an app restart) for the ID check.
-    context.read<AuthFlowProvider>().restoreFromProfile();
+    flow.restoreFromProfile();
+    // The flow provider is app-wide: start every visit with a fresh scan,
+    // not the photos from a previous one.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _resetScan();
+    });
+  }
+
+  /// Forgets the captured photos and goes back to the front side.
+  void _resetScan() {
+    context.read<AuthFlowProvider>().clearIdPhotos();
+    context.read<ScanIdProvider>().selectSide(IdSide.front);
   }
 
   /// Front / Back chip: selects that side; the shutter or "Choose from
@@ -87,13 +99,18 @@ class _ScanBodyState extends State<_ScanBody> {
     scan.setBusy(false);
     if (!context.mounted) return;
     if (error != null) return showAppSnack(context, error);
+    // A good photo: drop any earlier error so it doesn't linger (the snack
+    // bar is app-wide and would follow onto the next screen).
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
 
     final frontDone = flow.idFrontPath != null;
     // A passport has no back side.
     final backDone = !flow.idNeedsBack || flow.idBackPath != null;
     scan.advance(frontDone: frontDone, backDone: backDone);
     if (flow.hasIdPhotos) {
-      Navigator.pushNamed(context, AppRoutes.idVerified);
+      await Navigator.pushNamed(context, AppRoutes.idVerified);
+      // Back from the review: scan again from the front, not the old photos.
+      if (mounted) _resetScan();
     }
   }
 

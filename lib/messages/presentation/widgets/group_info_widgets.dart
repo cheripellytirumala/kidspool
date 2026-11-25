@@ -137,8 +137,9 @@ class GroupActionRow extends StatelessWidget {
   }
 }
 
-/// "Add parents" picker: the parents the user may add, with checkboxes,
-/// limited to the group's free slots. Returns the picked ids, or null.
+/// "Add members" picker: families near the user who aren't in the group
+/// yet, with checkboxes, limited to the group's free slots. Returns the
+/// picked ids, or null.
 class AddParentsSheet extends StatefulWidget {
   const AddParentsSheet({super.key});
 
@@ -199,12 +200,12 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Add parents', style: AppTextStyles.headingH3),
+              Text('Add members', style: AppTextStyles.headingH3),
               const SizedBox(height: 4),
               Text(
                 slots == 1
-                    ? 'You can add 1 more family.'
-                    : 'You can add $slots more families.',
+                    ? 'Families near you. You can add 1 more.'
+                    : 'Families near you. You can add $slots more.',
                 style: AppTextStyles.body,
               ),
               const SizedBox(height: 12),
@@ -214,7 +215,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
                 label: _picked.isEmpty
                     ? 'Add'
                     : 'Add ${_picked.length} '
-                          '${_picked.length == 1 ? 'parent' : 'parents'}',
+                          '${_picked.length == 1 ? 'family' : 'families'}',
                 variant: AppButtonVariant.dark,
                 onPressed: _picked.isEmpty
                     ? null
@@ -243,7 +244,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: MessagesStateView(
-          title: 'We couldn’t load parents',
+          title: 'We couldn’t load families near you',
           message: provider.candidatesError ?? 'Please try again.',
           onRetry: provider.loadCandidates,
         ),
@@ -253,7 +254,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          'No more parents from your members’ schools to add right now.',
+          'No more families near you to add right now.',
           style: AppTextStyles.body,
         ),
       );
@@ -291,6 +292,16 @@ class _CandidateRow extends StatelessWidget {
   final bool picked;
   final VoidCallback? onTap;
 
+  /// "0.8 mi · Parent of Emma", or whichever part is known.
+  static String? _details(RideGroupMember c) {
+    final miles = c.distanceMiles;
+    final parts = [
+      if (miles != null) MessagesFormat.miles(miles),
+      if (c.kids.isNotEmpty) 'Parent of ${MessagesFormat.names(c.kids)}',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
   @override
   Widget build(BuildContext context) {
     final radius = BorderRadius.circular(MessagesStyles.radiusRow);
@@ -325,10 +336,9 @@ class _CandidateRow extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: MessagesStyles.labelL,
                           ),
-                          if (candidate.kids.isNotEmpty)
+                          if (_details(candidate) case final details?)
                             Text(
-                              'Parent of '
-                              '${MessagesFormat.names(candidate.kids)}',
+                              details,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: MessagesStyles.meta,

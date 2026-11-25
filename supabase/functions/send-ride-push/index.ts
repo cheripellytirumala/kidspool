@@ -1,11 +1,13 @@
-// send-ride-push — S19 "Ride started" / S20 "Arrived" pushes to the parent.
+// send-ride-push — the parent's three ride pushes: "Ride started", "Ride
+// Partner has arrived" (with the pick-up PIN) and "Ride completed".
 //
 // Called by a Supabase Database Webhook on `public.ride_requests` UPDATE
 // (payload `{type, table, record, old_record}`), with the header
 // `x-webhook-secret: <RIDE_PUSH_WEBHOOK_SECRET>`.
 //
-//   started_at   null → set   ⇒ S19  kind `ride_started`
-//   completed_at null → set   ⇒ S20  kind `ride_arrived`
+//   started_at          null → set   ⇒ S19  kind `ride_started`
+//   driver_at_pickup_at null → set   ⇒      kind `driver_at_pickup` (PIN)
+//   completed_at        null → set   ⇒ S20  kind `ride_arrived`
 //   anything else             ⇒ 200 {skipped}
 //
 // Title / body copy matches get_my_notifications
@@ -42,7 +44,7 @@ interface ServiceAccount {
   token_uri?: string;
 }
 
-type RideKind = "ride_started" | "ride_arrived";
+type RideKind = "ride_started" | "driver_at_pickup" | "ride_arrived";
 
 const FCM_SCOPE = "https://www.googleapis.com/auth/firebase.messaging";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
@@ -157,6 +159,13 @@ function rideEvent(record: Row, old: Row): RideKind | null {
   // Both in one update (unusual): the ride is over, say it arrived.
   if (!isSet(old.completed_at) && isSet(record.completed_at)) return "ride_arrived";
   if (!isSet(old.started_at) && isSet(record.started_at)) return "ride_started";
+  // At the pick-up, still waiting for the hand-over.
+  if (
+    !isSet(old.driver_at_pickup_at) && isSet(record.driver_at_pickup_at) &&
+    !isSet(record.picked_up_at)
+  ) {
+    return "driver_at_pickup";
+  }
   return null;
 }
 
@@ -215,10 +224,19 @@ async function buildCopy(
       body: `${driverName} is on the way to pick up ${kids}.`,
     };
   }
+  if (kind === "driver_at_pickup") {
+    const pin = typeof record.pickup_pin === "string" ? record.pickup_pin.trim() : "";
+    return {
+      title: `${driverName} has arrived 📍`,
+      body: pin
+        ? `Your pick-up PIN is ${pin}. Share it with ${driverName} to hand over ${kids}.`
+        : `${driverName} is at the pick-up for ${kids}.`,
+    };
+  }
   const tz = typeof record.time_zone === "string" && record.time_zone ? record.time_zone : "UTC";
   return {
-    title: `${kids} reached ${school} ✅`,
-    body: `${driverName}’s car arrived at ${clockTime(String(record.completed_at), tz)}.`,
+    title: "Ride completed ✅",
+    body: `${kids} reached ${school} at ${clockTime(String(record.completed_at), tz)}.`,
   };
 }
 

@@ -156,6 +156,11 @@ class AuthFlowProvider extends ChangeNotifier {
 
   /// Coordinates of the typed address; reset whenever the address changes.
   ResolvedAddress? _coordinates;
+
+  /// Last known spot of the home pin. Unlike [_coordinates] it is kept while
+  /// the address is being typed, so the map preview isn't torn down and
+  /// rebuilt on every keystroke; it moves once the new address is found.
+  ResolvedAddress? _mapPoint;
   bool _addressSaved = false;
 
   /// The address was typed, located or picked on this visit: save it (as
@@ -240,7 +245,7 @@ class AuthFlowProvider extends ChangeNotifier {
 
   /// Where the home pin goes on the map: the picked / located / typed
   /// address, once known.
-  ResolvedAddress? get mapPoint => _coordinates;
+  ResolvedAddress? get mapPoint => _mapPoint;
 
   /// Address chosen on the full-screen map: fills the fields and the pin.
   void applyPickedAddress(PickedAddress picked) {
@@ -260,6 +265,7 @@ class AuthFlowProvider extends ChangeNotifier {
         stateCode: _stateCode,
         zip: _zip,
       );
+      _mapPoint = _coordinates;
     });
   }
 
@@ -284,6 +290,7 @@ class AuthFlowProvider extends ChangeNotifier {
         );
         if (token != _geocodeToken || _coordinates != null) return;
         _coordinates = found;
+        _mapPoint = found;
         notifyListeners();
       } on Object {
         // Not found yet (still typing): the pin stays where it was.
@@ -314,6 +321,7 @@ class AuthFlowProvider extends ChangeNotifier {
       _geocodeTimer?.cancel();
       _geocodeToken++;
       _coordinates = address;
+      _mapPoint = address;
       _addressEdited = true;
       if (address.street.isNotEmpty) _street = address.street;
       if (address.zip.isNotEmpty) _zip = address.zip;
@@ -322,6 +330,9 @@ class AuthFlowProvider extends ChangeNotifier {
       return null;
     } on DeviceException catch (e) {
       return e.message;
+    } on Object {
+      // Any other plugin failure: never take the screen down.
+      return 'We couldn’t find your location. Please type your address.';
     } finally {
       _update(() => _isLocating = false);
     }
@@ -382,6 +393,7 @@ class AuthFlowProvider extends ChangeNotifier {
               zip: _zip.trim(),
             );
         _coordinates = coordinates;
+        _mapPoint = coordinates;
         final saved = await _repository.addHomeAddress(
           HomeAddress(
             street: _street,

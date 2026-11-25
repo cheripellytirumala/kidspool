@@ -166,6 +166,7 @@ void registerMessagesDependencies(GetIt sl) {
         renameRideGroup: sl(),
         setGroupMuted: sl(),
         leaveRideGroup: sl(),
+        getFamiliesNearMe: sl(),
       ),
     );
 

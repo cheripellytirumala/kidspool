@@ -53,6 +53,7 @@ import 'package:kidspool/messages/presentation/providers/messages_badge_counter.
 import 'package:kidspool/messages/presentation/providers/messages_provider.dart';
 import 'package:kidspool/messages/presentation/screens/group_chat_screen.dart';
 import 'package:kidspool/messages/presentation/screens/group_info_screen.dart';
+import 'package:kidspool/messages/presentation/widgets/group_info_widgets.dart';
 import 'package:kidspool/messages/presentation/screens/messages_screen.dart';
 import 'package:kidspool/messages/presentation/providers/ride_groups_provider.dart';
 import 'package:kidspool/messages/presentation/screens/ride_groups_screen.dart';
@@ -364,7 +365,7 @@ GroupChatProvider _chatProvider(_GroupsRepository repo) => GroupChatProvider(
   markGroupRead: MarkGroupRead(repo),
 );
 
-Future<void> _register(_GroupsRepository repo) async {
+Future<void> _register(_GroupsRepository repo, {HomeRepository? home}) async {
   await sl.reset();
   await registerFakeSafety(sl);
   sl
@@ -378,6 +379,7 @@ Future<void> _register(_GroupsRepository repo) async {
         renameRideGroup: RenameRideGroup(repo),
         setGroupMuted: SetGroupMuted(repo),
         leaveRideGroup: LeaveRideGroup(repo),
+        getFamiliesNearMe: home == null ? null : GetFamiliesNearMe(home),
       ),
     )
     ..registerFactory<RideGroupsProvider>(
@@ -440,6 +442,35 @@ class _FakeApi extends ApiClient {
     }
     return parser(responses[name]);
   }
+}
+
+/// Families near you for "Add members": Dana nearby, and Ben (already in
+/// the group).
+class _NearbyHome implements HomeRepository {
+  @override
+  Future<Either<Failure, FamiliesNearMe>> getFamiliesNearMe({
+    String? schoolId,
+    double? radiusMiles,
+  }) async => const Right(
+    FamiliesNearMe(
+      hasSchool: true,
+      families: [
+        Family(
+          id: 'dana-id',
+          parentName: 'Dana',
+          initials: 'DR',
+          distanceMiles: 0.8,
+          kids: [
+            FamilyKid(firstName: 'Zoe', schoolId: 'l', schoolName: 'Lincoln'),
+          ],
+        ),
+        Family(id: 'ben-id', parentName: 'Ben', initials: 'BC', kids: []),
+      ],
+    ),
+  );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Unused: families are set with `setFamilies`.
@@ -952,7 +983,7 @@ void main() {
         expect(find.text('Owner'), findsOneWidget);
         expect(find.text('You'), findsOneWidget);
         expect(find.text('Parent of Emma & Noah'), findsOneWidget);
-        expect(find.text('Add parents'), findsOneWidget);
+        expect(find.text('Add members'), findsOneWidget);
 
         await tester.tap(find.byType(AppToggle));
         await tester.pump();
@@ -962,23 +993,75 @@ void main() {
       });
     }
 
-    testWidgets('add parents picks a candidate', (tester) async {
+    testWidgets('add members picks a candidate', (tester) async {
       final repo = _GroupsRepository();
       await _register(repo);
       await _pump(tester, const GroupInfoScreen(), arguments: _args);
-      await tester.tap(find.text('Add parents'));
+      await tester.tap(find.text('Add members'));
       await tester.pumpAndSettle();
       expect(find.text('Chloe'), findsOneWidget);
       await tester.tap(find.text('Chloe'));
       await tester.pump();
-      await tester.tap(find.text('Add 1 parent'));
+      await tester.tap(find.text('Add 1 family'));
       await tester.pumpAndSettle();
       expect(repo.added, ['chloe-id']);
       expect(tester.takeException(), isNull);
       await _dispose(tester);
     });
 
-    testWidgets('full group disables Add parents', (tester) async {
+    testWidgets('Add members in the chat lists families near you', (
+      tester,
+    ) async {
+      final repo = _GroupsRepository();
+      await _register(repo, home: _NearbyHome());
+      await _pump(tester, const GroupChatScreen(), arguments: _args);
+      // Next to Leave group, above the message box.
+      expect(find.text('Leave group'), findsOneWidget);
+      await tester.tap(find.text('Add members'));
+      await tester.pumpAndSettle();
+      expect(find.text('Dana'), findsOneWidget);
+      expect(find.text('0.8 mi · Parent of Zoe'), findsOneWidget);
+      // Ben is already in the group (his chat messages stay behind).
+      expect(
+        find.descendant(
+          of: find.byType(AddParentsSheet),
+          matching: find.text('Ben'),
+        ),
+        findsNothing,
+      );
+      await tester.tap(find.text('Dana'));
+      await tester.pump();
+      await tester.tap(find.text('Add 1 family'));
+      await tester.pumpAndSettle();
+      expect(repo.added, ['dana-id']);
+      expect(find.text('1 family added.'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      await _dispose(tester);
+    });
+
+    testWidgets('owner gets Add members but no Leave group', (tester) async {
+      final repo = _GroupsRepository()
+        ..details = const RideGroupDetails(
+          id: 'g1',
+          name: 'Mine',
+          members: [
+            RideGroupMember(
+              id: _me,
+              firstName: 'Vivek',
+              initials: 'VK',
+              isMe: true,
+              isOwner: true,
+            ),
+          ],
+        );
+      await _register(repo);
+      await _pump(tester, const GroupChatScreen(), arguments: _args);
+      expect(find.text('Add members'), findsOneWidget);
+      expect(find.text('Leave group'), findsNothing);
+      await _dispose(tester);
+    });
+
+    testWidgets('full group disables Add members', (tester) async {
       final repo = _GroupsRepository()
         ..details = RideGroupDetails(
           id: 'g1',

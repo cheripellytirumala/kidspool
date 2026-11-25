@@ -14,10 +14,12 @@ import '../../core/constants/messages_styles.dart';
 import '../../core/utils/messages_format.dart';
 import '../../domain/usecases/leave_ride_group.dart';
 import '../providers/group_chat_provider.dart';
+import '../providers/group_info_provider.dart';
 import '../widgets/chat_widgets.dart';
 import '../../domain/entities/ride_ask.dart';
 import '../../domain/entities/ride_group.dart';
 import '../widgets/group_chat_widgets.dart';
+import '../widgets/group_info_widgets.dart' show AddParentsSheet;
 import '../widgets/messages_common.dart';
 import '../../../safety/domain/safety_entities.dart';
 import '../../../safety/presentation/blocked_users.dart';
@@ -155,6 +157,7 @@ class _GroupChatViewState extends State<_GroupChatView>
   }
 
   bool _busyAddingRide = false;
+  bool _addingMembers = false;
 
   /// "I can help" on a ride card (first come, first served).
   /// The offer then waits for [parentName] to accept.
@@ -228,6 +231,48 @@ class _GroupChatViewState extends State<_GroupChatView>
     if (!mounted || picked == null) return;
     if (picked == 0) return _openInfo();
     await _leave();
+  }
+
+  /// "Add members": pick families near you, add them, then reload the
+  /// group (the server posts "Dana added Ben" in the thread).
+  Future<void> _addMembers() async {
+    final args = _provider.args;
+    if (args == null || _addingMembers) return;
+    _addingMembers = true;
+    final info = sl<GroupInfoProvider>();
+    try {
+      await info.open(args);
+      if (!mounted) return;
+      final group = info.group;
+      if (group == null) {
+        showAppSnack(
+          context,
+          info.errorMessage ?? 'We couldn’t open this group. Try again.',
+        );
+        return;
+      }
+      if (group.isFull) {
+        showAppSnack(
+          context,
+          'Groups can have up to ${group.maxMembers} families.',
+        );
+        return;
+      }
+      final ids = await AddParentsSheet.show(context, provider: info);
+      if (ids == null || ids.isEmpty || !mounted) return;
+      final (added, error) = await info.addMembers(ids);
+      if (!mounted) return;
+      showAppSnack(
+        context,
+        error ?? (added == 1 ? '1 family added.' : '$added families added.'),
+      );
+      if (error == null) {
+        await Future.wait([_provider.loadGroup(), _provider.refreshMessages()]);
+      }
+    } finally {
+      _addingMembers = false;
+      info.dispose();
+    }
   }
 
   /// Leaves the group on the server: its messages stop and it disappears
@@ -320,10 +365,13 @@ class _GroupChatViewState extends State<_GroupChatView>
                 ),
               ),
             ),
-            // Way out for members, right above the message box. The admin
-            // doesn't get it (shown once the members are loaded).
-            if (provider.group case final group? when !group.iAmOwner)
-              LeaveGroupBar(onLeave: _leave),
+            // Right above the message box (once the members are loaded):
+            // Add members for everyone, Leave group for all but the owner.
+            if (provider.group case final group?)
+              GroupActionsBar(
+                onAdd: _addMembers,
+                onLeave: group.iAmOwner ? null : _leave,
+              ),
             ChatComposer(
               controller: _controller,
               enabled: true,

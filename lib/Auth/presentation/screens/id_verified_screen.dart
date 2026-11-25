@@ -45,6 +45,8 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      // Don't carry an error from the scan screen over to this one.
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       final flow = context.read<AuthFlowProvider>();
       // The name is checked against the license: restore it if the app
       // was restarted mid sign-up.

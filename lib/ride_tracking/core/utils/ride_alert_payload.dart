@@ -54,6 +54,7 @@ class RideAlertPayload extends Equatable {
   String get kindValue => switch (kind) {
     RideAlertKind.accepted => 'ride_confirmed',
     RideAlertKind.started => 'ride_started',
+    RideAlertKind.atPickup => 'driver_at_pickup',
     RideAlertKind.arrived => 'ride_arrived',
   };
 
@@ -64,7 +65,7 @@ class RideAlertPayload extends Equatable {
   /// S19, the ride summary for S20.
   String get route => switch (kind) {
     RideAlertKind.accepted => AppRoutes.rideRequestDetail,
-    RideAlertKind.started => AppRoutes.liveTracking,
+    RideAlertKind.started || RideAlertKind.atPickup => AppRoutes.liveTracking,
     RideAlertKind.arrived => AppRoutes.rideCompleted,
   };
 

@@ -124,7 +124,8 @@ class _MapAddressPickerViewState extends State<_MapAddressPickerView> {
   void dispose() {
     _searchController.dispose();
     _searchFocus.dispose();
-    _map?.dispose();
+    // The GoogleMap widget disposes its own controller.
+    _map = null;
     super.dispose();
   }
 
@@ -139,7 +140,11 @@ class _MapAddressPickerViewState extends State<_MapAddressPickerView> {
       _pendingMove = update;
       return;
     }
-    await map.animateCamera(update);
+    try {
+      await map.animateCamera(update);
+    } on Object {
+      // The map closed while moving (e.g. back pressed while locating).
+    }
   }
 
   Future<void> _moveTo(PickedAddress address) => _moveCamera(

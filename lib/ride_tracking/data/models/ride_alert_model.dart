@@ -35,7 +35,8 @@ abstract final class RideAlertModel {
           ? switch (kind) {
               RideAlertKind.accepted => 'Your ride is booked ✅',
               RideAlertKind.started => 'Ride started 🚗',
-              RideAlertKind.arrived => 'Arrived at school ✅',
+              RideAlertKind.atPickup => 'Your Ride Partner has arrived 📍',
+              RideAlertKind.arrived => 'Ride completed ✅',
             }
           : title,
       body: body == null || body.isEmpty ? null : body,

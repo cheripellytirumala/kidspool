@@ -8,6 +8,9 @@ enum RideAlertKind {
   /// S19 · "Ride started 🚗" → Track live.
   started,
 
+  /// Parent: "Ravi has arrived 📍" with the pick-up PIN → Track live.
+  atPickup,
+
   /// S20 · "Emma reached Lincoln Elementary ✅" → See ride summary.
   arrived;
 
@@ -21,7 +24,10 @@ enum RideAlertKind {
     'offer_accepted' ||
     // Parent: a Ride Partner offered → See ride (accept / decline).
     'offer_received' => accepted,
-    'ride_started' || 'started' || 'picked_up' || 'ride_overdue' => started,
+    // Parent's three ride notifications: started, at pick-up, completed.
+    // ("picked_up" is no longer sent; "ride_overdue" is for the driver.)
+    'ride_started' || 'started' || 'ride_overdue' => started,
+    'driver_at_pickup' => atPickup,
     'school' ||
     'safe_zone' ||
     'checked_in' ||

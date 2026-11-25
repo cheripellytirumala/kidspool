@@ -92,9 +92,14 @@ void main() {
         async.flushMicrotasks();
         expect(location.calls, 1);
         expect(flow.mapPoint?.latitude, 37.4);
+        final before = flow.mapPoint;
         flow.setStreet('2 Main St');
-        expect(flow.mapPoint, isNull, reason: 'stale point cleared');
+        // The pin stays while typing (removing the map on each keystroke
+        // crashed About you); the new address is looked up after a pause.
+        expect(flow.mapPoint, same(before), reason: 'pin kept while typing');
         async.elapse(const Duration(seconds: 1));
+        async.flushMicrotasks();
+        expect(location.calls, 2, reason: 'new address looked up');
       });
     });
 

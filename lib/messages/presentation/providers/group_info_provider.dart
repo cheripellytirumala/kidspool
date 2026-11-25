@@ -2,6 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/state/view_state.dart';
+import '../../../home/domain/entities/family.dart';
+import '../../../home/domain/usecases/get_families_near_me.dart';
 import '../../core/constants/messages_api_constants.dart';
 import '../../domain/entities/ride_group.dart';
 import '../../domain/usecases/add_group_members.dart';
@@ -11,7 +13,7 @@ import '../../domain/usecases/leave_ride_group.dart';
 import '../../domain/usecases/rename_ride_group.dart';
 import '../../domain/usecases/set_group_muted.dart';
 
-/// A ride group's info: members, Add parents, Rename, Mute, Leave.
+/// A ride group's info: members, Add members, Rename, Mute, Leave.
 class GroupInfoProvider extends ChangeNotifier {
   GroupInfoProvider({
     required GetRideGroup getRideGroup,
@@ -20,7 +22,9 @@ class GroupInfoProvider extends ChangeNotifier {
     required RenameRideGroup renameRideGroup,
     required SetGroupMuted setGroupMuted,
     required LeaveRideGroup leaveRideGroup,
+    GetFamiliesNearMe? getFamiliesNearMe,
   }) : _getGroup = getRideGroup,
+       _getFamiliesNearMe = getFamiliesNearMe,
        _getCandidates = getGroupCandidates,
        _addMembers = addGroupMembers,
        _rename = renameRideGroup,
@@ -33,6 +37,10 @@ class GroupInfoProvider extends ChangeNotifier {
   final RenameRideGroup _rename;
   final SetGroupMuted _setMuted;
   final LeaveRideGroup _leave;
+
+  /// "Add members" source: Families near you. Without it (older wiring,
+  /// tests) the server's own candidate list is used.
+  final GetFamiliesNearMe? _getFamiliesNearMe;
 
   GroupChatArgs? _args;
   RideGroupDetails? _group;
@@ -98,12 +106,19 @@ class GroupInfoProvider extends ChangeNotifier {
 
   // ------------------------------------------------------- add parents
 
+  /// Loads who can be added: the families near the user (nearest first),
+  /// minus the people already in the group.
   Future<void> loadCandidates() async {
     final id = groupId;
     if (id == null) return;
     _candidatesStatus = ViewStatus.loading;
     _notify();
-    final result = await _getCandidates(id);
+    final nearby = _getFamiliesNearMe;
+    final result = nearby == null
+        ? await _getCandidates(id)
+        : (await nearby(
+            const GetFamiliesNearMeParams(),
+          )).map((found) => found.families.map(_candidateFrom).toList());
     if (_disposed) return;
     result.match(
       (failure) {
@@ -111,13 +126,28 @@ class GroupInfoProvider extends ChangeNotifier {
         _candidatesError = failure.message;
       },
       (list) {
-        _candidates = list;
+        final inGroup = {for (final m in _group?.members ?? const []) m.id};
+        _candidates = [
+          for (final c in list)
+            if (!inGroup.contains(c.id)) c,
+        ];
         _candidatesStatus = ViewStatus.success;
         _candidatesError = null;
       },
     );
     _notify();
   }
+
+  static RideGroupMember _candidateFrom(Family f) => RideGroupMember(
+    id: f.id,
+    firstName: f.parentName,
+    initials: f.initials,
+    kids: {
+      for (final k in f.kids)
+        if (k.firstName.isNotEmpty) k.firstName,
+    }.toList(),
+    distanceMiles: f.distanceMiles,
+  );
 
   /// Adds [memberIds]. Returns how many joined, or an error message.
   Future<(int, String?)> addMembers(List<String> memberIds) async {

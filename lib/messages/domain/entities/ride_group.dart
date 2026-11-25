@@ -97,6 +97,7 @@ class RideGroupMember extends Equatable {
     this.isOwner = false,
     this.isMe = false,
     this.kids = const [],
+    this.distanceMiles,
   });
 
   /// `profiles.id`.
@@ -109,8 +110,20 @@ class RideGroupMember extends Equatable {
   /// Kids' first names.
   final List<String> kids;
 
+  /// From the user's home; only set on "Add members" candidates that come
+  /// from Families near you.
+  final double? distanceMiles;
+
   @override
-  List<Object?> get props => [id, firstName, initials, isOwner, isMe, kids];
+  List<Object?> get props => [
+    id,
+    firstName,
+    initials,
+    isOwner,
+    isMe,
+    kids,
+    distanceMiles,
+  ];
 }
 
 enum GroupMessageKind {

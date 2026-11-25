@@ -330,43 +330,53 @@ class _CountedAvatar extends StatelessWidget {
   }
 }
 
-/// Thin bar above the group's message box: "Not interested? Leave group".
-class LeaveGroupBar extends StatelessWidget {
-  const LeaveGroupBar({super.key, required this.onLeave});
+/// Thin bar above the group's message box: "Add members" on the left and,
+/// for members (not the owner), "Leave group" on the right.
+class GroupActionsBar extends StatelessWidget {
+  const GroupActionsBar({super.key, required this.onAdd, this.onLeave});
 
-  final VoidCallback onLeave;
+  final VoidCallback onAdd;
+
+  /// Null hides "Leave group" (the owner doesn't get it).
+  final VoidCallback? onLeave;
+
+  static ButtonStyle _style(Color color) => TextButton.styleFrom(
+    foregroundColor: color,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+    minimumSize: const Size(44, 40),
+  );
 
   @override
   Widget build(BuildContext context) {
+    final onLeave = this.onLeave;
     return ColoredBox(
       color: AppColors.screen,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+        padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
         child: Row(
           children: [
-            Expanded(
-              child: Text(
-                'Not interested in this group?',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: MessagesStyles.labelS,
+            TextButton.icon(
+              onPressed: onAdd,
+              style: _style(AppColors.ink),
+              icon: const Icon(Icons.person_add_alt_1_rounded, size: 18),
+              label: Text(
+                'Add members',
+                style: MessagesStyles.labelM.copyWith(color: AppColors.ink),
               ),
             ),
-            TextButton.icon(
-              onPressed: onLeave,
-              style: TextButton.styleFrom(
-                foregroundColor: MessagesStyles.sos,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                minimumSize: const Size(44, 40),
-              ),
-              icon: const Icon(Icons.logout_rounded, size: 18),
-              label: Text(
-                'Leave group',
-                style: MessagesStyles.labelM.copyWith(
-                  color: MessagesStyles.sos,
+            const Spacer(),
+            if (onLeave != null)
+              TextButton.icon(
+                onPressed: onLeave,
+                style: _style(MessagesStyles.sos),
+                icon: const Icon(Icons.logout_rounded, size: 18),
+                label: Text(
+                  'Leave group',
+                  style: MessagesStyles.labelM.copyWith(
+                    color: MessagesStyles.sos,
+                  ),
                 ),
               ),
-            ),
           ],
         ),
       ),

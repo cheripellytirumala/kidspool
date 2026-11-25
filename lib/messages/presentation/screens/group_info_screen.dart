@@ -23,7 +23,7 @@ import '../../../safety/domain/safety_entities.dart';
 import '../../../safety/presentation/widgets/report_block_sheet.dart';
 
 /// A ride group's info: name, school, members and the group actions (Add
-/// parents, Rename, Mute notifications, Leave group). Reads
+/// members, Rename, Mute notifications, Leave group). Reads
 /// [GroupChatArgs]; pops with `true` after the user leaves the group.
 class GroupInfoScreen extends StatelessWidget {
   const GroupInfoScreen({super.key});
@@ -59,7 +59,7 @@ class _GroupInfoView extends StatelessWidget {
     if (!context.mounted) return;
     showAppSnack(
       context,
-      error ?? (added == 1 ? '1 parent added.' : '$added parents added.'),
+      error ?? (added == 1 ? '1 family added.' : '$added families added.'),
     );
   }
 
@@ -164,10 +164,10 @@ class _GroupInfoView extends StatelessWidget {
                       const SizedBox(height: 16),
                       GroupActionRow(
                         icon: const AppIcon(AppAssets.iconPlus, size: 22),
-                        title: 'Add parents',
+                        title: 'Add members',
                         subtitle: group.isFull
                             ? _fullMessage(group)
-                            : 'Parents from your members’ schools',
+                            : 'Families near you',
                         enabled: !group.isFull,
                         onTap: () => _addParents(context),
                       ),

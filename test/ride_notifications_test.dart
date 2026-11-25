@@ -108,6 +108,26 @@ void main() {
       expect(RideAlertNotificationId.of('ride_arrived:abc'), 374359495);
       expect(RideAlertNotificationId.of(''), 18652613);
     });
+
+    test('parent: started, at pick-up (PIN) and completed only', () {
+      expect(RideAlertKind.fromValue('ride_started'), RideAlertKind.started);
+      expect(
+        RideAlertKind.fromValue('driver_at_pickup'),
+        RideAlertKind.atPickup,
+      );
+      expect(RideAlertKind.fromValue('ride_arrived'), RideAlertKind.arrived);
+      // No more "in the car" alert.
+      expect(RideAlertKind.fromValue('picked_up'), isNull);
+
+      final push = RideAlertPayload.fromData({
+        'kind': 'driver_at_pickup',
+        'requestId': 'r1',
+      })!;
+      expect(push.kind, RideAlertKind.atPickup);
+      expect(push.route, AppRoutes.liveTracking);
+      expect(push.kindValue, 'driver_at_pickup');
+      expect(RideAlertPayload.decode(push.encode()), push);
+    });
   });
 
   group('RideAlertsProvider + notifier', () {

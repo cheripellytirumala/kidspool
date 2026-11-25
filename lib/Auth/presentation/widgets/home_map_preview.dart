@@ -35,7 +35,15 @@ class _HomeMapPreviewState extends State<HomeMapPreview> {
   static const double _zoom = 15;
 
   bool? _mapAvailable;
+
+  /// Controller of the map currently on screen. Cleared whenever the
+  /// `GoogleMap` leaves the tree (no address → placeholder), so a dead
+  /// controller is never used again. The `GoogleMap` widget disposes it.
   GoogleMapController? _map;
+
+  /// Bumped each time a new `GoogleMap` is created, so a controller that
+  /// arrives late from a map already gone is ignored.
+  int _mapGeneration = 0;
 
   @override
   void initState() {
@@ -45,18 +53,39 @@ class _HomeMapPreviewState extends State<HomeMapPreview> {
     });
   }
 
+  bool _showsMap(LatLng? point) => point != null && _mapAvailable == true;
+
   @override
   void didUpdateWidget(HomeMapPreview old) {
     super.didUpdateWidget(old);
     final point = widget.point;
-    if (point != null && point != old.point) {
-      _map?.animateCamera(CameraUpdate.newLatLngZoom(point, _zoom));
+    if (!_showsMap(point)) {
+      // The map is being replaced by the placeholder: forget its controller.
+      if (_map != null || _showsMap(old.point)) _mapGeneration++;
+      _map = null;
+      return;
     }
+    if (point != old.point) _follow(point!);
+  }
+
+  /// Moves the camera to [point] after this frame — never during build, and
+  /// only on a live map (a failed move must not take the screen down).
+  void _follow(LatLng point) {
+    final map = _map;
+    if (map == null) return; // a new map starts at the point anyway
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted || !identical(map, _map)) return;
+      try {
+        await map.moveCamera(CameraUpdate.newLatLngZoom(point, _zoom));
+      } on Object {
+        // Map went away meanwhile; the next one opens at the new point.
+      }
+    });
   }
 
   @override
   void dispose() {
-    _map?.dispose();
+    _map = null;
     super.dispose();
   }
 
@@ -64,12 +93,15 @@ class _HomeMapPreviewState extends State<HomeMapPreview> {
   Widget build(BuildContext context) {
     final point = widget.point;
     final Widget body;
-    if (point != null && _mapAvailable == true) {
+    if (_showsMap(point)) {
+      final generation = _mapGeneration;
       body = IgnorePointer(
         // Gestures belong to the full map; this one is a preview.
         child: GoogleMap(
-          initialCameraPosition: CameraPosition(target: point, zoom: _zoom),
-          onMapCreated: (c) => _map = c,
+          initialCameraPosition: CameraPosition(target: point!, zoom: _zoom),
+          onMapCreated: (c) {
+            if (mounted && generation == _mapGeneration) _map = c;
+          },
           markers: {Marker(markerId: const MarkerId('home'), position: point)},
           liteModeEnabled: true,
           zoomControlsEnabled: false,

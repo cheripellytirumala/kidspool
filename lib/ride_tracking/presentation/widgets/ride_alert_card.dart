@@ -26,7 +26,10 @@ class RideAlertCard extends StatelessWidget {
   final VoidCallback? onOpen;
   final VoidCallback? onClose;
 
-  bool get _started => alert.kind == RideAlertKind.started;
+  /// Car icon while the ride is under way (started, at the pick-up).
+  bool get _started =>
+      alert.kind == RideAlertKind.started ||
+      alert.kind == RideAlertKind.atPickup;
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +135,8 @@ class RideAlertCard extends StatelessWidget {
                               child: Text(
                                 switch (alert.kind) {
                                   RideAlertKind.accepted => 'See ride',
-                                  RideAlertKind.started => 'Track live',
+                                  RideAlertKind.started ||
+                                  RideAlertKind.atPickup => 'Track live',
                                   RideAlertKind.arrived => 'See ride summary',
                                 },
                                 maxLines: 1,
