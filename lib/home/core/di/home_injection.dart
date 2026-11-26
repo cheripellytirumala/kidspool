@@ -16,6 +16,8 @@ import '../../presentation/providers/home_provider.dart';
 import '../../../ask_ride/domain/entities/ride_schedule.dart';
 import '../../../ask_ride/presentation/providers/ask_ride_provider.dart';
 import '../../domain/entities/ride_summary.dart';
+import '../../domain/entities/kid_place.dart';
+import '../../../add_kids/data/data_sources/local/kid_activities_store.dart';
 import '../../../safety/presentation/blocked_users.dart';
 import '../../data/data_sources/remote/ride_invites.dart';
 
@@ -87,6 +89,15 @@ void registerHomeDependencies(GetIt sl) {
         getMyRideGroups: sl(),
         isBlocked: sl<BlockedUsers>().isBlocked,
         blockChanges: sl<BlockedUsers>(),
+        myPlaces: () => [
+          for (final a in sl<KidActivitiesStore>().read())
+            KidPlace(
+              // Same id as the server's `activities[].id`.
+              id: 'activity:${a.place.googlePlaceId ?? a.place.id}',
+              name: a.place.name,
+              kind: KidPlaceKind.activity,
+            ),
+        ],
       ),
     );
 }

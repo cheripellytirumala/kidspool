@@ -129,13 +129,25 @@ class _FamiliesView extends StatelessWidget {
                             // Already chatting: send the ride straight there.
                             if (provider.groups.isNotEmpty) ...[
                               const SizedBox(height: 16),
-                              Text(
-                                'SEND TO A CHAT YOU HAVE',
-                                style: HomeTextStyles.labelM.copyWith(
-                                  color: AppColors.textSecondary,
-                                ),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      'SEND TO A CHAT YOU HAVE',
+                                      style: HomeTextStyles.labelM.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                  if (provider.hiddenGroupCount > 0)
+                                    _ExpandGroupsButton(
+                                      expanded: provider.groupsExpanded,
+                                      hidden: provider.hiddenGroupCount,
+                                      onTap: provider.toggleGroups,
+                                    ),
+                                ],
                               ),
-                              for (final g in provider.groups.take(5)) ...[
+                              for (final g in provider.visibleGroups) ...[
                                 const SizedBox(height: 8),
                                 _GroupSendRow(
                                   group: g,
@@ -177,6 +189,16 @@ class _FamiliesView extends StatelessWidget {
                                 context,
                                 AppRoutes.whereKidsGo,
                               ).then((_) => provider.load()),
+                            ),
+                          ],
+                          if (provider.placeEmptyMessage
+                              case final message?) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              message,
+                              style: HomeTextStyles.labelM.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ],
                           for (final family in provider.visibleFamilies) ...[
@@ -642,6 +664,61 @@ class _GroupSendRow extends StatelessWidget {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Arrow pill next to "Send to a chat you have": shows the other groups
+/// ("3 more" + down arrow) or folds them back ("Less" + up arrow).
+class _ExpandGroupsButton extends StatelessWidget {
+  const _ExpandGroupsButton({
+    required this.expanded,
+    required this.hidden,
+    required this.onTap,
+  });
+
+  final bool expanded;
+  final int hidden;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      expanded: expanded,
+      label: expanded ? 'Show fewer chats' : 'Show $hidden more chats',
+      excludeSemantics: true,
+      child: Material(
+        color: AppColors.surface,
+        shape: const StadiumBorder(),
+        child: InkWell(
+          key: const ValueKey('expand-groups'),
+          onTap: onTap,
+          customBorder: const StadiumBorder(),
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 6, 8, 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: 2,
+              children: [
+                Text(
+                  expanded ? 'Less' : '$hidden more',
+                  style: HomeTextStyles.labelM,
+                ),
+                AnimatedRotation(
+                  turns: expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.ink,
+                    size: 22,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -296,6 +296,8 @@ class _Form extends StatelessWidget {
         pickup ? provider.setPickup(place) : provider.setDropOff(place);
       case CustomPlacePicked(:final place):
         pickup ? provider.setPickup(place) : provider.setDropOff(place);
+        // A searched place is kept with the kids' places.
+        await provider.rememberSearchedPlace(place);
       case AddNewPlace():
         final picked = await MapAddressPickerScreen.open(
           context,

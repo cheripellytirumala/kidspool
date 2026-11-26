@@ -66,7 +66,9 @@ class FamiliesNearYouProvider extends ChangeNotifier {
     GetMyRideGroups? getMyRideGroups,
     bool Function(String userId)? isBlocked,
     Listenable? blockChanges,
+    List<KidPlace> Function()? myPlaces,
   }) : _getFamiliesNearMe = getFamiliesNearMe,
+       _myPlaces = myPlaces,
        _isBlocked = isBlocked,
        _getMyRideGroups = getMyRideGroups,
        _askInGroup = askInGroup,
@@ -93,6 +95,11 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   }
 
   final GetFamiliesNearMe _getFamiliesNearMe;
+
+  /// Places the user's kids go to that are kept with them (activities and
+  /// places picked with "Search location" on Ask for a ride). Each gets a
+  /// chip, even before any family nearby goes there.
+  final List<KidPlace> Function()? _myPlaces;
   final AccountRepository? _account;
 
   /// The ride being asked for (from the ask-for-a-ride draft), if any.
@@ -188,6 +195,28 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   /// shown after asking for a ride so it can go straight to one of them.
   List<RideGroup> get groups => _startedInSelectMode ? _groups : const [];
 
+  /// "Send to a chat you have" shows this many groups until expanded.
+  static const int collapsedGroupCount = 2;
+  bool _groupsExpanded = false;
+
+  /// Whether every group is shown (the arrow next to the heading).
+  bool get groupsExpanded => _groupsExpanded;
+
+  /// The groups listed now: the first [collapsedGroupCount], or all of
+  /// them once expanded.
+  List<RideGroup> get visibleGroups => _groupsExpanded
+      ? groups
+      : groups.take(collapsedGroupCount).toList(growable: false);
+
+  /// Groups hidden while collapsed (0 when there's nothing to expand).
+  int get hiddenGroupCount =>
+      (groups.length - collapsedGroupCount).clamp(0, groups.length);
+
+  void toggleGroups() {
+    _groupsExpanded = !_groupsExpanded;
+    notifyListeners();
+  }
+
   /// The group the ride is being posted to.
   String? get sendingToGroupId => _sendingToGroupId;
 
@@ -247,7 +276,7 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   void setFamilies(List<Family> families, {bool hasSchool = true}) {
     _families = families;
     _hasSchool = hasSchool;
-    _places = placesOf(families);
+    _places = _withMyPlaces(placesOf(families));
     if (_placeId != null && !_places.any((p) => p.id == _placeId)) {
       _placeId = null;
     }
@@ -257,6 +286,30 @@ class FamiliesNearYouProvider extends ChangeNotifier {
       _selectAllOnLoad = false;
       _selectedIds.addAll(ids);
     }
+  }
+
+  /// [shared] plus the user's own stored places no family shares yet; the
+  /// place the ride being asked for goes to comes first.
+  List<KidPlace> _withMyPlaces(List<KidPlace> shared) {
+    final ids = {for (final p in shared) p.id};
+    final all = [
+      ...shared,
+      for (final p in _myPlaces?.call() ?? const <KidPlace>[])
+        if (ids.add(p.id)) p,
+    ];
+    final rideTo = ride?.to.trim().toLowerCase();
+    if (rideTo == null || rideTo.isEmpty) return all;
+    bool isRidePlace(KidPlace p) => p.name.trim().toLowerCase() == rideTo;
+    return [...all.where(isRidePlace), ...all.where((p) => !isRidePlace(p))];
+  }
+
+  /// Shown when the picked place chip has no families (yet).
+  String? get placeEmptyMessage {
+    if (_placeId == null || _families.isEmpty) return null;
+    final place = _places.where((p) => p.id == _placeId).firstOrNull;
+    if (place == null || countFor(place) > 0) return null;
+    return 'No families near you go to ${place.name} yet. '
+        'Pick All to see every family.';
   }
 
   /// One school chip per school in [families], most families first.

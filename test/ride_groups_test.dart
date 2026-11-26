@@ -1135,6 +1135,31 @@ void main() {
       expect(askedIn, [p.groups.first.id]);
     });
 
+    test('shows two chats; the arrow shows the rest and folds them', () async {
+      final repo = _GroupsRepository()
+        ..groups = [
+          for (var i = 0; i < 5; i++)
+            RideGroup(id: 'g$i', name: 'Home → School $i', memberCount: 2),
+        ];
+      final p = make(repo);
+      await p.loadGroups();
+      expect(p.visibleGroups.map((g) => g.id), ['g0', 'g1']);
+      expect(p.hiddenGroupCount, 3);
+      expect(p.groupsExpanded, isFalse);
+
+      p.toggleGroups();
+      expect(p.visibleGroups, hasLength(5));
+      p.toggleGroups();
+      expect(p.visibleGroups, hasLength(2));
+    });
+
+    test('two chats or fewer: nothing to expand', () async {
+      final p = make(_GroupsRepository());
+      await p.loadGroups();
+      expect(p.visibleGroups, hasLength(2));
+      expect(p.hiddenGroupCount, 0);
+    });
+
     test('Say Hi to one parent: Hi, then the ride, in that chat', () async {
       final repo = _GroupsRepository();
       final p = make(repo);

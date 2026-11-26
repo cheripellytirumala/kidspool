@@ -4,6 +4,7 @@ import '../../../add_kids/domain/repositories/kids_repository.dart';
 import '../../../add_kids/domain/entities/place.dart' as kids_place;
 import '../../domain/entities/saved_place.dart';
 import '../../../add_kids/data/data_sources/local/kid_activities_store.dart';
+import '../../../add_kids/presentation/providers/kids_provider.dart';
 import '../../../common/core/usecase/usecase.dart';
 import '../../../messages/domain/usecases/get_my_ride_groups.dart';
 import '../../../messages/domain/usecases/get_ride_group.dart';
@@ -86,6 +87,27 @@ void registerAskRideDependencies(GetIt sl) {
               kidIds: a.childIds,
             ),
         ],
+        rememberPlace: (place, kidIds) {
+          final key = place.id.substring(
+            AskRideProvider.searchedPlacePrefix.length,
+          );
+          return sl<KidsProvider>().addActivity(
+            kids_place.Place(
+              id: key,
+              googlePlaceId: key,
+              name: place.name,
+              category: kids_place.PlaceCategory.activity,
+              details: place.address,
+              latitude: place.latitude,
+              longitude: place.longitude,
+              addressLine: place.addressLine1,
+              city: place.city,
+              state: place.state,
+              zip: place.zip,
+            ),
+            kidIds,
+          );
+        },
         postAsk: (groupId, rides, summary) async {
           final result = await sl<PostRideAsk>()(
             PostRideAskParams(

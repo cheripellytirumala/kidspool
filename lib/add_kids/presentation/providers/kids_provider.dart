@@ -73,7 +73,37 @@ class KidsProvider extends ChangeNotifier {
     final list = result.getOrElse((_) => const []);
     if (list.isEmpty) return;
     _addActivities(list);
+    // The merged list: keeps a place added on this phone meanwhile.
+    await _activitiesStore?.write(_activityList());
+    notifyListeners();
+  }
+
+  List<KidActivity> _activityList() => [
+    for (final s in _activities)
+      if (placeById(s.placeId) case final place?)
+        (place: place, childIds: s.childIds),
+  ];
+
+  /// Adds [place] to the places [childIds] go to (merged with the kids
+  /// already there) and saves it on the device and the server, so it is
+  /// listed in "Drop off at" and families are matched by it. Used for a
+  /// place picked with "Search location" on Ask for a ride.
+  Future<void> addActivity(Place place, Set<String> childIds) async {
+    if (childIds.isEmpty) return;
+    _restoreActivities();
+    _activityPlaces[place.id] = place;
+    final index = _activities.indexWhere((s) => s.placeId == place.id);
+    if (index == -1) {
+      _activities.add(Schedule(placeId: place.id, childIds: {...childIds}));
+    } else {
+      _activities[index] = _activities[index].copyWith(
+        childIds: {..._activities[index].childIds, ...childIds},
+      );
+    }
+    final list = _activityList();
     await _activitiesStore?.write(list);
+    // Also on the server, so other families can be matched by it.
+    unawaited(_repository.setActivities(list));
     notifyListeners();
   }
 
@@ -81,11 +111,7 @@ class KidsProvider extends ChangeNotifier {
   void _saveActivities() {
     final store = _activitiesStore;
     if (store == null) return;
-    final list = <KidActivity>[
-      for (final s in _activities)
-        if (placeById(s.placeId) case final place?)
-          (place: place, childIds: s.childIds),
-    ];
+    final list = _activityList();
     store.write(list);
     // Also on the server, so other families can be matched by activity.
     unawaited(_repository.setActivities(list));

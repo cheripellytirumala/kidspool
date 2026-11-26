@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../common/presentation/theme/app_assets.dart';
 import '../../../common/presentation/theme/app_colors.dart';
-import '../../../common/presentation/theme/app_text_styles.dart';
 import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../../../common/presentation/widgets/app_select_card.dart';
@@ -14,12 +13,14 @@ import 'ask_ride_sheet.dart';
 import 'ask_ride_text_styles.dart';
 import 'place_picker_sheet.dart';
 
-/// Tabs of the "Drop off at" sheet.
-enum DropOffTab { schools, search }
+/// What the "Drop off at" sheet shows: the saved places, or the search
+/// for a new one.
+enum DropOffMode { saved, addNew }
 
-/// "Drop off at": **Schools** (the kids' schools) or **Search location**
-/// (any place, address or zip code from Google). Pops with [PlacePicked]
-/// for a school or [CustomPlacePicked] for a search result.
+/// "Drop off at": the **saved places** (the kids' schools, then their
+/// activities and places picked before) and an **Add new location** button
+/// that searches any place, address or zip code with Google. Pops with
+/// [PlacePicked] for a school or [CustomPlacePicked] for any other place.
 ///
 /// Needs a [DropOffSearchProvider] above it.
 class DropOffPickerSheet extends StatefulWidget {
@@ -32,7 +33,7 @@ class DropOffPickerSheet extends StatefulWidget {
     this.activities = const [],
   });
 
-  /// The selected kids' activities (soccer, music…), listed under the
+  /// The selected kids' activities and saved places, listed after the
   /// schools; picking one drops off at that place.
   final List<SavedPlace> activities;
 
@@ -42,7 +43,7 @@ class DropOffPickerSheet extends StatefulWidget {
   final List<SavedPlace> schools;
   final SavedPlace? selected;
 
-  /// Shown on the Schools tab when [schools] is empty.
+  /// Shown when there are no saved places yet.
   final String? emptyMessage;
 
   @override
@@ -50,11 +51,7 @@ class DropOffPickerSheet extends StatefulWidget {
 }
 
 class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
-  late DropOffTab _tab =
-      (widget.selected?.isCustom ?? false) &&
-          !widget.activities.contains(widget.selected)
-      ? DropOffTab.search
-      : DropOffTab.schools;
+  DropOffMode _mode = DropOffMode.saved;
   final TextEditingController _query = TextEditingController();
 
   @override
@@ -63,63 +60,72 @@ class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
     super.dispose();
   }
 
+  void _setMode(DropOffMode mode) {
+    if (mode == _mode) return;
+    FocusScope.of(context).unfocus();
+    setState(() => _mode = mode);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Fixed height so switching tabs or getting results doesn't resize it.
+    // Fixed height so switching or getting results doesn't resize it.
     final height = MediaQuery.sizeOf(context).height * 0.75;
     return SizedBox(
       height: height,
       child: AskRideSheet(
         title: widget.title,
         children: [
-          DropOffTabs(
-            value: _tab,
-            onChanged: (tab) {
-              if (tab == _tab) return;
-              FocusScope.of(context).unfocus();
-              setState(() => _tab = tab);
-            },
+          AddLocationButton(
+            mode: _mode,
+            onTap: () => _setMode(
+              _mode == DropOffMode.saved
+                  ? DropOffMode.addNew
+                  : DropOffMode.saved,
+            ),
           ),
-          ...switch (_tab) {
-            DropOffTab.schools => _schools(context),
-            DropOffTab.search => _search(context),
+          ...switch (_mode) {
+            DropOffMode.saved => _saved(context),
+            DropOffMode.addNew => _search(context),
           },
         ],
       ),
     );
   }
 
-  List<Widget> _schools(BuildContext context) => [
-    for (final place in widget.schools)
-      AppSelectCard(
-        title: place.name,
-        subtitle: [place.address, ?place.detail].join(' · '),
-        icon: savedPlaceIcon(place.kind),
-        selected: place == widget.selected,
-        onTap: () => Navigator.of(context).pop(PlacePicked(place)),
-      ),
-    if (widget.schools.isEmpty &&
-        widget.activities.isEmpty &&
-        widget.emptyMessage != null)
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(widget.emptyMessage!, style: AppTextStyles.bodyL),
-      ),
-    if (widget.activities.isNotEmpty) ...[
-      Padding(
-        padding: const EdgeInsets.only(top: 8, left: 4),
-        child: Text('ACTIVITIES', style: AskRideTextStyles.fieldCaption),
-      ),
+  List<Widget> _saved(BuildContext context) {
+    final selected = widget.selected;
+    final saved = [...widget.schools, ...widget.activities];
+    return [
+      for (final place in widget.schools)
+        AppSelectCard(
+          title: place.name,
+          subtitle: [place.address, ?place.detail].join(' · '),
+          icon: savedPlaceIcon(place.kind),
+          selected: place == selected,
+          onTap: () => Navigator.of(context).pop(PlacePicked(place)),
+        ),
       for (final place in widget.activities)
         AppSelectCard(
           title: place.name,
           subtitle: [place.address, ?place.detail].join(' · '),
           icon: savedPlaceIcon(PlaceKind.custom),
-          selected: place == widget.selected,
+          selected: place == selected,
           onTap: () => Navigator.of(context).pop(CustomPlacePicked(place)),
         ),
-    ],
-  ];
+      // A searched place that couldn't be saved (no kid picked) stays
+      // visible as the current choice.
+      if (selected != null && selected.isCustom && !saved.contains(selected))
+        AppSelectCard(
+          title: selected.name,
+          subtitle: selected.address.isEmpty ? null : selected.address,
+          icon: savedPlaceIcon(PlaceKind.custom),
+          selected: true,
+          onTap: () => Navigator.of(context).pop(CustomPlacePicked(selected)),
+        ),
+      if (saved.isEmpty && widget.emptyMessage != null)
+        _Hint(widget.emptyMessage!),
+    ];
+  }
 
   List<Widget> _search(BuildContext context) {
     final search = context.watch<DropOffSearchProvider>();
@@ -135,10 +141,9 @@ class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
         },
       ),
       if (search.isIdle)
-        _Hint(
-          selected != null && selected.isCustom
-              ? 'Now: ${selected.name}. Type to pick another place.'
-              : 'Type a place name, an address or a zip code.',
+        const _Hint(
+          'Type a place name, an address or a zip code. It’s saved with '
+          'your kids’ places.',
         )
       else if (search.isSearching && results.isEmpty)
         const Padding(
@@ -183,88 +188,43 @@ class _Hint extends StatelessWidget {
   }
 }
 
-/// Segmented "Schools | Search location" switch (black selected pill, as
-/// in the "Add school & activity" sheet).
-class DropOffTabs extends StatelessWidget {
-  const DropOffTabs({super.key, required this.value, required this.onChanged});
+/// Top of the "Drop off at" sheet: **Add new location** (black pill)
+/// opens the search; on the search it turns into **Saved locations** to go
+/// back to the list.
+class AddLocationButton extends StatelessWidget {
+  const AddLocationButton({super.key, required this.mode, required this.onTap});
 
-  final DropOffTab value;
-  final ValueChanged<DropOffTab> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(4),
-      decoration: const ShapeDecoration(
-        color: AppColors.surface,
-        shape: StadiumBorder(),
-      ),
-      child: Row(
-        spacing: 4,
-        children: [
-          for (final (tab, icon, label) in const [
-            (DropOffTab.schools, AskRideAssets.schoolSmall, 'Schools'),
-            (DropOffTab.search, AppAssets.iconSearch, 'Search location'),
-          ])
-            Expanded(
-              child: _TabSegment(
-                icon: icon,
-                label: label,
-                selected: tab == value,
-                onTap: () => onChanged(tab),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TabSegment extends StatelessWidget {
-  const _TabSegment({
-    required this.icon,
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final String icon;
-  final String label;
-  final bool selected;
+  final DropOffMode mode;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final adding = mode == DropOffMode.addNew;
     return Semantics(
-      selected: selected,
       button: true,
       child: Material(
-        color: selected ? AppColors.ink : Colors.transparent,
+        color: adding ? AppColors.surface : AppColors.ink,
         shape: const StadiumBorder(),
         child: InkWell(
           onTap: onTap,
           customBorder: const StadiumBorder(),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            padding: const EdgeInsets.symmetric(vertical: 14),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               spacing: 8,
               children: [
-                AppIcon(
-                  icon,
-                  size: 16,
-                  color: selected ? AppColors.lime : AppColors.ink,
+                Icon(
+                  adding ? Icons.arrow_back_rounded : Icons.add_rounded,
+                  size: 20,
+                  color: adding ? AppColors.ink : AppColors.lime,
                 ),
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AskRideTextStyles.labelM.copyWith(
-                      color: selected
-                          ? AppColors.textOnDark
-                          : AppColors.textPrimary,
-                    ),
+                Text(
+                  adding ? 'Saved locations' : 'Add new location',
+                  style: AskRideTextStyles.labelM.copyWith(
+                    color: adding
+                        ? AppColors.textPrimary
+                        : AppColors.textOnDark,
                   ),
                 ),
               ],

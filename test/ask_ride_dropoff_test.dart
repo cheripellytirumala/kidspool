@@ -414,6 +414,50 @@ void main() {
       },
     );
 
+    test(
+      'a searched place is kept with the kids and becomes the activity',
+      () async {
+        await setUpProvider();
+        final stored = <({SavedPlace place, Set<String> kidIds})>[];
+        final p = AskRideProvider(
+          getRideOptions: GetRideOptions(repo),
+          addSavedPlace: AddSavedPlace(repo),
+          repository: repo,
+          timeZone: _FixedTimeZone(),
+          activities: () => [
+            for (final s in stored)
+              (
+                place: SavedPlace(
+                  id: 'activity:${s.place.id.substring(7)}',
+                  name: s.place.name,
+                  address: s.place.address,
+                  kind: PlaceKind.custom,
+                  detail: 'Activity',
+                  latitude: s.place.latitude,
+                  longitude: s.place.longitude,
+                ),
+                kidIds: s.kidIds,
+              ),
+          ],
+          rememberPlace: (place, kidIds) async =>
+              stored.add((place: place, kidIds: kidIds)),
+        );
+        await p.load();
+        p.setDropOff(_swim);
+        await p.rememberSearchedPlace(_swim);
+
+        expect(stored.single.place, _swim);
+        expect(stored.single.kidIds, {'k1'});
+        expect(p.activityPlaces.single.id, 'activity:ChIJswim');
+        expect(p.draft.dropOff, p.activityPlaces.single);
+
+        // A school or an activity isn't stored again.
+        await p.rememberSearchedPlace(_lincoln);
+        await p.rememberSearchedPlace(p.activityPlaces.single);
+        expect(stored, hasLength(1));
+      },
+    );
+
     test('kid without a school: "same school" fixes the ride', () async {
       repo = _FakeRepo(
         kids: [
@@ -707,11 +751,18 @@ void main() {
     });
   });
 
-  testWidgets('Drop off at sheet: Schools and Search location tabs', (
+  testWidgets('Drop off at sheet: saved places, then Add new location', (
     tester,
   ) async {
     final places = _FakePlaces();
     PlacePickerResult? picked;
+    const swim = SavedPlace(
+      id: 'activity:g-swim',
+      name: 'Bluewave Swim Club',
+      address: '500 Lake Ave',
+      kind: PlaceKind.custom,
+      detail: 'Activity',
+    );
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -726,6 +777,7 @@ void main() {
                     ),
                     child: const DropOffPickerSheet(
                       schools: [_lincoln],
+                      activities: [swim],
                       selected: _lincoln,
                     ),
                   ),
@@ -740,24 +792,54 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
     expect(find.text('Drop off at'), findsOneWidget);
+    // No tabs: school and saved place in one list.
+    expect(find.text('Schools'), findsNothing);
+    expect(find.text('Search location'), findsNothing);
     expect(find.text('Lincoln Elementary'), findsWidgets);
+    expect(find.text('Bluewave Swim Club'), findsOneWidget);
 
-    await tester.tap(find.text('Search location'));
+    await tester.tap(find.text('Add new location'));
     await tester.pumpAndSettle();
     expect(find.text('Search a place, address or zip code'), findsOneWidget);
+    expect(find.text('Saved locations'), findsOneWidget);
     expect(places.calls, 0);
 
     await tester.enterText(find.byType(TextField), 'swim');
     await tester.pump(DropOffSearchProvider.debounce);
     await tester.pumpAndSettle();
-    expect(find.text('Bluewave Swim Club'), findsOneWidget);
     expect(find.text('500 Lake Ave, Oakland · 94610'), findsOneWidget);
 
-    await tester.tap(find.text('Bluewave Swim Club'));
+    await tester.tap(find.text('500 Lake Ave, Oakland · 94610'));
     await tester.pumpAndSettle();
     expect(picked, isA<CustomPlacePicked>());
-    expect((picked! as CustomPlacePicked).place.isCustom, isTrue);
+    expect((picked! as CustomPlacePicked).place.id, startsWith('custom:'));
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Saved locations goes back to the list', (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: ChangeNotifierProvider<DropOffSearchProvider>(
+            create: (_) => DropOffSearchProvider(
+              searchPlaces: SearchDropOffPlaces(_FakePlaces()),
+            ),
+            child: const DropOffPickerSheet(
+              schools: [_lincoln],
+              selected: _swim, // searched, not saved
+            ),
+          ),
+        ),
+      ),
+    );
+    // The current searched place still shows, picked.
+    expect(find.text('Bluewave Swim Club'), findsOneWidget);
+    await tester.tap(find.text('Add new location'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Saved locations'));
+    await tester.pumpAndSettle();
+    expect(find.text('Lincoln Elementary'), findsWidgets);
+    expect(find.text('Add new location'), findsOneWidget);
   });
 }
 

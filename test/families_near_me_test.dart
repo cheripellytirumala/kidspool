@@ -341,6 +341,67 @@ void main() {
       _family('d', schools: [('s1', 'Lincoln Elementary')]),
     ];
 
+    group('stored places', () {
+      FamiliesNearYouProvider withMine(List<Family> list) {
+        final p = FamiliesNearYouProvider(
+          getFamiliesNearMe: GetFamiliesNearMe(
+            _FakeRepository(
+              () async =>
+                  Right(FamiliesNearMe(families: list, hasSchool: true)),
+            ),
+          ),
+          myPlaces: () => const [
+            KidPlace(
+              id: 'activity:g-amb',
+              name: 'AMB Cinemas',
+              kind: KidPlaceKind.activity,
+            ),
+            KidPlace(
+              id: 's1',
+              name: 'Lincoln Elementary',
+              kind: KidPlaceKind.school,
+            ),
+          ],
+        );
+        p.setFamilies(list);
+        return p;
+      }
+
+      test('a stored place gets a chip even with no families there', () {
+        final p = withMine(families);
+        expect(p.places.map((x) => x.name), [
+          'Lincoln Elementary',
+          'Oak Middle',
+          'AMB Cinemas',
+        ]);
+        final amb = p.places.last;
+        expect(p.countFor(amb), 0);
+        expect(p.placeEmptyMessage, isNull);
+        p.selectPlace(amb.id);
+        expect(p.visibleFamilies, isEmpty);
+        expect(p.placeEmptyMessage, contains('AMB Cinemas'));
+        p.selectPlace('s1');
+        expect(p.placeEmptyMessage, isNull);
+      });
+
+      test('families going to the stored place are counted under it', () {
+        final p = withMine([
+          ...families,
+          Family(
+            id: 'e',
+            parentName: 'e',
+            initials: 'E',
+            kids: const [
+              FamilyKid(firstName: 'Kid', schoolId: null, schoolName: ''),
+            ],
+            activities: const [(id: 'activity:g-amb', name: 'AMB Cinemas')],
+          ),
+        ]);
+        final amb = p.places.firstWhere((x) => x.id == 'activity:g-amb');
+        expect(p.countFor(amb), 1);
+      });
+    });
+
     group('sendMessage', () {
       FamiliesNearYouProvider sender(
         _FakeSend send, {

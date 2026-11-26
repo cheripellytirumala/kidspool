@@ -35,6 +35,7 @@ class AskRideProvider extends ChangeNotifier {
     required TimeZoneService timeZone,
     Future<RideGroupTarget?> Function(String schoolName)? findGroup,
     List<({SavedPlace place, Set<String> kidIds})> Function()? activities,
+    Future<void> Function(SavedPlace place, Set<String> kidIds)? rememberPlace,
     Future<String?> Function(String groupId, String text)? postToGroup,
     Future<(bool deployed, String? error)> Function(
       String groupId,
@@ -51,10 +52,44 @@ class AskRideProvider extends ChangeNotifier {
        _timeZone = timeZone,
        _findGroup = findGroup,
        _activities = activities,
+       _rememberPlace = rememberPlace,
        _postToGroup = postToGroup;
 
   /// The kids' activities (kept on the device), as drop-off places.
   final List<({SavedPlace place, Set<String> kidIds})> Function()? _activities;
+
+  /// Saves a place as one of the kids' places (activities): on the device
+  /// and the server.
+  final Future<void> Function(SavedPlace place, Set<String> kidIds)?
+  _rememberPlace;
+
+  /// Id prefix of a place found with "Search location".
+  static const String searchedPlacePrefix = 'custom:';
+
+  /// A place picked with "Search location" is kept as one of the selected
+  /// kids' places, so it is listed under "Drop off at" next time and
+  /// "Families near you" shows it (with the families going there). The
+  /// ride then uses the stored place, so it shows as picked in the list.
+  Future<void> rememberSearchedPlace(SavedPlace place) async {
+    final remember = _rememberPlace;
+    final kidIds = _draft.kidIds.toSet();
+    if (remember == null ||
+        kidIds.isEmpty ||
+        !place.id.startsWith(searchedPlacePrefix)) {
+      return;
+    }
+    await remember(place, kidIds);
+    final key = place.id.substring(searchedPlacePrefix.length);
+    final stored = activityPlaces
+        .where((p) => p.id == 'activity:$key')
+        .firstOrNull;
+    if (stored == null) return;
+    if (_draft.dropOff == place) {
+      setDropOff(stored);
+    } else if (_draft.pickup == place) {
+      setPickup(stored);
+    }
+  }
 
   /// Activities of the selected kids (any kid when none is selected), for
   /// the "Drop off at" sheet.
