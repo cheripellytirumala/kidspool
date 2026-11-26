@@ -32,7 +32,7 @@ abstract final class AskRideApiConstants {
   static const String dropoffNotSupported = 'dropoff_not_supported';
   static const String dropoffNotSupportedMessage =
       "Rides home and drop-offs at any place aren't set up on the server "
-      "yet. Ask for a ride to your kid's school for now.";
+      "yet. Ask for a ride to your member's school for now.";
 
   /// `create_ride_request`: the drop-off is within 50 m of the pick-up.
   static const String samePlace = 'same_place';

@@ -36,7 +36,7 @@ class KidsRepositoryImpl implements KidsRepository {
         urls = await _remote.signPhotoUrls(photoPaths);
       } catch (e) {
         // Photos are optional: show initials rather than failing.
-        AppLogger.warning('Could not sign kid photos: $e', tag: 'Kids');
+        AppLogger.warning('Could not sign member photos: $e', tag: 'Kids');
       }
       return rows.map((row) => _child(row, urls)).toList(growable: false);
     },

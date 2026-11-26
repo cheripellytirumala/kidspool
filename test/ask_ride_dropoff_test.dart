@@ -256,7 +256,7 @@ void main() {
       expect(
         e.message,
         "Rides home and drop-offs at any place aren't set up on the server "
-        "yet. Ask for a ride to your kid's school for now.",
+        "yet. Ask for a ride to your member's school for now.",
       );
       expect(e.code, AskRideApiConstants.dropoffNotSupported);
     });
@@ -485,7 +485,10 @@ void main() {
         )
         ..toggleKid('k2'); // Emma + Jessie
       expect(provider.selectedKidsWithoutSchool.map((k) => k.name), ['Jessie']);
-      expect(provider.validationError, 'Pick kids who go to the same school.');
+      expect(
+        provider.validationError,
+        'Pick members who go to the same school.',
+      );
       expect(provider.siblingSchool, _lincoln);
 
       expect(

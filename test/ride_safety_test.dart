@@ -44,7 +44,7 @@ void main() {
       d.vehicleLine,
       'Silver 2021 Toyota Innova · TN 37 AB 1234 · 7-seater',
     );
-    expect(d.seatsLine, '2 of 6 kid seats taken');
+    expect(d.seatsLine, '2 of 6 member seats taken');
     expect(d.genderLabel, 'Female');
   });
 

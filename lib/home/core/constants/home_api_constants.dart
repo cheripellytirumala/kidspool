@@ -16,6 +16,9 @@ abstract final class HomeApiConstants {
   /// off, no new ride requests reach them (booked rides are unaffected).
   static const String setDriverAvailable = 'set_driver_available';
 
+  /// `{available}`: the caller's switch as other parents see it.
+  static const String getDriverAvailable = 'get_driver_available';
+
   /// How often the app tells the server the driver is still available.
   static const Duration availabilityHeartbeat = Duration(minutes: 5);
 

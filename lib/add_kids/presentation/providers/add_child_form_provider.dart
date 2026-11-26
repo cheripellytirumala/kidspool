@@ -276,7 +276,7 @@ class AddChildFormProvider extends ChangeNotifier {
   /// form already open there is nothing to save, so ask for its details.
   Future<String?> addAnother() async {
     if (_isOpen && _editingId == null && !_dirty) {
-      return 'Fill in this child’s details first, then add another.';
+      return 'Fill in this member’s details first, then add another.';
     }
     return _saveThen(openNew);
   }

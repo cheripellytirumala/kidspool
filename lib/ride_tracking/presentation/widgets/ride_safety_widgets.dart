@@ -23,7 +23,7 @@ class PickupPinCard extends StatelessWidget {
     return Semantics(
       label:
           'Pick-up PIN ${pin.split('').join(' ')}. Give it to $who '
-          'when your kids get in the car.',
+          'when your members get in the car.',
       excludeSemantics: true,
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -40,7 +40,7 @@ class PickupPinCard extends StatelessWidget {
                   Text('Pick-up PIN', style: RideTextStyles.labelS),
                   const SizedBox(height: 2),
                   Text(
-                    'Give it to $who when your kids get in the car. '
+                    'Give it to $who when your members get in the car. '
                     'Don’t share it before.',
                     style: RideTextStyles.bodyS,
                   ),
@@ -228,7 +228,7 @@ abstract final class RideSafetyDialogs {
             Text('Cancel this ride?', style: AppTextStyles.headingH3),
             const SizedBox(height: 8),
             Text(
-              'The kids haven’t been picked up yet. $otherName will be told '
+              'The members haven’t been picked up yet. $otherName will be told '
               'right away.',
               style: AppTextStyles.bodyL,
             ),

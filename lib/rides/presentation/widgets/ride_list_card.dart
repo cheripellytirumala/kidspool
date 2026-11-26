@@ -31,7 +31,7 @@ class RideListCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   String get _title {
-    final kids = MessagesFormat.names(ride.kidNames, fallback: 'Kids');
+    final kids = MessagesFormat.names(ride.kidNames, fallback: 'Members');
     final from = ride.pickupLabel.trim().isEmpty ? 'Home' : ride.pickupLabel;
     return '$kids, $from → ${ride.destinationName}';
   }

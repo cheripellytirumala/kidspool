@@ -159,7 +159,7 @@ class _ProfileView extends StatelessWidget {
       ),
 
       // Kids
-      const ProfileSectionLabel('Your kids'),
+      const ProfileSectionLabel('Your members'),
       for (final kid in overview.kids)
         KidProfileCard(
           kid: kid,

@@ -270,7 +270,10 @@ class _IncomingBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final parent = request.parent;
     final name = parent?.firstName ?? 'A parent';
-    final kids = MessagesFormat.names(request.kidNames, fallback: 'their kids');
+    final kids = MessagesFormat.names(
+      request.kidNames,
+      fallback: 'their members',
+    );
     final firstKid = request.kidNames.isEmpty ? null : request.kidNames.first;
     final parentLine = [
       parent?.shortName ?? name,
@@ -278,7 +281,7 @@ class _IncomingBody extends StatelessWidget {
     ].join(' · ');
     final parentMeta = [
       if (parent != null && parent.kidsAtSchool.isNotEmpty)
-        'Kids at ${request.destinationName}',
+        'Members at ${request.destinationName}',
       if (request.distanceMiles != null)
         MessagesFormat.miles(request.distanceMiles!),
     ];
@@ -398,7 +401,10 @@ class _MineBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<RideRequestDetailProvider>();
-    final kids = MessagesFormat.names(request.kidNames, fallback: 'your kids');
+    final kids = MessagesFormat.names(
+      request.kidNames,
+      fallback: 'your members',
+    );
     final notified = provider.activity?.notifiedCount ?? 0;
     final driver = request.driver;
     return Column(

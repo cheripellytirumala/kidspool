@@ -8,6 +8,7 @@ import '../../data/repositories/home_repository_impl.dart';
 import '../../domain/repositories/home_repository.dart';
 import '../../domain/usecases/get_families_near_me.dart';
 import '../../domain/usecases/set_driver_available.dart';
+import '../../domain/usecases/get_driver_available.dart';
 import '../../domain/repositories/driver_availability_repository.dart';
 import '../../data/repositories/driver_availability_repository_impl.dart';
 import '../../presentation/providers/driver_availability_provider.dart';
@@ -44,7 +45,10 @@ void registerHomeDependencies(GetIt sl) {
     )
     ..registerLazySingleton<SetDriverAvailable>(() => SetDriverAvailable(sl()))
     ..registerLazySingleton<DriverAvailabilityProvider>(
-      () => DriverAvailabilityProvider(setDriverAvailable: sl()),
+      () => DriverAvailabilityProvider(
+        setDriverAvailable: sl(),
+        getDriverAvailable: GetDriverAvailable(sl()),
+      ),
       dispose: (p) => p.dispose(),
     )
     // Providers

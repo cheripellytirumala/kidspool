@@ -2,7 +2,7 @@ import '../../../common/core/utils/json_parser.dart';
 import '../../domain/entities/family.dart';
 
 /// Maps a `get_families_near_me` row:
-/// `{id, firstName, lastInitial, initials, givesRides,
+/// `{id, firstName, lastInitial, initials, givesRides, available,
 /// kids: [{firstName, schoolId, schoolName}], distanceMiles}`.
 abstract final class FamilyModel {
   /// Null when the row has no id.
@@ -30,6 +30,7 @@ abstract final class FamilyModel {
           ? distance.toDouble()
           : double.tryParse(distance?.toString() ?? ''),
       givesRides: json['givesRides'] == true,
+      available: json['available'] == true,
       activities: [
         if (json['activities'] case final List<dynamic> list)
           for (final a in list.whereType<Map<String, dynamic>>())

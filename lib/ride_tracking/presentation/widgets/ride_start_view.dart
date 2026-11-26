@@ -125,7 +125,7 @@ class _Headline extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = tracking;
     final now = DateTime.now();
-    final kids = RideFormat.names(t.kidNames, fallback: 'the kids');
+    final kids = RideFormat.names(t.kidNames, fallback: 'the members');
     final line1 = 'Pick up $kids';
     final line2 = 'at ${RideFormat.clock(t.pickupAt)}';
     final width = MediaQuery.sizeOf(context).width;
@@ -350,7 +350,7 @@ class _KidsCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  RideFormat.names(t.kidNames, fallback: 'Kids'),
+                  RideFormat.names(t.kidNames, fallback: 'Members'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: RideTextStyles.labelL,

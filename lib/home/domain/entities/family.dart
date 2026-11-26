@@ -27,8 +27,12 @@ class Family {
     required this.kids,
     this.distanceMiles,
     this.givesRides = false,
+    this.available = false,
     this.activities = const [],
   });
+
+  /// Ride Partner with "Available" on right now (green dot, as in Chats).
+  final bool available;
 
   /// Activities shared with the user's kids.
   final List<FamilyActivity> activities;

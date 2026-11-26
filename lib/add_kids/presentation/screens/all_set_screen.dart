@@ -49,7 +49,7 @@ class _AllSetView extends StatelessWidget {
             ? 'You’re all set'
             : 'You’re all set, ${kids.parentFirstName}',
         subtitle:
-            'Find families near you go to the same places as your kids. '
+            'Find families near you go to the same places as your members. '
             'Say hi and plan rides together.',
         above: const [
           SizedBox(height: 30),

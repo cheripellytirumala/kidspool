@@ -73,10 +73,10 @@ class _WhereKidsGoView extends StatelessWidget {
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
       child: KidsScaffold(
-        title: 'Where do your kids go?',
+        title: 'Where do your members go?',
         subtitle: kids.children.length > 1
-            ? 'Pick a child, then add their school and activities.'
-            : 'Add ${kids.children.firstOrNull?.firstName ?? 'your child'}’s '
+            ? 'Pick a member, then add their school and activities.'
+            : 'Add ${kids.children.firstOrNull?.firstName ?? 'your member'}’s '
                   'school and activities.',
         titleGap: 4,
         bottom: AppButton(
@@ -91,7 +91,7 @@ class _WhereKidsGoView extends StatelessWidget {
           if (missing.isNotEmpty && kids.anyPlaces)
             Text(
               'Add a school for ${missing.map((k) => k.firstName).join(', ')} '
-              'to continue — every child needs a school.',
+              'to continue — every member needs a school.',
               style: AppTextStyles.body.copyWith(color: AppColors.danger),
             ),
           if (needsSchool)

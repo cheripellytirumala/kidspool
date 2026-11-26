@@ -253,7 +253,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          'No more parents from your kids’ schools to add right now.',
+          'No more parents from your members’ schools to add right now.',
           style: AppTextStyles.body,
         ),
       );

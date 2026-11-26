@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/widgets.dart';
 
+import '../../../common/core/usecase/usecase.dart';
 import '../../core/constants/home_api_constants.dart';
+import '../../domain/usecases/get_driver_available.dart';
 import '../../domain/usecases/set_driver_available.dart';
 
 /// The Ride Partner's "Available" switch on Home.
 ///
-/// * Every app launch starts **off** (an app that was killed comes back
-///   off, and the server is told so).
+/// * On app open (and back in the foreground) the switch shows the
+///   server's state, so it matches the green dot other parents see, also
+///   when it was switched on another phone.
 /// * Once on, it stays on in the foreground and in the background until
 ///   the driver switches it off, signs out, or the app is closed.
 /// * While on, the server is reminded every
@@ -19,12 +22,16 @@ class DriverAvailabilityProvider extends ChangeNotifier
     with WidgetsBindingObserver {
   DriverAvailabilityProvider({
     required SetDriverAvailable setDriverAvailable,
+    GetDriverAvailable? getDriverAvailable,
     this.heartbeat = HomeApiConstants.availabilityHeartbeat,
     WidgetsBinding? binding,
   }) : _set = setDriverAvailable,
+       _get = getDriverAvailable,
        _binding = binding;
 
   final SetDriverAvailable _set;
+  final GetDriverAvailable? _get;
+  bool _isDriver = false;
   final Duration heartbeat;
   final WidgetsBinding? _binding;
 
@@ -41,15 +48,33 @@ class DriverAvailabilityProvider extends ChangeNotifier
 
   WidgetsBinding get _wb => _binding ?? WidgetsBinding.instance;
 
-  /// Home was shown. The first call of this launch tells the server "off";
-  /// a user who no longer gives rides is switched off.
+  /// Home was shown. The first call of this launch reads the server's
+  /// state; a user who no longer gives rides is switched off.
   Future<void> sync({required bool isDriver}) async {
+    _isDriver = isDriver;
     if (!_started) {
       _started = true;
       _wb.addObserver(this);
-      if (!_available) await _set(false);
+      if (isDriver) await _refresh();
     }
     if (!isDriver && _available) await setAvailable(false);
+  }
+
+  /// Takes the server's value. Still on → "still on" ping and heartbeat;
+  /// no answer → the switch keeps what it shows.
+  Future<void> _refresh() async {
+    final get = _get;
+    if (get == null || _busy) return;
+    final result = await get(const NoParams());
+    if (_busy || _disposed) return;
+    result.match((_) {}, (serverOn) {
+      if (serverOn != _available) {
+        _available = serverOn;
+        _notify();
+      }
+      _ping();
+      _restartHeartbeat();
+    });
   }
 
   /// Returns an error message to show, or null.
@@ -99,9 +124,14 @@ class DriverAvailabilityProvider extends ChangeNotifier
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
-        // Back in the foreground: still on.
-        _ping();
-        _restartHeartbeat();
+        // Back in the foreground: take the server's state (another phone
+        // may have changed it); still on → ping.
+        if (_get != null && _isDriver) {
+          _refresh();
+        } else {
+          _ping();
+          _restartHeartbeat();
+        }
       case AppLifecycleState.detached:
         // The app is closing: best effort, the next launch starts off anyway.
         if (_available) {

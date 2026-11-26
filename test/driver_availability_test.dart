@@ -4,6 +4,7 @@ import 'package:fpdart/fpdart.dart';
 import 'package:kidspool/common/core/di/injection_container.dart';
 import 'package:kidspool/common/core/error/failures.dart';
 import 'package:kidspool/home/domain/repositories/driver_availability_repository.dart';
+import 'package:kidspool/home/domain/usecases/get_driver_available.dart';
 import 'package:kidspool/home/domain/usecases/set_driver_available.dart';
 import 'package:kidspool/home/presentation/providers/driver_availability_provider.dart';
 import 'package:kidspool/home/presentation/widgets/home_header_controls.dart';
@@ -11,6 +12,18 @@ import 'package:kidspool/home/presentation/widgets/home_header_controls.dart';
 class _Repo implements DriverAvailabilityRepository {
   final calls = <bool>[];
   bool fail = false;
+
+  /// What `get_driver_available` answers (null: no answer).
+  bool? server = false;
+  int reads = 0;
+
+  @override
+  Future<Either<Failure, bool>> getAvailable() async {
+    reads++;
+    final value = server;
+    if (value == null) return const Left(ServerFailure('No connection.'));
+    return Right(value);
+  }
 
   @override
   Future<Either<Failure, bool>> setAvailable(bool available) async {
@@ -23,25 +36,63 @@ class _Repo implements DriverAvailabilityRepository {
 DriverAvailabilityProvider _provider(_Repo repo, {Duration? heartbeat}) =>
     DriverAvailabilityProvider(
       setDriverAvailable: SetDriverAvailable(repo),
+      getDriverAvailable: GetDriverAvailable(repo),
       heartbeat: heartbeat ?? const Duration(hours: 1),
     );
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test(
-    'every launch starts off and tells the server so (killed → off)',
-    () async {
-      final repo = _Repo();
-      final p = _provider(repo);
-      expect(p.available, isFalse);
-      await p.sync(isDriver: true);
-      expect(repo.calls, [false]);
-      await p.sync(isDriver: true); // later Home visits don't repeat it
-      expect(repo.calls, [false]);
-      p.dispose();
-    },
-  );
+  test('opening the app shows the server\'s Off and writes nothing', () async {
+    final repo = _Repo();
+    final p = _provider(repo);
+    await p.sync(isDriver: true);
+    expect(p.available, isFalse);
+    expect(repo.calls, isEmpty);
+    await p.sync(isDriver: true); // later Home visits don't read again
+    expect(repo.reads, 1);
+    p.dispose();
+  });
+
+  test('opening the app shows the server\'s On and keeps it fresh', () async {
+    final repo = _Repo()..server = true;
+    final p = _provider(repo);
+    await p.sync(isDriver: true);
+    expect(p.available, isTrue);
+    expect(repo.calls, [true]); // "still on"
+    p.dispose();
+  });
+
+  test('no answer from the server: stays Off, nothing written', () async {
+    final repo = _Repo()..server = null;
+    final p = _provider(repo);
+    await p.sync(isDriver: true);
+    expect(p.available, isFalse);
+    expect(repo.calls, isEmpty);
+    p.dispose();
+  });
+
+  test('not a driver: the server is not asked', () async {
+    final repo = _Repo()..server = true;
+    final p = _provider(repo);
+    await p.sync(isDriver: false);
+    expect(p.available, isFalse);
+    expect(repo.reads, 0);
+    p.dispose();
+  });
+
+  test('switched off on another phone: Off when back in the app', () async {
+    final repo = _Repo();
+    final p = _provider(repo);
+    await p.sync(isDriver: true);
+    await p.setAvailable(true);
+    repo.server = false;
+    p.didChangeAppLifecycleState(AppLifecycleState.resumed);
+    await Future<void>.delayed(Duration.zero);
+    expect(p.available, isFalse);
+    expect(repo.calls, [true]); // no "still on" ping
+    p.dispose();
+  });
 
   test(
     'on stays on in the background, comes back on in the foreground',
@@ -56,11 +107,13 @@ void main() {
       p.didChangeAppLifecycleState(AppLifecycleState.hidden);
       p.didChangeAppLifecycleState(AppLifecycleState.paused);
       expect(p.available, isTrue);
-      expect(repo.calls, [false, true]);
+      expect(repo.calls, [true]);
 
+      repo.server = true;
       p.didChangeAppLifecycleState(AppLifecycleState.resumed);
+      await Future<void>.delayed(Duration.zero);
       expect(p.available, isTrue);
-      expect(repo.calls, [false, true, true]); // "still on"
+      expect(repo.calls, [true, true]); // "still on"
       p.dispose();
     },
   );
@@ -112,10 +165,10 @@ void main() {
     await p.sync(isDriver: true);
     await p.setAvailable(true);
     await tester.pump(const Duration(minutes: 11));
-    expect(repo.calls, [false, true, true, true]);
+    expect(repo.calls, [true, true, true]);
     await p.setAvailable(false);
     await tester.pump(const Duration(minutes: 11));
-    expect(repo.calls, [false, true, true, true, false]);
+    expect(repo.calls, [true, true, true, false]);
     p.dispose();
   });
 

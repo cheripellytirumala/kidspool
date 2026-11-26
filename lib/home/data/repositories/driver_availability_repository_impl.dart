@@ -21,4 +21,13 @@ class DriverAvailabilityRepositoryImpl implements DriverAvailabilityRepository {
           parser: (json) => json is Map ? json['available'] == true : available,
         ),
       );
+
+  @override
+  Future<Either<Failure, bool>> getAvailable() => ErrorHandler.guard(
+    tag: 'Home.getDriverAvailable',
+    () => _api.rpc(
+      HomeApiConstants.getDriverAvailable,
+      parser: (json) => json is Map && json['available'] == true,
+    ),
+  );
 }

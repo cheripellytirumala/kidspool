@@ -158,8 +158,8 @@ class FamiliesNearYouProvider extends ChangeNotifier {
               .firstOrNull;
     final hi = name.isEmpty ? 'Hi!' : 'Hi! I’m $name.';
     final school = placeName == null
-        ? 'Our kids go to the same school.'
-        : 'Our kids both go to $placeName.';
+        ? 'Our members go to the same school.'
+        : 'Our members both go to $placeName.';
     return '$hi $school Would you like to share school rides? '
         'We could take turns driving.';
   }
@@ -367,9 +367,9 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   String? get emptyMessage => switch (emptyState) {
     FamiliesEmptyState.none => null,
     FamiliesEmptyState.noSchool =>
-      'Add your kids’ school to see families going to the same places.',
+      'Add your members’ school to see families going to the same places.',
     FamiliesEmptyState.noFamilies =>
-      'No families from your kids’ schools nearby yet.',
+      'No families from your members’ schools nearby yet.',
     FamiliesEmptyState.unavailable =>
       'Families near you isn’t set up on the server yet.',
     FamiliesEmptyState.error =>

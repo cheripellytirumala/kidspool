@@ -165,8 +165,8 @@ class _AddChildViewState extends State<_AddChildView> {
 
     if (!_ready) {
       return KidsScaffold(
-        title: 'Add a child',
-        subtitle: 'Add each child who needs rides.',
+        title: 'Add a member',
+        subtitle: 'Add each member who needs rides.',
         onBack: _backToAboutYou,
         children: [
           if (kids.status.isFailure)
@@ -208,8 +208,8 @@ class _AddChildViewState extends State<_AddChildView> {
         child: GestureDetector(
           onTap: () => FocusScope.of(context).unfocus(),
           child: KidsScaffold(
-            title: 'Add a child',
-            subtitle: 'Add each child who needs rides.',
+            title: 'Add a member',
+            subtitle: 'Add each member who needs rides.',
             gap: 12,
             onBack: _backToAboutYou,
             bottom: AppButton(
@@ -219,7 +219,7 @@ class _AddChildViewState extends State<_AddChildView> {
             children: [
               ...cards,
               DashedAddButton(
-                label: 'Add another child',
+                label: 'Add another member',
                 onTap: () => _addAnother(form),
               ),
             ],
@@ -262,7 +262,7 @@ class _ChildFormCard extends StatelessWidget {
       fieldHintText: 'MM/DD/YYYY',
       fieldLabelText: 'Date of birth',
       errorFormatText: 'Enter a date like 05/14/2017',
-      errorInvalidText: 'Kids must be under 19',
+      errorInvalidText: 'Members must be under 19',
     );
     if (picked != null) form.setDateOfBirth(picked);
   }
@@ -384,7 +384,7 @@ class _ChildFormCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(
               'Only you can see these notes, and the Ride Partner once they '
-              'confirm a ride for this child, until the ride ends.',
+              'confirm a ride for this member, until the ride ends.',
               style: KidsTextStyles.captionM,
             ),
           ),
@@ -505,7 +505,7 @@ class _PhotoRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hasPhoto = preview.photo != null;
-    final name = preview.firstName.isEmpty ? 'your child' : preview.firstName;
+    final name = preview.firstName.isEmpty ? 'your member' : preview.firstName;
 
     return Semantics(
       button: true,

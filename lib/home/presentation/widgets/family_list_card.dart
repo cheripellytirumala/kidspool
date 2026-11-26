@@ -43,7 +43,11 @@ class FamilyListCard extends StatelessWidget {
                   SelectBox(checked: selected),
                   const SizedBox(width: 8),
                 ],
-                PersonAvatar.initials(family.initials, size: 52),
+                PersonAvatar.initials(
+                  family.initials,
+                  size: 52,
+                  available: family.available,
+                ),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(

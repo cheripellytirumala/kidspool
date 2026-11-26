@@ -143,7 +143,7 @@ class _DropOffPickerSheetState extends State<DropOffPickerSheet> {
       if (search.isIdle)
         const _Hint(
           'Type a place name, an address or a zip code. It’s saved with '
-          'your kids’ places.',
+          'your members’ places.',
         )
       else if (search.isSearching && results.isEmpty)
         const Padding(

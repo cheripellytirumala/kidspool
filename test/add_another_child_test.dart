@@ -76,7 +76,7 @@ void main() {
   test('an untouched blank form asks for details, without clearing', () async {
     form.openNew();
     final error = await form.addAnother();
-    expect(error, contains('Fill in this child'));
+    expect(error, contains('Fill in this member'));
     expect(form.isOpen, isTrue);
     expect(kids.saved, isEmpty);
   });

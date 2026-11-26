@@ -105,7 +105,7 @@ class _ReviewPendingBodyState extends State<_ReviewPendingBody> {
                       ? (review.rejectionReason?.isNotEmpty ?? false)
                             ? review.rejectionReason!
                             : 'Please retake clear photos of your license.'
-                      : 'To keep kids safe, a person checks every parent’s ID. '
+                      : 'To keep members safe, a person checks every parent’s ID. '
                             'This usually takes a few hours. You can close the '
                             'app — we’ll pick up right here.',
                   style: AppTextStyles.bodyL.copyWith(

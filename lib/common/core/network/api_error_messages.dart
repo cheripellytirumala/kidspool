@@ -22,7 +22,7 @@ abstract final class ApiErrorMessages {
     'not_a_parent': 'Only parent accounts can do this.',
     'not_approved': 'Your ID is still being reviewed. We’ll let you know soon.',
     'school_required':
-        'Add your child’s school first (Where do your kids go?).',
+        'Add your member’s school first (Where do your members go?).',
     // Identity
     'already_submitted': 'Your ID is already being reviewed.',
     'already_approved': 'Your ID is already verified.',
@@ -37,14 +37,14 @@ abstract final class ApiErrorMessages {
     'address_required': 'Add your home address first.',
     'address_not_found': 'That address no longer exists.',
     // Kids
-    'kid_limit_reached': 'You can add up to 10 kids.',
-    'kid_not_found': 'That child no longer exists.',
+    'kid_limit_reached': 'You can add up to 10 members.',
+    'kid_not_found': 'That member no longer exists.',
     'save_failed': 'We couldn’t save. Please try again.',
-    'delete_failed': 'We couldn’t remove the child. Please try again.',
+    'delete_failed': 'We couldn’t remove the member. Please try again.',
     'nothing_to_update': 'Nothing has changed.',
     // Rides
-    'too_many_kids': 'A ride can take up to 4 kids.',
-    'kids_different_schools': 'Pick kids who go to the same school.',
+    'too_many_kids': 'A ride can take up to 4 members.',
+    'kids_different_schools': 'Pick members who go to the same school.',
     'school_unavailable': 'Rides to this school aren’t available yet.',
     'pickup_too_soon': 'Pick-up must be at least 2 hours from now.',
     'duplicate_request': 'You already asked for a ride around that time.',
@@ -54,7 +54,7 @@ abstract final class ApiErrorMessages {
     // Ride groups
     'group_not_found': 'This group isn’t available any more.',
     'cannot_add_member':
-        'Only approved parents from your kids’ schools can join this group.',
+        'Only approved parents from your members’ schools can join this group.',
     'group_full': 'Groups can have up to 8 families.',
     // App version
     'invalid_platform': 'This device isn’t supported.',

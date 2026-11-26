@@ -6,19 +6,62 @@ import '../../core/constants/home_text_styles.dart';
 /// Round photo of a person (Figma "Photo · XX"), or their initials on the
 /// lime circle used for the user's own avatar when there is no photo.
 class PersonAvatar extends StatelessWidget {
-  const PersonAvatar(String this.asset, {super.key, this.size = 48})
-    : initials = '';
+  const PersonAvatar(
+    String this.asset, {
+    super.key,
+    this.size = 48,
+    this.available = false,
+  }) : initials = '';
 
   /// No photo: [initials] on a lime circle.
-  const PersonAvatar.initials(this.initials, {super.key, this.size = 48})
-    : asset = null;
+  const PersonAvatar.initials(
+    this.initials, {
+    super.key,
+    this.size = 48,
+    this.available = false,
+  }) : asset = null;
 
   final String? asset;
   final String initials;
   final double size;
 
+  /// Green dot at the bottom right: a Ride Partner available now.
+  final bool available;
+
   @override
   Widget build(BuildContext context) {
+    final avatar = _avatar();
+    if (!available) return avatar;
+    final dot = size * 0.28;
+    return Semantics(
+      label: 'Available',
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            avatar,
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                key: const ValueKey('available-dot'),
+                width: dot,
+                height: dot,
+                decoration: BoxDecoration(
+                  color: AppColors.available,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 2),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _avatar() {
     final path = asset;
     if (path == null) return _initials();
     Widget fallback(_, _, _) => SizedBox.square(

@@ -303,7 +303,7 @@ class RideRequestChatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final kid = ride.kids.isEmpty ? null : ride.kids.first;
-    final kids = MessagesFormat.names(ride.kidNames, fallback: 'Kids');
+    final kids = MessagesFormat.names(ride.kidNames, fallback: 'Members');
     final when = [
       MessagesFormat.dayAndTime(ride.pickupAt),
       if (ride.repeats) '${ride.openDaysInSeries} days',

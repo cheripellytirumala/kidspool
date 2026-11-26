@@ -22,7 +22,7 @@ abstract final class GradeAge {
     final youngest = grade == 'Daycare' ? 0 : typical - 1;
     if (age >= youngest && age <= typical + 2) return null;
     final years = age == 1 ? 'year' : 'years';
-    return 'A child who is $age $years old usually isn’t in $grade. '
+    return 'A member who is $age $years old usually isn’t in $grade. '
         'Check the age or the grade.';
   }
 }
