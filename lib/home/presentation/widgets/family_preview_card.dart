@@ -39,19 +39,23 @@ class FamilyPreviewCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 6),
-              // The design lets this label run into the card padding; scale
-              // it down instead of truncating on narrow tiles.
-              SizedBox(
-                width: double.infinity,
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    family.compactLabel,
-                    style: HomeTextStyles.captionS,
-                    maxLines: 1,
-                  ),
+              // Full size: the place on up to two lines, then the distance
+              // (it used to be scaled down to fit one line, unreadable).
+              if (family.shortPlaceName.isNotEmpty)
+                Text(
+                  family.shortPlaceName,
+                  style: HomeTextStyles.captionS,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              ),
+              if (family.distanceLabel case final distance?)
+                Text(
+                  distance,
+                  style: HomeTextStyles.captionS,
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                ),
             ],
           ),
         ),

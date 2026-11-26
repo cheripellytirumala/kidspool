@@ -102,21 +102,24 @@ class _HomeView extends StatelessWidget {
   /// Up to three tiles; fewer families keep the tile width of three.
   Widget _families(BuildContext context, HomeProvider provider) {
     final families = provider.previewFamilies;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var i = 0; i < 3; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(
-            child: i < families.length
-                ? FamilyPreviewCard(
-                    family: families[i],
-                    onTap: () => _openFamilies(context),
-                  )
-                : const SizedBox.shrink(),
-          ),
+    // Same height for all three tiles, whatever their place names wrap to.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < 3; i++) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(
+              child: i < families.length
+                  ? FamilyPreviewCard(
+                      family: families[i],
+                      onTap: () => _openFamilies(context),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
