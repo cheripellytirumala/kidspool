@@ -59,7 +59,7 @@ class PlacesGroupCard extends StatelessWidget {
                   ),
                   Expanded(
                     child: Text(
-                      'Add school or activity',
+                      'Add location',
                       style: AppTextStyles.headingH3,
                     ),
                   ),

@@ -283,8 +283,8 @@ class _Form extends StatelessWidget {
                 title: title,
                 activities: provider.activityPlaces,
                 emptyMessage:
-                    'Add your child’s school first: Profile → your kid → '
-                    'Add school or activity.',
+                    'Add a location first: Profile → Locations → '
+                    'Add location.',
               ),
             ),
     );
@@ -336,6 +336,7 @@ class _Form extends StatelessWidget {
       WhichDaysSheet(
         initial: current is CustomSchedule ? current : null,
         initialTime: provider.draft.pickupTime,
+        maxDays: AskRideProvider.maxRideDays,
       ),
     );
     if (result == null) return;

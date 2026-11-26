@@ -36,6 +36,13 @@ abstract final class RideDateFormat {
   /// `Nov 2026`
   static String monthYear(DateTime d) => '${_months[d.month - 1]} ${d.year}';
 
+  /// `Nov 26 – Dec 2`, or `Dec 3 – 9` inside one month.
+  static String range(DateTime from, DateTime to) =>
+      from.month == to.month && from.year == to.year
+      ? '${_months[from.month - 1]} ${from.day} – ${to.day}'
+      : '${_months[from.month - 1]} ${from.day} – '
+            '${_months[to.month - 1]} ${to.day}';
+
   /// `Mon` for [DateTime.monday].
   static String weekdayShort(int weekday) =>
       _weekdays[weekday - 1].substring(0, 3);

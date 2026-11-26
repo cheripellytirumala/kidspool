@@ -31,7 +31,9 @@ class SelectDaySheet extends StatefulWidget {
 
 class _SelectDaySheetState extends State<SelectDaySheet> {
   late DateTime? _date = widget.initial?.date;
-  late DateTime _month = _date ?? _today();
+
+  /// Week on screen: starts today, or on the week of the picked day.
+  late DateTime _week = RideCalendar.weekOf(_date ?? _today(), _today());
   late RideTime? _time = widget.initialTime;
 
   /// "Ask at least 2 hours ahead" while the pick-up is too soon.
@@ -56,15 +58,18 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
       ),
       children: [
         RideCalendar(
-          month: _month,
+          start: _week,
           firstDate: _today(),
           isSelected: (d) => date != null && RideDateFormat.isSameDay(d, date),
           onDayTap: (d) => setState(() => _date = d),
-          onMonthChanged: (m) => setState(() => _month = m),
+          onWeekChanged: (w) => setState(() => _week = w),
         ),
         _SelectedDateRow(
           date: date,
-          onTap: date == null ? null : () => setState(() => _month = date),
+          onTap: date == null
+              ? null
+              : () =>
+                    setState(() => _week = RideCalendar.weekOf(date, _today())),
         ),
         RideTimeField(
           label: 'Pick up at',
@@ -78,10 +83,18 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
 }
 
 /// "Which days?" — any number of days plus the pick-up time. Tap a day to
-/// add or remove it; a weekday chip adds (or removes) every such day of the
-/// month on screen, from today on.
+/// add or remove it; a weekday chip adds (or removes) that weekday in the
+/// week on screen and the [chipWeeks] - 1 weeks after it.
 class WhichDaysSheet extends StatefulWidget {
-  const WhichDaysSheet({super.key, this.initial, this.initialTime});
+  const WhichDaysSheet({
+    super.key,
+    this.initial,
+    this.initialTime,
+    this.maxDays = 20,
+  });
+
+  /// Most days one request can hold (server: `rides (1–20 days)`).
+  final int maxDays;
 
   final CustomSchedule? initial;
   final RideTime? initialTime;
@@ -92,7 +105,15 @@ class WhichDaysSheet extends StatefulWidget {
 
 class _WhichDaysSheetState extends State<WhichDaysSheet> {
   late final Set<DateTime> _dates = {...?widget.initial?.dates};
-  late DateTime _month = widget.initial?.start ?? _today();
+
+  /// Week on screen: starts today, or on the week of the first picked day.
+  late DateTime _week = RideCalendar.weekOf(
+    widget.initial?.start ?? _today(),
+    _today(),
+  );
+
+  /// A weekday chip repeats over this many weeks.
+  static const int chipWeeks = 4;
   late RideTime? _time = widget.initialTime;
 
   /// Sun … Sat, as in the Figma chips.
@@ -109,29 +130,42 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
   String? get _tooSoon =>
       _time == null ? null : RideLeadTime.tooSoonMessage(_dates, _time!);
 
-  bool get _canFinish => _dates.isNotEmpty && _time != null && _tooSoon == null;
+  /// Set when a tap or chip wanted more than [WhichDaysSheet.maxDays].
+  bool _hitLimit = false;
+
+  bool get _overLimit => _dates.length > widget.maxDays;
+
+  bool get _canFinish =>
+      _dates.isNotEmpty && !_overLimit && _time != null && _tooSoon == null;
 
   void _onDayTap(DateTime day) {
     final d = RideDateFormat.dateOnly(day);
-    setState(() => _dates.contains(d) ? _dates.remove(d) : _dates.add(d));
+    setState(() {
+      if (_dates.remove(d)) {
+        _hitLimit = false;
+      } else if (_dates.length >= widget.maxDays) {
+        _hitLimit = true;
+      } else {
+        _dates.add(d);
+      }
+    });
   }
 
   bool _isSelected(DateTime day) =>
       _dates.contains(RideDateFormat.dateOnly(day));
 
-  /// Days of [weekday] in the month on screen that can still be picked.
-  List<DateTime> _weekdayDays(int weekday) {
-    final today = _today();
-    final last = DateTime(_month.year, _month.month + 1, 0).day;
-    return [
-      for (var day = 1; day <= last; day++)
-        if (DateTime(_month.year, _month.month, day) case final d
-            when d.weekday == weekday && !d.isBefore(today))
-          d,
-    ];
-  }
+  /// Days of [weekday] from the week on screen over [chipWeeks] weeks, not
+  /// counting today once its pick-up time is too close.
+  List<DateTime> _weekdayDays(int weekday) => [
+    for (var i = 0; i < chipWeeks * RideCalendar.days; i++)
+      if (DateTime(_week.year, _week.month, _week.day + i) case final d
+          when d.weekday == weekday &&
+              // Skip a day whose pick-up is already under 2 hours away.
+              (_time == null || !RideLeadTime.isTooSoon(d, _time!)))
+        d,
+  ];
 
-  /// A chip is on when every pickable such day of the shown month is chosen.
+  /// A chip is on when every such day of those weeks is chosen.
   bool _weekdaySelected(int weekday) {
     final days = _weekdayDays(weekday);
     return days.isNotEmpty && days.every(_dates.contains);
@@ -140,7 +174,20 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
   void _toggleWeekday(int weekday) {
     final days = _weekdayDays(weekday);
     setState(() {
-      _weekdaySelected(weekday) ? _dates.removeAll(days) : _dates.addAll(days);
+      if (_weekdaySelected(weekday)) {
+        _dates.removeAll(days);
+        _hitLimit = false;
+        return;
+      }
+      // Earliest first, only while there is room.
+      for (final d in days) {
+        if (_dates.contains(d)) continue;
+        if (_dates.length >= widget.maxDays) {
+          _hitLimit = true;
+          break;
+        }
+        _dates.add(d);
+      }
     });
   }
 
@@ -172,12 +219,18 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
           ],
         ),
         RideCalendar(
-          month: _month,
+          start: _week,
           firstDate: _today(),
           isSelected: _isSelected,
           onDayTap: _onDayTap,
-          onMonthChanged: (m) => setState(() => _month = m),
+          onWeekChanged: (w) => setState(() => _week = w),
         ),
+        if (_dates.isNotEmpty) _PickedDays(_dates, max: widget.maxDays),
+        if (_hitLimit || _overLimit)
+          _TooSoonHint(
+            'A request can have up to ${widget.maxDays} days. '
+            'Remove some days, or ask again for later dates.',
+          ),
         RideTimeField(
           label: 'Pick up at',
           value: _time,
@@ -185,6 +238,27 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
         ),
         if (tooSoon != null) _TooSoonHint(tooSoon),
       ],
+    );
+  }
+}
+
+/// "5 of 20 days picked · Wed, Nov 26 to …": days outside the week on screen
+/// (weekday chips cover 4 weeks) are still counted.
+class _PickedDays extends StatelessWidget {
+  const _PickedDays(this.dates, {required this.max});
+
+  final Set<DateTime> dates;
+  final int max;
+
+  @override
+  Widget build(BuildContext context) {
+    final sorted = dates.toList()..sort();
+    final n = sorted.length;
+    return Text(
+      '$n of $max days picked · '
+      '${RideDateFormat.short(sorted.first)}'
+      '${n > 1 ? ' to ${RideDateFormat.short(sorted.last)}' : ''}',
+      style: AskRideTextStyles.fieldCaption,
     );
   }
 }

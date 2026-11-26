@@ -6,39 +6,49 @@ import '../../core/constants/ask_ride_assets.dart';
 import '../../core/utils/ride_date_format.dart';
 import 'ask_ride_text_styles.dart';
 
-/// Month grid from the "Select day?" / "Which days?" sheets. Weeks start on
-/// Sunday; days before [firstDate] are dimmed and not tappable.
+/// One-week strip from the "Select day?" / "Which days?" sheets: seven days
+/// from [start], never before [firstDate] (today), so no past day is shown.
+/// The arrows move a week at a time; back stops at [firstDate].
 class RideCalendar extends StatelessWidget {
   const RideCalendar({
     super.key,
-    required this.month,
+    required this.start,
     required this.firstDate,
     required this.isSelected,
     required this.onDayTap,
-    required this.onMonthChanged,
-    this.isWeekBanded,
+    required this.onWeekChanged,
   });
 
-  /// Any day in the month to show.
-  final DateTime month;
+  /// First day of the week on screen.
+  final DateTime start;
   final DateTime firstDate;
   final bool Function(DateTime day) isSelected;
   final ValueChanged<DateTime> onDayTap;
-  final ValueChanged<DateTime> onMonthChanged;
+  final ValueChanged<DateTime> onWeekChanged;
 
-  /// Grey band behind a whole week (repeating weeks in "Which days?").
-  /// Receives the Sunday that starts the week.
-  final bool Function(DateTime weekStart)? isWeekBanded;
+  static const int days = 7;
 
-  static const List<String> _letters = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  /// The week (counted from [firstDate]) that holds [day]; [firstDate]
+  /// itself for a day before it.
+  static DateTime weekOf(DateTime day, DateTime firstDate) {
+    final first = RideDateFormat.dateOnly(firstDate);
+    final d = RideDateFormat.dateOnly(day);
+    if (!d.isAfter(first)) return first;
+    final weeks = d.difference(first).inDays ~/ days;
+    return DateTime(first.year, first.month, first.day + weeks * days);
+  }
 
   @override
   Widget build(BuildContext context) {
-    final first = DateTime(month.year, month.month);
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
-    final leading = first.weekday % 7; // Sunday → 0
-    final rows = ((leading + daysInMonth) / 7).ceil();
-    final canGoBack = first.isAfter(DateTime(firstDate.year, firstDate.month));
+    final first = RideDateFormat.dateOnly(firstDate);
+    final from = RideDateFormat.dateOnly(start).isBefore(first)
+        ? first
+        : RideDateFormat.dateOnly(start);
+    final week = [
+      for (var i = 0; i < days; i++)
+        DateTime(from.year, from.month, from.day + i),
+    ];
+    final canGoBack = from.isAfter(first);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
@@ -54,27 +64,33 @@ class RideCalendar extends StatelessWidget {
               children: [
                 _MonthArrow(
                   asset: AskRideAssets.monthPrev,
-                  tooltip: 'Previous month',
+                  tooltip: 'Previous week',
                   // The exported asset is the disabled grey; tint when active.
                   color: canGoBack ? AppColors.ink : null,
                   onTap: canGoBack
-                      ? () => onMonthChanged(
-                          DateTime(month.year, month.month - 1),
-                        )
+                      ? () {
+                          final back = DateTime(
+                            from.year,
+                            from.month,
+                            from.day - days,
+                          );
+                          onWeekChanged(back.isBefore(first) ? first : back);
+                        }
                       : null,
                 ),
                 Expanded(
                   child: Text(
-                    RideDateFormat.monthYear(first),
+                    RideDateFormat.range(week.first, week.last),
                     textAlign: TextAlign.center,
                     style: AskRideTextStyles.month,
                   ),
                 ),
                 _MonthArrow(
                   asset: AskRideAssets.monthNext,
-                  tooltip: 'Next month',
-                  onTap: () =>
-                      onMonthChanged(DateTime(month.year, month.month + 1)),
+                  tooltip: 'Next week',
+                  onTap: () => onWeekChanged(
+                    DateTime(from.year, from.month, from.day + days),
+                  ),
                 ),
               ],
             ),
@@ -82,44 +98,19 @@ class RideCalendar extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              for (var i = 0; i < 7; i++) ...[
+              for (var i = 0; i < week.length; i++) ...[
                 if (i > 0) const SizedBox(width: 4),
                 Expanded(
-                  child: SizedBox(
-                    height: 24,
-                    child: Center(
-                      child: Text(
-                        _letters[i],
-                        style: AskRideTextStyles.weekdayLetter,
-                      ),
-                    ),
+                  child: _DayCell(
+                    day: week[i],
+                    isToday: RideDateFormat.isSameDay(week[i], first),
+                    selected: isSelected(week[i]),
+                    onTap: () => onDayTap(week[i]),
                   ),
                 ),
               ],
             ],
           ),
-          for (var r = 0; r < rows; r++) ...[
-            const SizedBox(height: 6),
-            _WeekRow(
-              banded:
-                  isWeekBanded?.call(
-                    DateTime(month.year, month.month, 1 - leading + r * 7),
-                  ) ??
-                  false,
-              days: [
-                for (var c = 0; c < 7; c++)
-                  () {
-                    final day = r * 7 + c - leading + 1;
-                    return day < 1 || day > daysInMonth
-                        ? null
-                        : DateTime(month.year, month.month, day);
-                  }(),
-              ],
-              firstDate: RideDateFormat.dateOnly(firstDate),
-              isSelected: isSelected,
-              onDayTap: onDayTap,
-            ),
-          ],
         ],
       ),
     );
@@ -162,66 +153,62 @@ class _MonthArrow extends StatelessWidget {
   }
 }
 
-class _WeekRow extends StatelessWidget {
-  const _WeekRow({
-    required this.banded,
-    required this.days,
-    required this.firstDate,
-    required this.isSelected,
-    required this.onDayTap,
+class _DayCell extends StatelessWidget {
+  const _DayCell({
+    required this.day,
+    required this.isToday,
+    required this.selected,
+    required this.onTap,
   });
 
-  final bool banded;
-  final List<DateTime?> days;
-  final DateTime firstDate;
-  final bool Function(DateTime day) isSelected;
-  final ValueChanged<DateTime> onDayTap;
+  final DateTime day;
+  final bool isToday;
+  final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return ColoredBox(
-      color: banded ? AppColors.surfaceStrong : Colors.transparent,
-      child: Row(
-        children: [
-          for (var i = 0; i < days.length; i++) ...[
-            if (i > 0) const SizedBox(width: 4),
-            Expanded(child: _dayCell(days[i])),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _dayCell(DateTime? day) {
-    if (day == null) return const SizedBox(height: 42);
-    final disabled = day.isBefore(firstDate);
-    final selected = !disabled && isSelected(day);
+    final color = selected ? AppColors.textOnDark : AppColors.textPrimary;
     return Semantics(
       button: true,
       selected: selected,
-      enabled: !disabled,
-      label: RideDateFormat.long(day),
+      label: isToday
+          ? 'Today, ${RideDateFormat.long(day)}'
+          : RideDateFormat.long(day),
       excludeSemantics: true,
       child: Material(
         color: selected ? AppColors.ink : Colors.transparent,
         shape: const StadiumBorder(),
         child: InkWell(
-          onTap: disabled ? null : () => onDayTap(day),
+          onTap: onTap,
           customBorder: const StadiumBorder(),
           child: SizedBox(
-            height: 42,
-            child: Center(
-              child: Opacity(
-                opacity: disabled ? 0.4 : 1,
-                child: Text(
-                  '${day.day}',
-                  style: AskRideTextStyles.labelL.copyWith(
-                    color: selected
-                        ? AppColors.textOnDark
-                        : AppColors.textPrimary,
+            height: 64,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  RideDateFormat.weekdayShort(day.weekday).substring(0, 1),
+                  style: AskRideTextStyles.weekdayLetter.copyWith(
+                    color: selected ? AppColors.textOnDark : null,
                   ),
                 ),
-              ),
+                const SizedBox(height: 4),
+                Text(
+                  '${day.day}',
+                  style: AskRideTextStyles.labelL.copyWith(color: color),
+                ),
+                const SizedBox(height: 2),
+                // Dot under today.
+                Container(
+                  width: 4,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isToday ? color : Colors.transparent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
             ),
           ),
         ),

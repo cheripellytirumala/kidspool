@@ -173,12 +173,12 @@ class _ProfileView extends StatelessWidget {
           onRetry: provider.load,
         ),
       ProfileAddRow(
-        label: overview.kids.isEmpty ? 'Add your child' : 'Add a child',
+        label: overview.kids.isEmpty ? 'Add your member' : 'Add a member',
         onTap: actions.addKid,
       ),
 
-      // Schools & activities (kept apart from the kid cards)
-      const ProfileSectionLabel('Schools & activities'),
+      // Locations: schools and activities (kept apart from the member cards)
+      const ProfileSectionLabel('Locations'),
       for (final place in _kidPlaces(overview))
         ProfileRow(
           icon: AppIcon(
@@ -186,10 +186,10 @@ class _ProfileView extends StatelessWidget {
             size: 20,
           ),
           title: place.name,
-          subtitle: '${place.isSchool ? 'School' : 'Activity'} · ${place.kids}',
+          subtitle: 'Location · ${place.kids}',
           onTap: actions.addPlace,
         ),
-      ProfileAddRow(label: 'Add school or activity', onTap: actions.addPlace),
+      ProfileAddRow(label: 'Add location', onTap: actions.addPlace),
 
       // Driving
       const ProfileSectionLabel('Driving'),
