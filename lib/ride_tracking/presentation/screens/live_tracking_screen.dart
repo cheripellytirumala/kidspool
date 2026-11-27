@@ -244,42 +244,62 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
             ),
             LayoutBuilder(
               builder: (context, box) {
-                final content = Column(
-                  children: [
-                    SafeArea(
-                      bottom: false,
-                      child: _Header(
-                        tracking: tracking,
-                        sendingSos: provider.sendingSos,
-                        onBack: () => Navigator.of(context).maybePop(),
-                        onSos: () => _onSos(tracking),
-                      ),
-                    ),
-                    // Empty space lets touches through to the map.
-                    const Spacer(),
-                    const SizedBox(height: 24),
-                    LiveTrackingSheet(
-                      tracking: tracking,
-                      driverAction: provider.driverAction,
-                      busyAction: provider.busyAction,
-                      canDropOff: provider.canDropOff,
-                      metersToDropoff: provider.metersToDropoff,
-                      onDriverAction: _onDriverAction,
-                      onMessage: onMessage,
-                      onCall: onCall,
-                      cancelling: provider.cancelling,
-                      onCancel: provider.canCancel
-                          ? () => _onCancel(tracking)
-                          : null,
-                    ),
-                  ],
+                final header = SafeArea(
+                  bottom: false,
+                  child: _Header(
+                    tracking: tracking,
+                    sendingSos: provider.sendingSos,
+                    onBack: () => Navigator.of(context).maybePop(),
+                    onSos: () => _onSos(tracking),
+                  ),
+                );
+                final sheet = LiveTrackingSheet(
+                  tracking: tracking,
+                  driverAction: provider.driverAction,
+                  busyAction: provider.busyAction,
+                  canDropOff: provider.canDropOff,
+                  metersToDropoff: provider.metersToDropoff,
+                  onDriverAction: _onDriverAction,
+                  onMessage: onMessage,
+                  onCall: onCall,
+                  cancelling: provider.cancelling,
+                  onCancel: provider.canCancel
+                      ? () => _onCancel(tracking)
+                      : null,
                 );
                 // Tall phones: a plain column, so the map stays draggable.
                 // Short ones: scroll rather than overflow.
-                if (box.maxHeight >= _scrollBelow) return content;
+                if (box.maxHeight >= _scrollBelow) {
+                  return Column(
+                    children: [
+                      header,
+                      const SizedBox(height: 24),
+                      // The sheet sits at the bottom; when its cards don't
+                      // fit (car, PIN, Cancel ride) it scrolls instead of
+                      // overflowing. Empty space above lets touches through
+                      // to the map.
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.bottomCenter,
+                          child: SingleChildScrollView(child: sheet),
+                        ),
+                      ),
+                    ],
+                  );
+                }
                 return CustomScrollView(
                   slivers: [
-                    SliverFillRemaining(hasScrollBody: false, child: content),
+                    SliverFillRemaining(
+                      hasScrollBody: false,
+                      child: Column(
+                        children: [
+                          header,
+                          const Spacer(),
+                          const SizedBox(height: 24),
+                          sheet,
+                        ],
+                      ),
+                    ),
                   ],
                 );
               },

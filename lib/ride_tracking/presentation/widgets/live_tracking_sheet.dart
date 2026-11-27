@@ -152,8 +152,7 @@ class LiveTrackingSheet extends StatelessWidget {
   static String _actionLabel(DriverRideAction action, RideTracking t) =>
       switch (action) {
         DriverRideAction.start => 'Start ride',
-        DriverRideAction.pickedUp =>
-          'Picked up ${RideFormat.names(t.kidNames, fallback: 'the members')}',
+        DriverRideAction.pickedUp => 'Picked up',
         DriverRideAction.complete => 'Dropped off',
       };
 }
