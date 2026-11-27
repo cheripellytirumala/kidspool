@@ -87,6 +87,9 @@ class _GroupsRepository implements MessagesRepository {
   _GroupsRepository({this.groupsDeployed = true});
 
   bool groupsDeployed;
+
+  /// Rachel (the one chat) has "Available" on: green dot.
+  bool rachelAvailable = false;
   int messageCalls = 0;
   int markReadCalls = 0;
   bool? mutedSet;
@@ -215,7 +218,10 @@ class _GroupsRepository implements MessagesRepository {
       driverId: _me,
       iAmDriver: true,
       status: RideRequestStatus.open,
-      other: const ChatPerson(firstName: 'Rachel', initials: 'RS'),
+      other: const ChatPerson(
+        firstName: 'Rachel',
+        initials: 'RS',
+      ).withAvailable(rachelAvailable),
       lastMessage: 'Thanks!',
       lastAt: _now.subtract(const Duration(hours: 2)),
       unread: 1,
@@ -665,6 +671,22 @@ void main() {
 
       p.search('swim');
       expect(p.items, hasLength(1));
+      p.dispose();
+    });
+
+    test('people with the green dot come first, then the rest', () async {
+      final repo = _GroupsRepository()..rachelAvailable = true;
+      final p = _messagesProvider(repo);
+      await p.load();
+      final order = [
+        for (final item in p.items)
+          switch (item) {
+            RideChatItem(:final chat) => chat.other.firstName,
+            RideGroupItem(:final group) => group.name,
+          },
+      ];
+      // Rachel's chat is older than the Lincoln group but she's Available.
+      expect(order, ['Rachel', 'Home → Lincoln parents', 'Swim carpool']);
       p.dispose();
     });
 

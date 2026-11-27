@@ -189,16 +189,22 @@ class MessagesProvider extends ChangeNotifier {
     return list;
   }
 
-  /// The Chats tab: ride chats and ride groups, newest activity first.
+  /// The Chats tab: people who are Available right now (green dot) first,
+  /// then everyone else and the groups; newest activity first in each.
   List<ChatsItem> get items {
     final list = <ChatsItem>[
       for (final c in chats) RideChatItem(c),
       for (final g in _groups)
         if (_matches([g.name, g.lastMessage])) RideGroupItem(g),
     ];
+    bool available(ChatsItem item) =>
+        item is RideChatItem && item.chat.other.available;
     // Stable: equal times keep chats before groups.
     final indexed = list.indexed.toList()
       ..sort((a, b) {
+        final byAvailable =
+            (available(b.$2) ? 1 : 0) - (available(a.$2) ? 1 : 0);
+        if (byAvailable != 0) return byAvailable;
         final at = a.$2.lastAt, bt = b.$2.lastAt;
         final byTime = at == null && bt == null
             ? 0
