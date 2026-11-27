@@ -565,7 +565,7 @@ void main() {
       expect(p.emptyState, FamiliesEmptyState.noSchool);
       expect(
         p.emptyMessage,
-        'Add your members’ school to see families going to the same places.',
+        'Add your members’ place to see families going to the same places.',
       );
 
       answer = const Right(FamiliesNearMe(families: [], hasSchool: true));
@@ -573,7 +573,7 @@ void main() {
       expect(p.emptyState, FamiliesEmptyState.noFamilies);
       expect(
         p.emptyMessage,
-        'No families from your members’ schools nearby yet.',
+        'No families from your members’ places nearby yet.',
       );
     });
 

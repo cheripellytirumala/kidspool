@@ -4,10 +4,8 @@ import 'package:provider/provider.dart';
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
 import '../../../common/presentation/state/view_state.dart';
-import '../../../common/presentation/theme/app_assets.dart';
 import '../../../common/presentation/theme/app_colors.dart';
 import '../../../common/presentation/widgets/app_button.dart';
-import '../../../common/presentation/widgets/app_icon.dart';
 import '../../../common/presentation/widgets/app_snack.dart';
 import '../../core/constants/kids_assets.dart';
 import '../../core/constants/kids_styles.dart';
@@ -16,8 +14,6 @@ import '../providers/add_child_form_provider.dart';
 import '../providers/kids_provider.dart';
 import 'where_kids_go_screen.dart' show WhereKidsGoArgs;
 import '../widgets/dashed_add_button.dart';
-import '../widgets/icon_disc.dart';
-import '../widgets/kid_avatar.dart';
 import '../widgets/kid_field_tile.dart';
 import '../widgets/kid_summary_card.dart';
 import '../widgets/kids_scaffold.dart';
@@ -119,18 +115,6 @@ class _AddChildViewState extends State<_AddChildView> {
     }
   }
 
-  /// "School" on an existing child: the school picker for this child, then
-  /// back here with the kids reloaded.
-  Future<void> _changeSchool(String childId) async {
-    final kids = context.read<KidsProvider>();
-    kids.selectChild(childId);
-    await Navigator.of(context).pushNamed(
-      AppRoutes.whereKidsGo,
-      arguments: const WhereKidsGoArgs(returnOnSave: true),
-    );
-    if (mounted) await kids.load(force: true);
-  }
-
   /// Saves the open form, opens a blank one and puts the cursor in its
   /// First name (which scrolls the new form into view).
   Future<void> _addAnother(AddChildFormProvider form) async {
@@ -180,21 +164,24 @@ class _AddChildViewState extends State<_AddChildView> {
       );
     }
 
+    // Adding a new member: only the blank form (saved members aren't
+    // listed above it). Otherwise the saved members, one of them open to
+    // edit.
+    final addingNew = form.isOpen && form.editingId == null;
     final cards = <Widget>[
-      for (final child in kids.children)
-        if (form.editingId == child.id)
-          _ChildFormCard(
-            form: form,
-            onSave: () => _run(form.save, next: true),
-            schoolName: child.schoolName,
-            onChangeSchool: () => _changeSchool(child.id),
-          )
-        else
-          KidSummaryCard(
-            child: child,
-            onEdit: () => _run(() => form.switchTo(child.id)),
-          ),
-      if (form.isOpen && form.editingId == null)
+      if (!addingNew)
+        for (final child in kids.children)
+          if (form.editingId == child.id)
+            _ChildFormCard(
+              form: form,
+              onSave: () => _run(form.save, next: true),
+            )
+          else
+            KidSummaryCard(
+              child: child,
+              onEdit: () => _run(() => form.switchTo(child.id)),
+            ),
+      if (addingNew)
         _ChildFormCard(form: form, onSave: () => _run(form.save, next: true)),
     ];
 
@@ -232,19 +219,10 @@ class _AddChildViewState extends State<_AddChildView> {
 
 /// "Kid · Emma" expanded card with the form fields.
 class _ChildFormCard extends StatelessWidget {
-  const _ChildFormCard({
-    required this.form,
-    required this.onSave,
-    this.schoolName,
-    this.onChangeSchool,
-  });
+  const _ChildFormCard({required this.form, required this.onSave});
 
   final AddChildFormProvider form;
   final VoidCallback onSave;
-
-  /// Editing an existing child: their school, changed on the school picker.
-  final String? schoolName;
-  final VoidCallback? onChangeSchool;
 
   Future<void> _pickDateOfBirth(BuildContext context) async {
     final now = DateTime.now();
@@ -267,15 +245,15 @@ class _ChildFormCard extends StatelessWidget {
     if (picked != null) form.setDateOfBirth(picked);
   }
 
-  Future<void> _pickGrade(BuildContext context) async {
-    final grade = await showKidsOptionPicker<String>(
+  Future<void> _pickGender(BuildContext context) async {
+    final gender = await showKidsOptionPicker<String>(
       context,
-      title: 'Grade',
-      options: AddChildFormProvider.grades,
-      selected: form.grade,
-      labelOf: (grade) => grade,
+      title: 'Gender',
+      options: AddChildFormProvider.genders.keys.toList(),
+      selected: form.gender,
+      labelOf: (g) => AddChildFormProvider.genders[g] ?? g,
     );
-    if (grade != null) form.setGrade(grade);
+    if (gender != null) form.setGender(gender);
   }
 
   /// "8 years" — the Figma "Age" value; the picker still asks for the date
@@ -287,7 +265,6 @@ class _ChildFormCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = form.firstName.text.trim();
     final dob = form.dateOfBirth;
 
     return Container(
@@ -300,16 +277,6 @@ class _ChildFormCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: 10,
         children: [
-          _PhotoRow(
-            preview: Child(
-              id: form.editingId ?? 'new',
-              firstName: name,
-              lastName: form.lastName.text,
-              photo: form.photo,
-            ),
-            showBadge: form.isEditing,
-            onPick: (fromCamera) => form.pickPhoto(fromCamera: fromCamera),
-          ),
           KidFieldTile(
             icon: KidsAssets.person,
             label: 'First Name',
@@ -327,56 +294,37 @@ class _ChildFormCard extends StatelessWidget {
           ),
           LayoutBuilder(
             builder: (context, constraints) {
-              final dobTile = KidFieldTile(
+              final ageTile = KidFieldTile(
                 icon: KidsAssets.cake,
                 label: 'Age',
                 hint: 'Select',
                 value: dob == null ? null : _ageLabel(dob),
                 onTap: () => _pickDateOfBirth(context),
               );
-              final gradeTile = KidFieldTile(
-                icon: KidsAssets.grad20,
-                label: 'Grade',
+              final genderTile = KidFieldTile(
+                icon: KidsAssets.person,
+                label: 'Gender',
                 hint: 'Select',
-                value: form.grade,
-                onTap: () => _pickGrade(context),
+                value: AddChildFormProvider.genders[form.gender],
+                onTap: () => _pickGender(context),
               );
-              // Side by side as in Figma (each tile keeps ≥64px for the
-              // value); stacked on 320pt phones.
+              // Side by side; stacked on 320pt phones.
               if (constraints.maxWidth < 318) {
-                return Column(spacing: 10, children: [dobTile, gradeTile]);
+                return Column(spacing: 10, children: [ageTile, genderTile]);
               }
               return Row(
                 spacing: 10,
                 children: [
-                  Expanded(child: dobTile),
-                  Expanded(child: gradeTile),
+                  Expanded(child: ageTile),
+                  Expanded(child: genderTile),
                 ],
               );
             },
           ),
-          if (form.ageGradeError case final error?)
-            Text(
-              error,
-              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
-            ),
-          if (onChangeSchool != null)
-            KidFieldTile(
-              icon: KidsAssets.grad20,
-              label: 'School',
-              hint: 'Add school',
-              value: schoolName,
-              onTap: onChangeSchool,
-            ),
-          _SeatNeedPicker(
-            value: form.seatNeed,
-            recommended: form.recommendedSeat,
-            onChanged: form.setSeatNeed,
-          ),
           KidFieldTile(
             icon: KidsAssets.medical,
-            label: 'Medical notes (optional)',
-            hint: 'Allergies, medication…',
+            label: 'Notes (optional)',
+            hint: 'Anything a driver should know',
             controller: form.medicalNotes,
             textInputAction: TextInputAction.done,
           ),
@@ -394,179 +342,6 @@ class _ChildFormCard extends StatelessWidget {
             onPressed: form.canSave ? onSave : null,
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// "Seat needed": Car seat / Booster / Seat belt, preset from the age,
-/// with what each means and a hint when the choice doesn't match the age.
-class _SeatNeedPicker extends StatelessWidget {
-  const _SeatNeedPicker({
-    required this.value,
-    required this.recommended,
-    required this.onChanged,
-  });
-
-  final SeatNeed value;
-  final SeatNeed? recommended;
-  final ValueChanged<SeatNeed> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final hint = recommended;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        color: AppColors.screen,
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: 8,
-        children: [
-          Row(
-            spacing: 10,
-            children: [
-              const IconDisc(
-                asset: AppAssets.iconKid,
-                size: 40,
-                iconSize: 20,
-                color: AppColors.screen,
-              ),
-              Text('Seat needed', style: KidsTextStyles.labelL),
-            ],
-          ),
-          Row(
-            spacing: 8,
-            children: [
-              for (final seat in SeatNeed.values)
-                Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: seat == value,
-                    label: seat.label,
-                    excludeSemantics: true,
-                    child: Material(
-                      color: seat == value ? AppColors.ink : AppColors.surface,
-                      shape: const StadiumBorder(),
-                      child: InkWell(
-                        customBorder: const StadiumBorder(),
-                        onTap: () => onChanged(seat),
-                        child: SizedBox(
-                          height: 44,
-                          child: Center(
-                            child: Text(
-                              seat.label,
-                              style: KidsTextStyles.labelL.copyWith(
-                                color: seat == value
-                                    ? AppColors.textOnDark
-                                    : AppColors.textPrimary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          Text(value.helper, style: KidsTextStyles.captionM),
-          if (hint != null && hint != value)
-            Text(
-              'For this age we recommend: ${hint.label}.',
-              style: KidsTextStyles.captionM.copyWith(color: AppColors.danger),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PhotoRow extends StatelessWidget {
-  const _PhotoRow({
-    required this.preview,
-    required this.showBadge,
-    required this.onPick,
-  });
-
-  final Child preview;
-  final bool showBadge;
-  final Future<String?> Function(bool fromCamera) onPick;
-
-  Future<void> _onTap(BuildContext context) async {
-    final fromCamera = await showPhotoSourceSheet(context);
-    if (fromCamera == null) return;
-    final error = await onPick(fromCamera);
-    if (error != null && context.mounted) showAppSnack(context, error);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasPhoto = preview.photo != null;
-    final name = preview.firstName.isEmpty ? 'your member' : preview.firstName;
-
-    return Semantics(
-      button: true,
-      label: 'Add a photo',
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _onTap(context),
-        child: Row(
-          spacing: 14,
-          children: [
-            SizedBox.square(
-              dimension: 72,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  if (hasPhoto)
-                    KidAvatar(child: preview, size: 72)
-                  else
-                    Container(
-                      width: 72,
-                      height: 72,
-                      alignment: Alignment.center,
-                      decoration: const BoxDecoration(
-                        color: AppColors.screen,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const AppIcon(AppAssets.iconCamera),
-                    ),
-                  if (showBadge && hasPhoto)
-                    Positioned(
-                      left: 50,
-                      top: 46,
-                      child: Container(
-                        width: 21,
-                        height: 25,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AppColors.screen,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const AppIcon(KidsAssets.camera18, size: 18),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: 2,
-                children: [
-                  Text('Add a photo', style: KidsTextStyles.labelL),
-                  Text(
-                    'Optional · helps the Ride Partner recognize $name',
-                    style: KidsTextStyles.captionM,
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

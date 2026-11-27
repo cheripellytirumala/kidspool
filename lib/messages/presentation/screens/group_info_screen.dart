@@ -59,7 +59,7 @@ class _GroupInfoView extends StatelessWidget {
     if (!context.mounted) return;
     showAppSnack(
       context,
-      error ?? (added == 1 ? '1 parent added.' : '$added parents added.'),
+      error ?? (added == 1 ? '1 member added.' : '$added members added.'),
     );
   }
 
@@ -164,10 +164,10 @@ class _GroupInfoView extends StatelessWidget {
                       const SizedBox(height: 16),
                       GroupActionRow(
                         icon: const AppIcon(AppAssets.iconPlus, size: 22),
-                        title: 'Add parents',
+                        title: 'Add members',
                         subtitle: group.isFull
                             ? _fullMessage(group)
-                            : 'Parents from your members’ schools',
+                            : 'Members going to the same places',
                         enabled: !group.isFull,
                         onTap: () => _addParents(context),
                       ),

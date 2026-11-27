@@ -8,6 +8,7 @@ class Child {
     this.age,
     this.grade,
     this.medicalNotes = '',
+    this.gender,
     this.photo,
     this.schoolId,
     this.schoolName,
@@ -27,6 +28,9 @@ class Child {
 
   /// `health_notes`.
   final String medicalNotes;
+
+  /// `male` / `female` / `other`, or null when not set.
+  final String? gender;
 
   /// Image source: a signed `https://` URL, a local file path, or a bundled
   /// asset path. `null` = show initials.
@@ -79,6 +83,7 @@ class ChildDraft {
     required this.grade,
     this.schoolId,
     required this.medicalNotes,
+    this.gender,
     required this.needsBooster,
     this.needsCarSeat = false,
     this.newPhotoPath,
@@ -95,6 +100,9 @@ class ChildDraft {
   /// Chosen later on F08/F09 (`update-kid`); `null` keeps the current one.
   final String? schoolId;
   final String medicalNotes;
+
+  /// `male` / `female` / `other`; null leaves it unset.
+  final String? gender;
   final bool needsBooster;
   final bool needsCarSeat;
 

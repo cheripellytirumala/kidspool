@@ -10,6 +10,7 @@ import '../../domain/usecases/offer_ride.dart';
 import '../../domain/usecases/pass_ride_request.dart';
 import '../../domain/usecases/respond_to_offer.dart';
 import '../../domain/usecases/withdraw_offer.dart';
+import 'messages_provider.dart';
 
 /// A7a · a ride request. The Ride Partner's view (offer / pass / withdraw)
 /// or, for the user's own request, its offers (approve / decline) and
@@ -103,6 +104,10 @@ class RideRequestDetailProvider extends ChangeNotifier {
   Future<void> retry() => open(_requestId, isMine: _isMine);
 
   /// "Yes, I can help". Returns (outcome, error).
+  /// The last "I can help" found the ride booked elsewhere or closed.
+  bool get gone => _gone;
+  bool _gone = false;
+
   Future<(OfferOutcome?, String?)> offer() async {
     final r = _request;
     if (r == null || _busy) return (null, null);
@@ -115,6 +120,7 @@ class RideRequestDetailProvider extends ChangeNotifier {
         status: outcome.confirmed ? RideRequestStatus.confirmed : null,
       );
     }
+    _gone = MessagesProvider.isRideGone(result.getLeft().toNullable());
     _setBusy(false);
     return (outcome, result.getLeft().toNullable()?.message);
   }

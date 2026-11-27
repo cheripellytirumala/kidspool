@@ -106,7 +106,7 @@ class RideChatProvider extends ChangeNotifier {
         (person?.available ?? false) || (a?.otherAvailable ?? false);
     if (person != null) return person.withAvailable(available);
     final name = a?.otherName?.trim();
-    final first = name == null || name.isEmpty ? 'Parent' : name;
+    final first = name == null || name.isEmpty ? 'Member' : name;
     return ChatPerson(
       firstName: first,
       initials: a?.otherInitials ?? MessagesFormat.initials(first),

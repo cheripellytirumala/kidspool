@@ -102,7 +102,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
     if (_provider.needsPickupPin && t != null) {
       pin = await RideSafetyDialogs.askPickupPin(
         context,
-        parentName: t.parent?.firstName ?? 'the parent',
+        parentName: t.parent?.firstName ?? 'the member',
         // Until the server requires it, a parent on an older app (no PIN
         // shown) doesn't block the pick-up.
         allowSkip: !t.pinRequired,
@@ -121,7 +121,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
       context,
       isDriver: t.isDriver,
       otherName:
-          other?.firstName ?? (t.isDriver ? 'The parent' : 'Your Ride Partner'),
+          other?.firstName ?? (t.isDriver ? 'The member' : 'Your Ride Partner'),
     );
     if (reason == null || !mounted) return;
     final error = await _provider.cancelRide(
@@ -137,7 +137,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
       context,
       otherName:
           other?.firstName ??
-          (tracking.isDriver ? 'the parent' : 'your Ride Partner'),
+          (tracking.isDriver ? 'the member' : 'your Ride Partner'),
     );
     if (!send || !mounted) return;
     final error = await _provider.sendSos();
@@ -209,7 +209,7 @@ class _LiveTrackingViewState extends State<_LiveTrackingView>
     final other = _otherPerson(tracking);
     final otherName =
         other?.firstName ??
-        (tracking.isDriver ? 'the parent' : 'your Ride Partner');
+        (tracking.isDriver ? 'the member' : 'your Ride Partner');
     void onMessage() => RideContact.message(context, tracking);
     void onCall() =>
         RideContact.call(context, name: otherName, phone: other?.phone);

@@ -200,7 +200,7 @@ async function buildCopy(
   const kids = kidNames.length > 0 ? kidNames.join(" & ") : "your kids";
 
   const schoolName = (schoolRes.data as Row | null)?.name;
-  const school = typeof schoolName === "string" && schoolName.trim() ? schoolName : "school";
+  const school = typeof schoolName === "string" && schoolName.trim() ? schoolName : "the drop-off";
 
   const driver = driverRes.data as Row | null;
   const firstName = typeof driver?.first_name === "string" ? driver.first_name.trim() : "";

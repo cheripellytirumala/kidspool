@@ -160,7 +160,7 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
           (e.statusCode == 404 && e.code == null);
       if (!notDeployed) rethrow;
       throw ServerException(
-        'School search from Google isn’t set up on the server yet.',
+        'Place search from Google isn’t set up on the server yet.',
         e.statusCode,
         schoolFromPlaceMissing,
         e.data,
@@ -179,7 +179,7 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
         place.city,
       ].map((p) => p.trim()).where((p) => p.isNotEmpty).join(', ');
       name = [name, where].where((p) => p.isNotEmpty).join(' · ');
-      if (name.length < 2) name = 'School';
+      if (name.length < 2) name = 'Place';
     }
     if (name.length > 120) name = '${name.substring(0, 119).trimRight()}…';
     return name;
@@ -231,6 +231,7 @@ class KidsRemoteDataSourceImpl implements KidsRemoteDataSource {
     // Omitted when not chosen yet (update-kid would reject an empty id).
     if (d.schoolId != null) 'schoolId': d.schoolId,
     'healthNotes': d.medicalNotes.trim(),
+    'gender': d.gender ?? '',
     'needsBooster': d.needsBooster.toString(),
     'needsCarSeat': d.needsCarSeat.toString(),
   };

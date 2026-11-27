@@ -231,7 +231,7 @@ void main() {
         'myOffer': {'offerId': 'o1', 'status': 'withdrawn'},
       })!;
       expect(r.offered, isFalse);
-      expect(r.parent?.firstName, 'A parent');
+      expect(r.parent?.firstName, 'A member');
     });
   });
 

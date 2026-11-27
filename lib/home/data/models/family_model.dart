@@ -18,7 +18,7 @@ abstract final class FamilyModel {
     final distance = json['distanceMiles'];
     return Family(
       id: id,
-      parentName: name.isEmpty ? 'A parent' : name,
+      parentName: name.isEmpty ? 'A member' : name,
       initials: initials.isNotEmpty
           ? initials.toUpperCase()
           : _initials(first, lastInitial),

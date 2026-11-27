@@ -158,9 +158,9 @@ class FamiliesNearYouProvider extends ChangeNotifier {
               .firstOrNull;
     final hi = name.isEmpty ? 'Hi!' : 'Hi! I’m $name.';
     final school = placeName == null
-        ? 'Our members go to the same school.'
+        ? 'Our members go to the same place.'
         : 'Our members both go to $placeName.';
-    return '$hi $school Would you like to share school rides? '
+    return '$hi $school Would you like to share rides? '
         'We could take turns driving.';
   }
 
@@ -341,7 +341,7 @@ class FamiliesNearYouProvider extends ChangeNotifier {
         KidPlace(
           id: id,
           name: names[id]!.isEmpty
-              ? (activityIds.contains(id) ? 'Activity' : 'School')
+              ? (activityIds.contains(id) ? 'Activity' : 'Place')
               : names[id]!,
           kind: activityIds.contains(id)
               ? KidPlaceKind.activity
@@ -367,9 +367,9 @@ class FamiliesNearYouProvider extends ChangeNotifier {
   String? get emptyMessage => switch (emptyState) {
     FamiliesEmptyState.none => null,
     FamiliesEmptyState.noSchool =>
-      'Add your members’ school to see families going to the same places.',
+      'Add your members’ place to see families going to the same places.',
     FamiliesEmptyState.noFamilies =>
-      'No families from your members’ schools nearby yet.',
+      'No families from your members’ places nearby yet.',
     FamiliesEmptyState.unavailable =>
       'Families near you isn’t set up on the server yet.',
     FamiliesEmptyState.error =>

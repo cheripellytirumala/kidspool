@@ -28,8 +28,7 @@ abstract final class NotificationsApiConstants {
   /// `send-ride-push` Edge Function sends this `channel_id`).
   static const String rideAlertsChannelId = 'ride_alerts';
   static const String rideAlertsChannelName = 'Ride alerts';
-  static const String rideAlertsChannelDescription =
-      'Ride started and arrived at school';
+  static const String rideAlertsChannelDescription = 'Ride started and arrived';
 
   /// SharedPreferences key: newest notification time the user has seen.
   /// Shared with the Home bell dot.

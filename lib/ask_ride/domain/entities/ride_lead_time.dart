@@ -1,9 +1,10 @@
 import 'ride_time.dart';
 
-/// Rides must be asked for at least [minimum] before the pick-up, counted
-/// from the phone's current time, so families have time to answer.
+/// A ride can be asked for at any time, as long as the pick-up hasn't
+/// already passed (counted from the phone's current time; the server
+/// checks the same).
 abstract final class RideLeadTime {
-  static const Duration minimum = Duration(hours: 2);
+  static const Duration minimum = Duration.zero;
 
   /// The first pick-up allowed if the ride were asked for at [now].
   static DateTime earliest(DateTime now) => now.add(minimum);
@@ -12,7 +13,7 @@ abstract final class RideLeadTime {
   static DateTime pickupAt(DateTime date, RideTime time) =>
       DateTime(date.year, date.month, date.day, time.hour, time.minute);
 
-  /// Whether a pick-up on [date] at [time] is less than 2 hours away.
+  /// Whether a pick-up on [date] at [time] has already passed.
   static bool isTooSoon(DateTime date, RideTime time, {DateTime? now}) =>
       pickupAt(date, time).isBefore(earliest(now ?? DateTime.now()));
 
@@ -33,7 +34,7 @@ abstract final class RideLeadTime {
     );
     final at = RideTime(first.hour, first.minute).format();
     return sameDay && first.day == current.day
-        ? 'Ask at least 2 hours ahead. Today, pick a time after $at.'
-        : 'Ask at least 2 hours ahead. Pick a later day or time.';
+        ? 'That time has already passed. Today, pick a time after $at.'
+        : 'That time has already passed. Pick a later day or time.';
   }
 }

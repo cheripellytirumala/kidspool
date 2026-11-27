@@ -49,8 +49,8 @@ class GroupMemberTile extends StatelessWidget {
                 ),
                 Text(
                   member.kids.isEmpty
-                      ? 'Parent'
-                      : 'Parent of ${MessagesFormat.names(member.kids)}',
+                      ? 'Member'
+                      : 'Family of ${MessagesFormat.names(member.kids)}',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: MessagesStyles.meta,
@@ -199,7 +199,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Add parents', style: AppTextStyles.headingH3),
+              Text('Add members', style: AppTextStyles.headingH3),
               const SizedBox(height: 4),
               Text(
                 slots == 1
@@ -214,7 +214,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
                 label: _picked.isEmpty
                     ? 'Add'
                     : 'Add ${_picked.length} '
-                          '${_picked.length == 1 ? 'parent' : 'parents'}',
+                          '${_picked.length == 1 ? 'member' : 'members'}',
                 variant: AppButtonVariant.dark,
                 onPressed: _picked.isEmpty
                     ? null
@@ -243,7 +243,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: MessagesStateView(
-          title: 'We couldn’t load parents',
+          title: 'We couldn’t load members',
           message: provider.candidatesError ?? 'Please try again.',
           onRetry: provider.loadCandidates,
         ),
@@ -253,7 +253,7 @@ class _AddParentsSheetState extends State<AddParentsSheet> {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 12),
         child: Text(
-          'No more parents from your members’ schools to add right now.',
+          'No more members going to the same places to add right now.',
           style: AppTextStyles.body,
         ),
       );
@@ -327,7 +327,7 @@ class _CandidateRow extends StatelessWidget {
                           ),
                           if (candidate.kids.isNotEmpty)
                             Text(
-                              'Parent of '
+                              'Family of '
                               '${MessagesFormat.names(candidate.kids)}',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

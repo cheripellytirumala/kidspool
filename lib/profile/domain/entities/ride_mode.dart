@@ -16,7 +16,7 @@ enum RideMode {
   };
 
   String get description => switch (this) {
-    seeker => 'Ask families at your members’ schools and clubs',
+    seeker => 'Ask families at your members’ places and clubs',
     both => 'Ask for rides and help other families',
   };
 }

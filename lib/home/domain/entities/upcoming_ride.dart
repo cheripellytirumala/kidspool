@@ -21,7 +21,7 @@ enum RideStatus {
   };
 
   String get label => switch (this) {
-    open => 'Asking parents',
+    open => 'Asking members',
     confirmed => 'Driver confirmed',
     inProgress => 'On the way',
     completed => 'Done',

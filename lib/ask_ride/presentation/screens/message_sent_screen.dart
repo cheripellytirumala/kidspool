@@ -36,7 +36,7 @@ class _MessageSentView extends StatelessWidget {
     (
       icon: AskRideAssets.send,
       title: 'They get your message now',
-      subtitle: 'Each parent sees it in their Requests',
+      subtitle: 'Each member sees it in their Requests',
     ),
     (
       icon: AskRideAssets.bell,
@@ -57,9 +57,9 @@ class _MessageSentView extends StatelessWidget {
         (args is int ? args : null) ??
         context.select<AskRideProvider, int?>((p) => p.sentToCount);
     final title = switch (count) {
-      null => 'Your message was sent to all selected parents',
-      1 => 'Your message was sent to 1 parent',
-      _ => 'Your message was sent to $count parents',
+      null => 'Your message was sent to all selected members',
+      1 => 'Your message was sent to 1 member',
+      _ => 'Your message was sent to $count members',
     };
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

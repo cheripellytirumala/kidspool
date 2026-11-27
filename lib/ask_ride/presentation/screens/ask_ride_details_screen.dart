@@ -431,7 +431,7 @@ class _NoSchoolCard extends StatelessWidget {
         children: [
           Text(
             same == null
-                ? '$kidName has no school yet. Add it to ask for a ride.'
+                ? '$kidName has no place yet. Add it to ask for a ride.'
                 : 'Does $kidName go to ${same.name} too?',
             style: AppTextStyles.label,
           ),
@@ -447,7 +447,7 @@ class _NoSchoolCard extends StatelessWidget {
           TextButton(
             onPressed: busy ? null : onOtherSchool,
             child: Text(
-              same == null ? 'Add $kidName’s school' : 'No, another school',
+              same == null ? 'Add $kidName’s place' : 'No, another place',
               style: AppTextStyles.label,
             ),
           ),

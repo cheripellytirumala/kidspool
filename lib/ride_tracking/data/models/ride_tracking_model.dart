@@ -47,7 +47,7 @@ abstract final class RideTrackingModel {
       completedAt: _time(json['completedAt']),
       pickup: RideStop(label: pickupLabel, point: _point(address)),
       school: RideStop(
-        label: school.readString('name') ?? 'School',
+        label: school.readString('name') ?? 'Place',
         point: _point(school),
       ),
       dropoff: _dropoff(dropoff),
@@ -72,7 +72,7 @@ abstract final class RideTrackingModel {
             ),
       ],
       driver: _person(_map(json['driver']), fallback: 'Ride Partner'),
-      parent: _person(_map(json['parent']), fallback: 'Parent'),
+      parent: _person(_map(json['parent']), fallback: 'Member'),
       path: [
         for (final p in json['path'] as List? ?? const [])
           if (p is List && p.length == 2 && p[0] is num && p[1] is num)

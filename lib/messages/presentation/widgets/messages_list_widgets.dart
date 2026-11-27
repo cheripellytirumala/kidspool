@@ -349,7 +349,7 @@ class IncomingRequestCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parent = request.parent;
-    final name = parent?.firstName ?? 'A parent';
+    final name = parent?.firstName ?? 'A member';
     final meta = [
       MessagesFormat.names(request.kidNames, fallback: 'Members'),
       if (request.distanceMiles != null)

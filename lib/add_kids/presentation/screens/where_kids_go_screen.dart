@@ -3,9 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../../common/core/di/injection_container.dart';
 import '../../../common/core/router/app_routes.dart';
-import '../../../common/presentation/theme/app_colors.dart';
-import '../../../common/presentation/theme/app_text_styles.dart';
-import '../../domain/entities/child.dart';
 import '../../../common/presentation/widgets/app_button.dart';
 import '../../../common/presentation/widgets/app_loader.dart';
 import '../providers/kids_provider.dart';
@@ -59,47 +56,28 @@ class _WhereKidsGoView extends StatelessWidget {
     final kids = context.watch<KidsProvider>();
     final args = ModalRoute.settingsOf(context)?.arguments;
     final returnOnSave = args is WhereKidsGoArgs && args.returnOnSave;
-    // For one kid: Save once that kid has a school (rides go to a
-    // school; activities are only kept on this phone).
-    final active = kids.activeChild;
-    final needsSchool =
-        returnOnSave && active != null && active.schoolId == null;
-    // Every child needs a school (an activity alone isn't enough).
-    final hasPlaces = returnOnSave && active != null
-        ? !needsSchool
-        : kids.allKidsHaveSchool;
-    final missing = returnOnSave ? const <Child>[] : kids.kidsWithoutSchool;
+    // Locations are optional: with none yet the button skips this step
+    // (they can be added later in Profile → Locations).
+    final hasPlaces = kids.anyPlaces;
+    void next() => returnOnSave
+        ? Navigator.of(context).pop(true)
+        : Navigator.of(context).pushNamed(AppRoutes.allSet);
 
     return AppLoadingOverlay(
       isLoading: kids.isLoading,
       child: KidsScaffold(
-        title: 'Where do your members go?',
-        subtitle: kids.children.length > 1
-            ? 'Pick a member, then add their school and activities.'
-            : 'Add ${kids.children.firstOrNull?.firstName ?? 'your member'}’s '
-                  'school and activities.',
+        title: 'Locations',
+        subtitle:
+            'Add the places your members go: a class, an activity or any '
+            'address. You can skip this and add them later in Profile.',
         titleGap: 4,
         bottom: AppButton(
-          label: hasPlaces ? 'Save' : 'Continue',
-          onPressed: !hasPlaces
-              ? null
-              : returnOnSave
-              ? () => Navigator.of(context).pop(true)
-              : () => Navigator.of(context).pushNamed(AppRoutes.allSet),
+          label: hasPlaces
+              ? (returnOnSave ? 'Save' : 'Continue')
+              : 'Skip for now',
+          onPressed: next,
         ),
         children: [
-          if (missing.isNotEmpty && kids.anyPlaces)
-            Text(
-              'Add a school for ${missing.map((k) => k.firstName).join(', ')} '
-              'to continue — every member needs a school.',
-              style: AppTextStyles.body.copyWith(color: AppColors.danger),
-            ),
-          if (needsSchool)
-            Text(
-              'Add ${active.firstName}’s school (School tab) to ask for '
-              'rides — an activity alone isn’t enough.',
-              style: AppTextStyles.body,
-            ),
           KidsPlacesBoard(
             kids: kids,
             showDone: true,

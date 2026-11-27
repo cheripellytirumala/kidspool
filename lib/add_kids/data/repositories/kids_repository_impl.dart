@@ -111,6 +111,7 @@ class KidsRepositoryImpl implements KidsRepository {
       age: json.readInt('age'),
       grade: json.readString('grade'),
       medicalNotes: json.readString('healthNotes') ?? '',
+      gender: json.readString('gender'),
       photo: photoPath == null ? null : urls[photoPath],
       schoolId: schoolMap?.readString('id'),
       schoolName: schoolMap?.readString('name'),

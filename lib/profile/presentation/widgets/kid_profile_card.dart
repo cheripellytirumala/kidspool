@@ -162,7 +162,7 @@ class KidProfileCard extends StatelessWidget {
           ),
           if (school != null && school.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _PlaceRow(name: school, detail: 'School'),
+            _PlaceRow(name: school, detail: 'Place'),
           ],
           const SizedBox(height: 8),
           // Schools & activities have their own Profile section.

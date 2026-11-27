@@ -42,7 +42,7 @@ class RideStartView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = tracking;
-    final parentName = t.parent?.firstName ?? 'the parent';
+    final parentName = t.parent?.firstName ?? 'the member';
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: AppSystemUi.dark,
       child: Scaffold(

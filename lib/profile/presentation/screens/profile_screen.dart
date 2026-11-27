@@ -206,7 +206,7 @@ class _ProfileView extends StatelessWidget {
           subtitle: address.isDefault
               ? (address.city.isEmpty
                     ? 'Home point · used for every distance'
-                    : 'Other parents only see “${address.city}”')
+                    : 'Other members only see “${address.city}”')
               : address.region,
           trailing: address.isDefault
               ? const ProfilePill(label: 'Default')

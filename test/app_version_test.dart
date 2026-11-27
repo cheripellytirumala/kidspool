@@ -181,7 +181,7 @@ void main() {
       final failure = await failureFor(
         _json({'error': 'missing_field', 'field': 'schoolIdCard'}, 400),
       );
-      expect(failure.message, 'Please add the school ID card photo.');
+      expect(failure.message, 'Please add the ID card photo.');
     });
   });
 

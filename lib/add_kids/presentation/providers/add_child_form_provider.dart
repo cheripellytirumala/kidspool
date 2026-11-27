@@ -6,14 +6,13 @@ import '../../domain/entities/child.dart';
 import '../../domain/entities/place.dart';
 import '../../../ask_ride/domain/entities/ask_ride_kid.dart';
 import 'kids_provider.dart';
-import '../../domain/entities/grade_age.dart';
 
 /// Form state of F06 · Add a child. One instance per screen.
 ///
 /// The form card is either closed, adding a new child ([editingId] == null)
 /// or editing an existing one. Saving calls `add-kid` / `update-kid` with the
-/// Easy-flow F06 fields (name, age, grade, medical notes, photo). The school
-/// is chosen later on "Where do your kids go?" (F08/F09).
+/// fields first name, last name, age, gender and notes. The seat a member
+/// needs follows their age; the place is chosen later (Locations).
 class AddChildFormProvider extends ChangeNotifier {
   AddChildFormProvider(this._kids, this._photos) {
     for (final controller in [firstName, lastName, medicalNotes]) {
@@ -32,6 +31,7 @@ class AddChildFormProvider extends ChangeNotifier {
   String? _editingId;
   DateTime? _dateOfBirth;
   String? _grade;
+  String? _gender;
   Place? _school;
   bool _needsBooster = false;
   bool _needsCarSeat = false;
@@ -72,6 +72,15 @@ class AddChildFormProvider extends ChangeNotifier {
   String? get editingId => _isOpen ? _editingId : null;
   DateTime? get dateOfBirth => _dateOfBirth;
   String? get grade => _grade;
+
+  /// `male` / `female` / `other`, or null.
+  String? get gender => _gender;
+
+  static const Map<String, String> genders = {
+    'male': 'Male',
+    'female': 'Female',
+    'other': 'Other',
+  };
   Place? get school => _school;
   bool get needsBooster => _needsBooster;
   bool get needsCarSeat => _needsCarSeat;
@@ -110,18 +119,7 @@ class AddChildFormProvider extends ChangeNotifier {
       _isOpen &&
       !isSaving &&
       firstName.text.trim().isNotEmpty &&
-      _dateOfBirth != null &&
-      _grade != null &&
-      ageGradeError == null;
-
-  /// Set when the age and the grade don't go together (e.g. 16 years and
-  /// Grade 2); shown under them and blocks Save.
-  String? get ageGradeError {
-    final dob = _dateOfBirth;
-    final grade = _grade;
-    if (dob == null || grade == null) return null;
-    return GradeAge.mismatch(age: Child.ageOn(dob), grade: grade);
-  }
+      _dateOfBirth != null;
 
   /// Continue is available once there is at least one kid and no open form.
   bool get canContinue => !_isOpen && _kids.hasChildren;
@@ -181,6 +179,7 @@ class AddChildFormProvider extends ChangeNotifier {
       Child.ageOn(dateOfBirth, today) < AskRideKid.boosterUntilAge;
 
   void setGrade(String value) => _change(() => _grade = value);
+  void setGender(String value) => _change(() => _gender = value);
   void setSchool(Place value) => _change(() => _school = value);
   void setNeedsBooster(bool value) => _change(() {
     _needsBooster = value;
@@ -227,7 +226,6 @@ class AddChildFormProvider extends ChangeNotifier {
   /// Saves the open form on the server. Returns an error message, or `null`
   /// on success.
   Future<String?> save() async {
-    if (ageGradeError case final error?) return error;
     if (!canSave) return 'Please fill in the required fields.';
     final id = await _kids.saveChild(
       ChildDraft(
@@ -239,6 +237,7 @@ class AddChildFormProvider extends ChangeNotifier {
         // Editing keeps the school set on F09; a new kid has none yet.
         schoolId: _school?.id,
         medicalNotes: medicalNotes.text,
+        gender: _gender,
         needsBooster: _needsBooster,
         needsCarSeat: _needsCarSeat,
         newPhotoPath: _newPhotoPath,
@@ -290,7 +289,9 @@ class AddChildFormProvider extends ChangeNotifier {
     medicalNotes.text = child?.medicalNotes ?? '';
     _filling = false;
     _dateOfBirth = child?.dateOfBirth;
+    // Grade is no longer asked; an existing member keeps theirs.
     _grade = child?.grade;
+    _gender = child?.gender;
     final schoolId = child?.schoolId;
     _school = schoolId == null ? null : _kids.placeById(schoolId);
     _needsBooster = child?.needsBooster ?? false;

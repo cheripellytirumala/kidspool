@@ -35,12 +35,23 @@ class LocationService {
 
   /// Current GPS position, reverse-geocoded into an address.
   Future<ResolvedAddress> currentAddress() async {
-    if (!await Geolocator.isLocationServiceEnabled()) {
-      throw const DeviceException('Turn on Location Services to use this.');
-    }
-    var permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
+    final LocationPermission permission;
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        throw const DeviceException('Turn on Location Services to use this.');
+      }
+      var asked = await Geolocator.checkPermission();
+      if (asked == LocationPermission.denied) {
+        asked = await Geolocator.requestPermission();
+      }
+      permission = asked;
+    } on DeviceException {
+      rethrow;
+    } on Exception catch (_) {
+      // e.g. a permission prompt already open, or a platform error.
+      throw const DeviceException(
+        'We couldn’t get your location. Type your address instead.',
+      );
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {

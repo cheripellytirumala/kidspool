@@ -418,14 +418,14 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
   }
 
   static const Map<String, String> _helpErrors = {
-    'already_taken': 'Another parent already offered to drive this ride.',
+    'already_taken': 'This ride is already booked with another driver.',
     'request_not_open': 'This ride isn’t open any more.',
     'not_eligible': 'You live too far from this pick-up to drive it.',
     'driver_busy': 'You’re already driving another ride around then.',
     'duplicate_request':
-        'This parent already has a ride request around that time.',
+        'This member already has a ride request around that time.',
     'pickup_too_soon': 'This ride starts too soon to be offered now.',
-    'not_a_driver': 'Only parents approved to drive can offer rides.',
+    'not_a_driver': 'Only members approved to drive can offer rides.',
   };
 
   static RideAsk? rideAskFromJson(Map<String, dynamic> map) {
@@ -523,7 +523,7 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
   Future<int> addGroupMembers(String groupId, List<String> memberIds) => _call(
     MessagesApiConstants.addRideGroupMembers,
     {'groupId': groupId, 'memberIds': memberIds},
-    'We couldn’t add these parents. Please try again.',
+    'We couldn’t add these members. Please try again.',
     (json) => json is Map
         ? (Map<String, dynamic>.from(json).readInt('added') ?? 0)
         : 0,
@@ -561,7 +561,7 @@ class MessagesRemoteDataSourceImpl implements MessagesRemoteDataSource {
   Future<List<RideGroupMember>> getGroupCandidates(String? groupId) => _call(
     MessagesApiConstants.getRideGroupCandidates,
     {'groupId': ?groupId},
-    'We couldn’t load parents to add.',
+    'We couldn’t load members to add.',
     (json) {
       if (json is! List) throw const ParsingException();
       return RideGroupModel.membersFromJson(json);

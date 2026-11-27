@@ -154,8 +154,7 @@ class LiveTrackingSheet extends StatelessWidget {
         DriverRideAction.start => 'Start ride',
         DriverRideAction.pickedUp =>
           'Picked up ${RideFormat.names(t.kidNames, fallback: 'the members')}',
-        DriverRideAction.complete =>
-          t.hasCustomDropoff ? 'Dropped off' : 'Dropped off at school',
+        DriverRideAction.complete => 'Dropped off',
       };
 }
 
@@ -392,9 +391,9 @@ class _PersonRow extends StatelessWidget {
     final t = tracking;
     // The parent sees their Ride Partner; the Ride Partner sees the parent.
     final person = t.isDriver ? t.parent : t.driver;
-    final name = person?.name ?? (t.isDriver ? 'Parent' : 'Ride Partner');
+    final name = person?.name ?? (t.isDriver ? 'Member' : 'Ride Partner');
     final subtitle = t.isDriver
-        ? 'Parent of ${RideFormat.names(t.kidNames, fallback: 'the members')}'
+        ? 'Family of ${RideFormat.names(t.kidNames, fallback: 'the members')}'
         : person?.vehicleLine ?? 'Ride Partner';
     return Padding(
       padding: const EdgeInsets.only(left: 4),

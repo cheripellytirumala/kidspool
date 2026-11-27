@@ -1,6 +1,7 @@
 // POST /functions/v1/update-kid   (multipart/form-data, login required)
 // Required: kidId. Send only the fields you want to change.
 // needsBooster=true/false changes the booster flag; needsCarSeat=true/false the car seat flag.
+// gender=male/female/other sets the gender (empty clears it).
 // To clear an optional field send it empty (lastName, grade, healthNotes,
 // emergencyContactName + emergencyContactPhone). removePhoto=true deletes the photo.
 // schoolIdCard (file) replaces the school ID card photo (it cannot be removed).
@@ -8,7 +9,8 @@ import { adminClient, corsHeaders, json } from "../_shared/otp.ts";
 import { getAuthUser } from "../_shared/auth.ts";
 import { readImage } from "../_shared/images.ts";
 import {
-  checkBool, checkContactName, checkDob, checkGrade, checkName, checkNotes, checkPhone, clean, isUuid, KID_PHOTO_BUCKET,
+  checkBool, checkContactName, checkDob, checkGender, checkGrade, checkName, checkNotes, checkPhone, clean, isUuid,
+  KID_PHOTO_BUCKET,
 } from "../_shared/kids.ts";
 
 Deno.serve(async (req) => {
@@ -65,6 +67,10 @@ Deno.serve(async (req) => {
     const { data: school } = await db.from("schools").select("is_active").eq("id", v).maybeSingle();
     if (!school || !school.is_active) return json(400, { error: "invalid_field", field: "schoolId" });
     updates.school_id = v;
+  }
+  if (has("gender")) {
+    const r = checkGender(clean(form.get("gender"))); if (r.error) return r.error;
+    updates.gender = r.value ?? null;
   }
   if (has("healthNotes")) {
     const v = clean(form.get("healthNotes")) || null;

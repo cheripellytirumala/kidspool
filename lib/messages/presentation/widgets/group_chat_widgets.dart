@@ -33,16 +33,21 @@ class GroupAvatar extends StatelessWidget {
   }
 }
 
-/// Group chat header: back, group avatar, name and "6 members", plus an
-/// info button. Tapping the name or the button opens the group info.
+/// Group chat header: back, group avatar, name and "6 members", an "Add
+/// members" button (or, without [onAdd], an info button) and ⋮. Tapping
+/// the name opens the group info.
 class GroupChatHeader extends StatelessWidget {
   const GroupChatHeader({
     super.key,
     required this.title,
     required this.subtitle,
     required this.onInfo,
+    this.onAdd,
     this.onMore,
   });
+
+  /// "Add members": shown in place of the info button when set.
+  final VoidCallback? onAdd;
 
   final String title;
   final String? subtitle;
@@ -95,7 +100,31 @@ class GroupChatHeader extends StatelessWidget {
               ),
             ),
           ),
-          if (onInfo != null) ...[
+          if (onAdd != null) ...[
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: 'Add members',
+              excludeSemantics: true,
+              child: Material(
+                color: AppColors.lime,
+                shape: const CircleBorder(),
+                child: InkWell(
+                  key: const ValueKey('group-add-members'),
+                  customBorder: const CircleBorder(),
+                  onTap: onAdd,
+                  child: const SizedBox.square(
+                    dimension: 44,
+                    child: Icon(
+                      Icons.person_add_alt_1_rounded,
+                      size: 22,
+                      color: AppColors.ink,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ] else if (onInfo != null) ...[
             const SizedBox(width: 8),
             Semantics(
               button: true,
@@ -399,7 +428,7 @@ class RideAskFooter extends StatelessWidget {
   String? get _status => switch (ask.status) {
     RideAskStatus.taken when ask.rideStatus == 'completed' => 'Ride done ✅',
     RideAskStatus.taken when ask.isHelper && ask.awaitingParent =>
-      'You offered to drive · waiting for the parent to accept',
+      'You offered to drive · waiting for the member to accept',
     RideAskStatus.taken when ask.isMine && ask.awaitingParent =>
       '${ask.helperName ?? 'A parent'} offered to drive · '
           'accept or decline in Messages',
@@ -415,7 +444,7 @@ class RideAskFooter extends StatelessWidget {
       '${ask.helperName ?? 'A parent'} is driving · booked',
     RideAskStatus.taken => '${ask.helperName ?? 'A parent'} is driving',
     RideAskStatus.cancelled => 'No longer needed',
-    RideAskStatus.open when ask.isMine => 'Waiting for a parent to help',
+    RideAskStatus.open when ask.isMine => 'Waiting for a member to help',
     RideAskStatus.open => null,
   };
 

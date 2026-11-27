@@ -951,8 +951,8 @@ void main() {
         expect(find.text('Lincoln Elementary · 3 members'), findsOneWidget);
         expect(find.text('Owner'), findsOneWidget);
         expect(find.text('You'), findsOneWidget);
-        expect(find.text('Parent of Emma & Noah'), findsOneWidget);
-        expect(find.text('Add parents'), findsOneWidget);
+        expect(find.text('Family of Emma & Noah'), findsOneWidget);
+        expect(find.text('Add members'), findsOneWidget);
 
         await tester.tap(find.byType(AppToggle));
         await tester.pump();
@@ -966,14 +966,31 @@ void main() {
       final repo = _GroupsRepository();
       await _register(repo);
       await _pump(tester, const GroupInfoScreen(), arguments: _args);
-      await tester.tap(find.text('Add parents'));
+      await tester.tap(find.text('Add members'));
       await tester.pumpAndSettle();
       expect(find.text('Chloe'), findsOneWidget);
       await tester.tap(find.text('Chloe'));
       await tester.pump();
-      await tester.tap(find.text('Add 1 parent'));
+      await tester.tap(find.text('Add 1 member'));
       await tester.pumpAndSettle();
       expect(repo.added, ['chloe-id']);
+      expect(tester.takeException(), isNull);
+      await _dispose(tester);
+    });
+
+    testWidgets('group chat: Add members button adds a parent', (tester) async {
+      final repo = _GroupsRepository();
+      await _register(repo);
+      await _pump(tester, const GroupChatScreen(), arguments: _args);
+      await tester.tap(find.byKey(const ValueKey('group-add-members')));
+      await tester.pumpAndSettle();
+      expect(find.text('Chloe'), findsOneWidget);
+      await tester.tap(find.text('Chloe'));
+      await tester.pump();
+      await tester.tap(find.text('Add 1 member'));
+      await tester.pumpAndSettle();
+      expect(repo.added, ['chloe-id']);
+      expect(find.text('1 member added.'), findsOneWidget);
       expect(tester.takeException(), isNull);
       await _dispose(tester);
     });

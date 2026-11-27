@@ -65,7 +65,7 @@ class _RideCompletedView extends StatelessWidget {
     }
 
     final isDriver = tracking.isDriver;
-    final parentName = tracking.parent?.firstName ?? 'the parent';
+    final parentName = tracking.parent?.firstName ?? 'the member';
     return Scaffold(
       backgroundColor: AppColors.screen,
       body: SafeArea(
@@ -351,7 +351,7 @@ class _ParentToldCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parent = tracking.parent;
-    final name = parent?.firstName ?? 'The parent';
+    final name = parent?.firstName ?? 'The member';
     final kids = RideFormat.names(tracking.kidNames, fallback: 'The members');
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 12, 14, 12),
@@ -381,7 +381,7 @@ class _ParentToldCard extends StatelessWidget {
                   tracking.hasCustomDropoff
                       ? 'They got “$kids arrived at '
                             '${tracking.destination.label}”'
-                      : 'They got “$kids arrived at school”',
+                      : 'They got “$kids arrived”',
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: RideTextStyles.body14,

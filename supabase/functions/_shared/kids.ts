@@ -45,6 +45,14 @@ export const checkPhone = (v: string): Result<string> => {
   return PHONE_RE.test(p) ? { value: p } : bad("emergencyContactPhone", "invalid_field", "use +<country><number>");
 };
 
+// "male" | "female" | "other"; empty = not set.
+export const GENDERS = ["male", "female", "other"];
+export const checkGender = (v: string | null): Result<string | null> => {
+  if (v === null || v === "") return { value: null };
+  const t = v.toLowerCase();
+  return GENDERS.includes(t) ? { value: t } : bad("gender", "invalid_field", "male, female or other");
+};
+
 // "true"/"false" (also 1/0, yes/no). Empty = not sent.
 export const checkBool = (v: string | null, field: string): Result<boolean | null> => {
   if (v === null || v === "") return { value: null };

@@ -53,13 +53,15 @@ class MlKitLicenseReader implements LicenseReader {
     return looksLikeSameText(wordsA, wordsB);
   }
 
-  /// Two sides of a card share little text; the same side photographed
-  /// twice shares most of it.
+  /// The same side photographed twice shares nearly all its text. Two
+  /// sides can share a lot too (Indian cards print "Union of India",
+  /// "Driving Licence", the state and the number on both), so only a very
+  /// close match counts.
   static bool looksLikeSameText(Set<String> a, Set<String> b) {
     if (a.length < 5 || b.length < 5) return false;
     final shared = a.intersection(b).length;
     final smaller = a.length < b.length ? a.length : b.length;
-    return shared / smaller >= 0.6;
+    return shared / smaller >= 0.85;
   }
 
   static bool _sameBytes(List<int> a, List<int> b) {
@@ -290,11 +292,17 @@ class MlKitLicenseReader implements LicenseReader {
     // contain a digit, so the "DRIVER LICENSE" header never matches. When the
     // label is misread (e.g. "DL" → "UN"), fall back to the common
     // letter + 7–8 digits format (CA, FL, IL, …).
-    final number =
-        RegExp(
-          r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?\s*[:.]?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
-        ).firstMatch(upper)?.group(1) ??
-        RegExp(r'\b([A-Z]\d{7,8})\b').firstMatch(upper)?.group(1);
+    // Indian: state code, RTO, year, serial, often with spaces or dashes
+    // ("TS09 20190001234", "AP028 2015 0012345", "KA01 2015 0001234").
+    final indian = RegExp(
+      r'\b([A-Z]{2})[\s-]?(\d{2,3})[\s-]?((?:19|20)\d{2})[\s-]?(\d{7})\b',
+    ).firstMatch(upper);
+    final number = indian != null
+        ? indian.groups([1, 2, 3, 4]).join()
+        : RegExp(
+                r'\b(?:DLN|DL|LIC(?:ENSE)?)\b\s*(?:NO\.?\s*[:.]?|#|:)?\s*([A-Z0-9-]*\d[A-Z0-9-]{3,})',
+              ).firstMatch(upper)?.group(1) ??
+              RegExp(r'\b([A-Z]\d{7,8})\b').firstMatch(upper)?.group(1);
 
     // Longest names first: "WEST VIRGINIA" before "VIRGINIA",
     // "ARKANSAS" before "KANSAS".

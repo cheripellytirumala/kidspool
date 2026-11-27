@@ -58,6 +58,7 @@ class _IdVerifiedBodyState extends State<_IdVerifiedBody> {
     final error = await context.read<AuthFlowProvider>().submitIdentity();
     if (!context.mounted) return;
     if (error != null) return showAppSnack(context, error);
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     // Sent for review: carry on to "Your vehicle" (then Add a child) while
     // the team checks the license. Back returns here; sending again is
     // treated as done.

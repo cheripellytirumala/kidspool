@@ -322,7 +322,7 @@ class _PinDialogState extends State<_PinDialog> {
         TextButton(
           onPressed: () => Navigator.of(context).pop(''),
           child: Text(
-            'Parent can’t see a PIN? Continue without',
+            'Member can’t see a PIN? Continue without',
             style: RideTextStyles.labelM.copyWith(color: RideColors.muted),
           ),
         ),

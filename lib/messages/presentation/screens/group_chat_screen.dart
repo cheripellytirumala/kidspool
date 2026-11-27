@@ -14,6 +14,8 @@ import '../../core/constants/messages_styles.dart';
 import '../../core/utils/messages_format.dart';
 import '../../domain/usecases/leave_ride_group.dart';
 import '../providers/group_chat_provider.dart';
+import '../providers/group_info_provider.dart';
+import '../widgets/group_info_widgets.dart';
 import '../widgets/chat_widgets.dart';
 import '../../domain/entities/ride_ask.dart';
 import '../../domain/entities/ride_group.dart';
@@ -172,7 +174,7 @@ class _GroupChatViewState extends State<_GroupChatView>
         builder: (context) => AlertDialog(
           title: const Text('This ride is already taken'),
           content: const Text(
-            'Another parent offered to drive it first. Thanks for helping!',
+            'Another member offered to drive it first. Thanks for helping!',
           ),
           actions: [
             TextButton(
@@ -211,13 +213,52 @@ class _GroupChatViewState extends State<_GroupChatView>
     _provider.startPolling();
     await _provider.refreshMessages();
     if (posted == true && mounted) {
-      showAppSnack(context, 'Ride posted. A parent can tap “I can help”.');
+      showAppSnack(context, 'Ride posted. A member can tap “I can help”.');
     }
   }
 
-  /// ⋮: group info, or leave the group.
+  /// "Add members": the same picker as Group info → Add parents (parents
+  /// from the members' places, up to the group's size), right from the
+  /// chat.
+  Future<void> _addMembers() async {
+    final args = _provider.args;
+    if (args == null) return;
+    final info = sl<GroupInfoProvider>();
+    await info.open(
+      GroupChatArgs(groupId: args.groupId, name: _provider.title),
+    );
+    if (!mounted) return info.dispose();
+    final group = info.group;
+    if (group == null) {
+      showAppSnack(
+        context,
+        info.errorMessage ?? 'We couldn’t load this group. Try again.',
+      );
+      return info.dispose();
+    }
+    if (group.isFull) {
+      showAppSnack(
+        context,
+        'Groups can have up to ${group.maxMembers} families.',
+      );
+      return info.dispose();
+    }
+    final ids = await AddParentsSheet.show(context, provider: info);
+    if (ids == null || ids.isEmpty || !mounted) return info.dispose();
+    final (added, error) = await info.addMembers(ids);
+    info.dispose();
+    if (!mounted) return;
+    showAppSnack(
+      context,
+      error ?? (added == 1 ? '1 member added.' : '$added members added.'),
+    );
+    await Future.wait([_provider.loadGroup(), _provider.refreshMessages()]);
+  }
+
+  /// ⋮: add members, group info, or leave the group.
   Future<void> _more() async {
     final picked = await showChatActionsSheet(context, const [
+      ChatAction(label: 'Add members', icon: Icons.person_add_alt_1_rounded),
       ChatAction(label: 'Group info', icon: Icons.info_outline_rounded),
       ChatAction(
         label: 'Leave group',
@@ -226,7 +267,8 @@ class _GroupChatViewState extends State<_GroupChatView>
       ),
     ]);
     if (!mounted || picked == null) return;
-    if (picked == 0) return _openInfo();
+    if (picked == 0) return _addMembers();
+    if (picked == 1) return _openInfo();
     await _leave();
   }
 
@@ -302,6 +344,7 @@ class _GroupChatViewState extends State<_GroupChatView>
               title: provider.title,
               subtitle: provider.subtitle,
               onInfo: _openInfo,
+              onAdd: _addMembers,
               onMore: _more,
             ),
             Expanded(

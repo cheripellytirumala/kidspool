@@ -511,4 +511,49 @@ void main() {
     p.dispose();
     expect(p.isPolling, isFalse);
   });
+
+  testWidgets(
+    'I can help on a ride booked by another driver: toast, card goes',
+    (tester) async {
+      await _register(_TakenRepository());
+      await _pump(tester, const MessagesScreen(), size: const Size(390, 844));
+      await tester.tap(find.bySemanticsLabel(RegExp('^Requests')));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('Rachel needs a ride'), findsOneWidget);
+
+      await tester.tap(find.text('I can help'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(
+        find.text('This ride is already booked with another driver.'),
+        findsOneWidget,
+      );
+      expect(find.text('Rachel needs a ride'), findsNothing);
+      expect(find.text('I can help'), findsNothing);
+      await _dispose(tester);
+    },
+  );
+}
+
+/// Another driver was accepted: "I can help" fails with `already_taken`,
+/// and the next read of the inbox no longer has the request.
+class _TakenRepository extends FakeMessagesRepository {
+  bool _booked = false;
+
+  @override
+  Future<Either<Failure, RequestsInbox>> getRequestsInbox() async => _booked
+      ? Right(RequestsInbox(mine: [_myRequest], incoming: const []))
+      : super.getRequestsInbox();
+
+  @override
+  Future<Either<Failure, OfferOutcome>> offerRide(String id) async {
+    _booked = true;
+    return const Left(
+      ServerFailure(
+        'This ride is already booked with another driver.',
+        statusCode: 409,
+        code: 'already_taken',
+      ),
+    );
+  }
 }

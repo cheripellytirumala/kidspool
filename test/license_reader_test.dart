@@ -106,4 +106,69 @@ SARAH JANE 4D DLN
       expect(check('Kate', 'oneil', l), LicenseNameCheck.matches);
     });
   });
+
+  group('Indian license', () {
+    test('reads the DL number with spaces, name and dates', () {
+      final d = MlKitLicenseReader.parseFrontText('''
+INDIAN UNION DRIVING LICENCE
+Issued by Government of Telangana
+DL No. TS09 20190001234
+Name: KIRAN KUMAR REDDY
+S/D/W of RAMESH REDDY
+Date of Birth: 14-05-1990
+Valid Till: 13-05-2040
+''');
+      expect(d.licenseNumber, 'TS0920190001234');
+      expect(d.firstName, 'Kiran Kumar');
+      expect(d.lastName, 'Reddy');
+      expect(d.birthDate, DateTime(1990, 5, 14));
+      expect(d.expiryDate, DateTime(2040, 5, 13));
+    });
+
+    test('older 3-digit RTO numbers', () {
+      final d = MlKitLicenseReader.parseFrontText(
+        'DRIVING LICENCE\nDL NO AP028 2015 0012345\nName: SITA DEVI\n',
+      );
+      expect(
+        d.licenseNumber,
+        'AP028201500123'
+        '45',
+      );
+    });
+  });
+
+  test('two sides sharing their header are not "the same side"', () {
+    final front = {
+      'INDIAN',
+      'UNION',
+      'DRIVING',
+      'LICENCE',
+      'TELANGANA',
+      'TS0920190001234',
+      'NAME',
+      'KIRAN',
+      'KUMAR',
+      'REDDY',
+      'BIRTH',
+      'VALID',
+      'TILL',
+    };
+    final back = {
+      'INDIAN',
+      'UNION',
+      'DRIVING',
+      'LICENCE',
+      'TELANGANA',
+      'TS0920190001234',
+      'ADDRESS',
+      'BLOOD',
+      'GROUP',
+      'EMERGENCY',
+      'CONTACT',
+      'CLASS',
+      'LMV',
+    };
+    expect(MlKitLicenseReader.looksLikeSameText(front, back), isFalse);
+    expect(MlKitLicenseReader.looksLikeSameText(front, {...front}), isTrue);
+  });
 }

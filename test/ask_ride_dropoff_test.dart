@@ -256,7 +256,7 @@ void main() {
       expect(
         e.message,
         "Rides home and drop-offs at any place aren't set up on the server "
-        "yet. Ask for a ride to your member's school for now.",
+        "yet. Ask for a ride to your member's place for now.",
       );
       expect(e.code, AskRideApiConstants.dropoffNotSupported);
     });
@@ -487,7 +487,7 @@ void main() {
       expect(provider.selectedKidsWithoutSchool.map((k) => k.name), ['Jessie']);
       expect(
         provider.validationError,
-        'Pick members who go to the same school.',
+        'Pick members who go to the same place.',
       );
       expect(provider.siblingSchool, _lincoln);
 

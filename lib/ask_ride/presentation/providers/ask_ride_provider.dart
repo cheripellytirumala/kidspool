@@ -492,8 +492,8 @@ class AskRideProvider extends ChangeNotifier {
     final home = rideHome ? d.dropOff! : d.pickup!;
     final away = rideHome ? d.pickup! : d.dropOff!;
     if (home.kind != PlaceKind.home || away.kind == PlaceKind.home) {
-      return 'Rides go between one of your addresses and school or a place '
-          'you pick.';
+      return 'Rides go between one of your addresses and a saved place or a '
+          'place you pick.';
     }
     if (rideHome && !home.hasCoordinates) {
       return 'This address has no map location. Pick another one.';
@@ -502,11 +502,11 @@ class AskRideProvider extends ChangeNotifier {
     if (away.kind == PlaceKind.school) {
       final schoolIds = {for (final k in _selectedKids) k.schoolId};
       if (schoolIds.length > 1) {
-        return 'Pick members who go to the same school.';
+        return 'Pick members who go to the same place.';
       }
       if (schoolIds.first != away.id) {
         final end = rideHome ? 'Pick-up' : 'Drop-off';
-        return '$end must be ${_selectedKids.first.name}’s school.';
+        return '$end must be ${_selectedKids.first.name}’s place.';
       }
     }
     if (d.kidIds.length > 4) return 'A ride can take up to 4 members.';

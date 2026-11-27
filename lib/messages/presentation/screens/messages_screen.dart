@@ -125,7 +125,7 @@ class _MessagesView extends StatelessWidget {
         MessagesTabMessage(
           title: provider.query.isEmpty ? 'No requests right now' : 'No match',
           message: provider.query.isEmpty
-              ? 'Ride requests from nearby parents and offers on your '
+              ? 'Ride requests from nearby members and offers on your '
                     'rides show up here.'
               : 'Try a different name or place.',
         ),
@@ -259,7 +259,7 @@ class _MessagesView extends StatelessWidget {
       if (error != null) showAppSnack(context, error);
       return;
     }
-    final name = r.parent?.firstName ?? 'the parent';
+    final name = r.parent?.firstName ?? 'the member';
     showAppSnack(
       context,
       outcome.confirmed

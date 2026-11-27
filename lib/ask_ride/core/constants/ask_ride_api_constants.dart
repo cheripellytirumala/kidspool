@@ -23,7 +23,7 @@ abstract final class AskRideApiConstants {
   /// latitude, longitude}]`; used for the school's location on a ride home.
   static const String getSchools = 'get_schools';
   static const String schoolLocationMissingMessage =
-      'We couldn’t find where this school is. Try again later.';
+      'We couldn’t find where this place is. Try again later.';
 
   /// PostgREST "function not found" (e.g. `dropoffAddress` before the SQL).
   static const String functionNotFound = 'PGRST202';
@@ -32,7 +32,7 @@ abstract final class AskRideApiConstants {
   static const String dropoffNotSupported = 'dropoff_not_supported';
   static const String dropoffNotSupportedMessage =
       "Rides home and drop-offs at any place aren't set up on the server "
-      "yet. Ask for a ride to your member's school for now.";
+      "yet. Ask for a ride to your member's place for now.";
 
   /// `create_ride_request`: the drop-off is within 50 m of the pick-up.
   static const String samePlace = 'same_place';

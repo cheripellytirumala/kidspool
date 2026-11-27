@@ -174,7 +174,7 @@ class KidsProvider extends ChangeNotifier {
           if (id != null && !_schools.containsKey(id)) {
             _schools[id] = Place(
               id: id,
-              name: kid.schoolName ?? 'School',
+              name: kid.schoolName ?? 'Place',
               category: PlaceCategory.school,
             );
           }
@@ -394,7 +394,7 @@ class KidsProvider extends ChangeNotifier {
   /// message when the place can't be removed (every kid needs a school).
   String? removePlaceFor(String placeId, String childId) {
     if (_schools.containsKey(placeId)) {
-      return 'Every member needs a school. Pick another school to change it.';
+      return 'Every member needs a place. Pick another place to change it.';
     }
     _removeFromActivity(placeId, childId);
     _saveActivities();

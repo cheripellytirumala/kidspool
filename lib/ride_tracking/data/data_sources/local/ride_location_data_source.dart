@@ -54,7 +54,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
   Stream<RideFix> fixes() async* {
     if (!await _ensurePermission()) {
       throw const DeviceException(
-        'Allow location access so the parent can follow the ride.',
+        'Allow location access so the member can follow the ride.',
       );
     }
     yield* Geolocator.getPositionStream(
@@ -86,7 +86,7 @@ class RideLocationDataSourceImpl implements RideLocationDataSource {
           foregroundNotificationConfig: const ForegroundNotificationConfig(
             notificationTitle: 'KidsPool is sharing your location',
             notificationText:
-                'Only during this ride, so the parent can follow it. '
+                'Only during this ride, so the member can follow it. '
                 'Stops at drop-off.',
             notificationChannelName: 'Ride location',
             enableWakeLock: true,

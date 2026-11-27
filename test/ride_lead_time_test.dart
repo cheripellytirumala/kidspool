@@ -7,52 +7,54 @@ void main() {
   final today = DateTime(2026, 11, 12);
   final tomorrow = DateTime(2026, 11, 13);
 
-  test('pick-up less than 2 hours away is too soon', () {
+  test('no lead time: any pick-up from now on is fine', () {
+    expect(RideLeadTime.minimum, Duration.zero);
+    // A few minutes from now, and right now.
     expect(
-      RideLeadTime.isTooSoon(today, const RideTime(11, 0), now: now),
-      isTrue,
-    );
-    expect(
-      RideLeadTime.isTooSoon(today, const RideTime(11, 10), now: now),
+      RideLeadTime.isTooSoon(today, const RideTime(9, 15), now: now),
       isFalse,
     );
+    expect(
+      RideLeadTime.isTooSoon(today, const RideTime(9, 10), now: now),
+      isFalse,
+    );
+    expect(
+      RideLeadTime.isTooSoon(tomorrow, const RideTime(0, 5), now: now),
+      isFalse,
+    );
+  });
+
+  test('a pick-up time that has passed is blocked', () {
     expect(
       RideLeadTime.isTooSoon(today, const RideTime(8, 0), now: now),
       isTrue,
     );
     expect(
-      RideLeadTime.isTooSoon(tomorrow, const RideTime(8, 0), now: now),
-      isFalse,
-    );
-  });
-
-  test('message names the earliest time today', () {
-    expect(
-      RideLeadTime.tooSoonMessage([today], const RideTime(10, 0), now: now),
-      'Ask at least 2 hours ahead. Today, pick a time after 11:10 AM.',
+      RideLeadTime.tooSoonMessage([today], const RideTime(9, 0), now: now),
+      'That time has already passed. Today, pick a time after 9:10 AM.',
     );
     expect(
-      RideLeadTime.tooSoonMessage([tomorrow], const RideTime(10, 0), now: now),
+      RideLeadTime.tooSoonMessage([today], const RideTime(9, 30), now: now),
       isNull,
     );
   });
 
-  test('custom days: any day too soon blocks', () {
+  test('custom days: a passed time today blocks', () {
+    expect(
+      RideLeadTime.tooSoonMessage(
+        [today, tomorrow],
+        const RideTime(9, 0),
+        now: now,
+      ),
+      isNotNull,
+    );
     expect(
       RideLeadTime.tooSoonMessage(
         [today, tomorrow],
         const RideTime(9, 30),
         now: now,
       ),
-      isNotNull,
-    );
-  });
-
-  test('late evening: earliest is tomorrow', () {
-    final late = DateTime(2026, 11, 12, 23, 0);
-    expect(
-      RideLeadTime.tooSoonMessage([tomorrow], const RideTime(0, 30), now: late),
-      'Ask at least 2 hours ahead. Pick a later day or time.',
+      isNull,
     );
   });
 }

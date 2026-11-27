@@ -42,9 +42,9 @@ abstract final class RideTrackingErrorMessages {
       case 'ride_request_not_found':
         return 'We couldn’t find this ride.';
       case 'pin_required':
-        return 'Ask the parent for their 4-digit pick-up PIN.';
+        return 'Ask the member for their 4-digit pick-up PIN.';
       case 'pin_locked':
-        return 'Too many wrong PINs. Wait 10 minutes, or call the parent.';
+        return 'Too many wrong PINs. Wait 10 minutes, or call the member.';
       case 'wrong_pin':
         return wrongPin(null);
       case 'cannot_cancel':
@@ -57,7 +57,7 @@ abstract final class RideTrackingErrorMessages {
   }
 
   static String wrongPin(int? attemptsLeft) => switch (attemptsLeft) {
-    null => 'That PIN isn’t right. Check it with the parent.',
+    null => 'That PIN isn’t right. Check it with the member.',
     0 => 'That PIN isn’t right. Too many tries — wait 10 minutes.',
     1 => 'That PIN isn’t right. 1 try left.',
     final n => 'That PIN isn’t right. $n tries left.',

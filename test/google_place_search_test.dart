@@ -318,7 +318,7 @@ void main() {
       );
       expect(
         result.getLeft().toNullable()?.message,
-        'School search isn’t set up on this build.',
+        'Place search isn’t set up on this build.',
       );
       expect(places.queries, isEmpty);
     });
@@ -359,7 +359,7 @@ void main() {
         );
         expect(
           empty.getLeft().toNullable()?.message,
-          'Type the school’s name to search.',
+          'Type the place’s name to search.',
         );
       },
     );

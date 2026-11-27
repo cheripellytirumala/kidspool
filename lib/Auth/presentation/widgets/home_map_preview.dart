@@ -49,15 +49,18 @@ class _HomeMapPreviewState extends State<HomeMapPreview> {
   void didUpdateWidget(HomeMapPreview old) {
     super.didUpdateWidget(old);
     final point = widget.point;
-    if (point != null && point != old.point) {
-      _map?.animateCamera(CameraUpdate.newLatLngZoom(point, _zoom));
+    final map = _map;
+    if (point != null && point != old.point && map != null) {
+      // The map may have been taken down since (address being edited):
+      // a stale controller throws, and the new map starts on the point.
+      try {
+        map
+            .animateCamera(CameraUpdate.newLatLngZoom(point, _zoom))
+            .catchError((Object _) {});
+      } on StateError {
+        _map = null;
+      }
     }
-  }
-
-  @override
-  void dispose() {
-    _map?.dispose();
-    super.dispose();
   }
 
   @override
@@ -83,6 +86,8 @@ class _HomeMapPreviewState extends State<HomeMapPreview> {
         ),
       );
     } else {
+      // The GoogleMap (and its controller) is gone: forget the controller.
+      _map = null;
       body = _Placeholder(hasAddress: point != null);
     }
 

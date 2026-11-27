@@ -35,7 +35,7 @@ class GetRideOptions implements UseCase<RideOptions, NoParams> {
           if (id == null || schools.containsKey(id)) continue;
           schools[id] = SavedPlace(
             id: id,
-            name: kid.schoolName ?? 'School',
+            name: kid.schoolName ?? 'Place',
             address: kid.schoolName ?? '',
             kind: PlaceKind.school,
           );

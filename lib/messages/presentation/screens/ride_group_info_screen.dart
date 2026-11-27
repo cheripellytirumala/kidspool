@@ -40,7 +40,7 @@ class _GroupInfoView extends StatelessWidget {
       context,
       title: '$label?',
       message: provider.iAmDriver
-          ? 'The parent will be told so they can find someone else.'
+          ? 'The member will be told so they can find someone else.'
           : 'Your Ride Partner will be told.',
       confirm: label,
     );

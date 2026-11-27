@@ -39,7 +39,7 @@ class BlockedUser extends Equatable {
     id: json['userId'] as String,
     name: (json['name'] as String?)?.trim().isNotEmpty == true
         ? json['name'] as String
-        : 'Parent',
+        : 'Member',
     initials: json['initials'] as String? ?? '',
   );
 

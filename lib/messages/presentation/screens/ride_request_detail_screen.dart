@@ -231,9 +231,11 @@ class _IncomingBody extends StatelessWidget {
     if (!context.mounted) return;
     if (outcome == null) {
       if (error != null) showAppSnack(context, error);
+      // Booked with another driver: back to the list, which reloads.
+      if (provider.gone) navigator.pop();
       return;
     }
-    final name = request.parent?.firstName ?? 'the parent';
+    final name = request.parent?.firstName ?? 'the member';
     showAppSnack(
       context,
       outcome.confirmed
@@ -269,7 +271,7 @@ class _IncomingBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parent = request.parent;
-    final name = parent?.firstName ?? 'A parent';
+    final name = parent?.firstName ?? 'A member';
     final kids = MessagesFormat.names(
       request.kidNames,
       fallback: 'their members',
@@ -277,7 +279,7 @@ class _IncomingBody extends StatelessWidget {
     final firstKid = request.kidNames.isEmpty ? null : request.kidNames.first;
     final parentLine = [
       parent?.shortName ?? name,
-      if (firstKid != null) '$firstKid’s parent',
+      if (firstKid != null) '$firstKid’s family',
     ].join(' · ');
     final parentMeta = [
       if (parent != null && parent.kidsAtSchool.isNotEmpty)
@@ -302,7 +304,7 @@ class _IncomingBody extends StatelessWidget {
           ),
           title: parentLine,
           subtitle: parentMeta.isEmpty
-              ? 'Nearby parent'
+              ? 'Nearby member'
               : parentMeta.join(' · '),
         ),
         const SizedBox(height: 12),
@@ -386,16 +388,24 @@ class _MineBody extends StatelessWidget {
 
   Future<void> _cancel(BuildContext context) async {
     final provider = context.read<RideRequestDetailProvider>();
+    // Booked: the driver is told. Still open: it just stops being shown.
+    final booked = request.status == RideRequestStatus.confirmed;
+    final driverName = request.driver?.firstName ?? 'Your driver';
     final ok = await confirmMessagesAction(
       context,
-      title: 'Cancel this request?',
-      message: 'Ride Partners won’t see it any more.',
-      confirm: 'Cancel request',
+      title: booked ? 'Cancel this ride?' : 'Cancel this request?',
+      message: booked
+          ? '$driverName will be told the ride is off.'
+          : 'Ride Partners won’t see it any more.',
+      confirm: booked ? 'Cancel ride' : 'Cancel request',
     );
     if (!ok || !context.mounted) return;
     final error = await provider.cancel();
     if (!context.mounted) return;
-    showAppSnack(context, error ?? 'Request cancelled.');
+    showAppSnack(
+      context,
+      error ?? (booked ? 'Ride cancelled.' : 'Request cancelled.'),
+    );
   }
 
   @override

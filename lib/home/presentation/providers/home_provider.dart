@@ -264,7 +264,7 @@ class HomeProvider extends ChangeNotifier {
   /// "Lincoln Elementary", or the custom drop-off.
   String get featuredDestination {
     final name = featuredRide?.destinationName ?? '';
-    return name.isEmpty ? 'School' : name;
+    return name.isEmpty ? 'Place' : name;
   }
 
   /// The user's most recently active ride group, if any: "Your ride group"
@@ -275,7 +275,7 @@ class HomeProvider extends ChangeNotifier {
   String? get rideGroupTitle {
     final ride = featuredRide;
     if (ride == null || ride.isDrive || rideGroupMembers == 0) return null;
-    return '${ride.pickupLabel} → $featuredDestination parents';
+    return '${ride.pickupLabel} → $featuredDestination group';
   }
 
   /// Parents asked for the ride plus the user.

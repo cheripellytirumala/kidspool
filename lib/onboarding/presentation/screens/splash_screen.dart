@@ -194,7 +194,7 @@ class _Logo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: 'kidpool. Rides you can trust, from parents you know.',
+      label: 'kidpool. Rides you can trust, from members you know.',
       excludeSemantics: true,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -206,7 +206,7 @@ class _Logo extends StatelessWidget {
           ),
           const SizedBox(height: 20),
           Text(
-            'Rides you can trust,\nfrom parents you know.',
+            'Rides you can trust,\nfrom members you know.',
             textAlign: TextAlign.center,
             style: AppTextStyles.bodyL.copyWith(
               color: AppColors.textOnDarkMuted,

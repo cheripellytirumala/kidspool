@@ -238,7 +238,7 @@ class MessagesProvider extends ChangeNotifier {
               status: r.status,
               other:
                   r.parent ??
-                  const ChatPerson(firstName: 'Parent', initials: 'P'),
+                  const ChatPerson(firstName: 'Member', initials: 'M'),
               lastMessage: 'You offered to drive',
             ),
     ];
@@ -345,6 +345,18 @@ class MessagesProvider extends ChangeNotifier {
     final result = await _offerRide(request.id);
     final outcome = result.getRight().toNullable();
     if (outcome != null) await loadRequests();
+    if (isRideGone(result.getLeft().toNullable())) {
+      // Booked with someone else / closed: drop the old card now, then
+      // re-read the list.
+      _inbox = RequestsInbox(
+        mine: _inbox.mine,
+        incoming: [
+          for (final r in _inbox.incoming)
+            if (r.id != request.id) r,
+        ],
+      );
+      await loadRequests(silent: true);
+    }
     _busyId = null;
     _notify();
     return (outcome, _message(result.getLeft().toNullable()));
@@ -392,6 +404,11 @@ class MessagesProvider extends ChangeNotifier {
   }
 
   static String? _message(Failure? failure) => failure?.message;
+
+  /// "I can help" came too late: the ride was booked with another driver
+  /// or is no longer open, so it leaves the Requests tab.
+  static bool isRideGone(Failure? failure) =>
+      failure?.code == 'already_taken' || failure?.code == 'request_not_open';
 
   void _notify() {
     if (_disposed) return;

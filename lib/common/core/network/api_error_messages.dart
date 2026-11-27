@@ -19,10 +19,10 @@ abstract final class ApiErrorMessages {
     'profile_not_found': 'We couldn’t find your profile. Please sign in again.',
     'invalid_role': 'Choose what you want to do on KidsPool.',
     'role_required': 'Tell us what you want to do on KidsPool first.',
-    'not_a_parent': 'Only parent accounts can do this.',
+    'not_a_parent': 'Only member accounts can do this.',
     'not_approved': 'Your ID is still being reviewed. We’ll let you know soon.',
     'school_required':
-        'Add your member’s school first (Where do your members go?).',
+        'Add a place for your member first (Profile → Locations).',
     // Identity
     'already_submitted': 'Your ID is already being reviewed.',
     'already_approved': 'Your ID is already verified.',
@@ -44,17 +44,17 @@ abstract final class ApiErrorMessages {
     'nothing_to_update': 'Nothing has changed.',
     // Rides
     'too_many_kids': 'A ride can take up to 4 members.',
-    'kids_different_schools': 'Pick members who go to the same school.',
-    'school_unavailable': 'Rides to this school aren’t available yet.',
-    'pickup_too_soon': 'Pick-up must be at least 2 hours from now.',
+    'kids_different_schools': 'Pick members who go to the same place.',
+    'school_unavailable': 'Rides to this place aren’t available yet.',
+    'pickup_too_soon': 'That pick-up time has already passed.',
     'duplicate_request': 'You already asked for a ride around that time.',
     'cannot_message':
-        'This parent didn’t get your ride request, so you can’t message them '
+        'This member didn’t get your ride request, so you can’t message them '
         'yet.',
     // Ride groups
     'group_not_found': 'This group isn’t available any more.',
     'cannot_add_member':
-        'Only approved parents from your members’ schools can join this group.',
+        'Only approved members going to the same places can join this group.',
     'group_full': 'Groups can have up to 8 families.',
     // App version
     'invalid_platform': 'This device isn’t supported.',
@@ -67,7 +67,7 @@ abstract final class ApiErrorMessages {
     'lastName': 'last name',
     'dateOfBirth': 'date of birth',
     'schoolId': 'school',
-    'schoolIdCard': 'school ID card photo',
+    'schoolIdCard': 'ID card photo',
     'photo': 'photo',
     'selfie': 'profile photo',
     'idFront': 'front of your license',

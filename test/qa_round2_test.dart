@@ -48,7 +48,7 @@ void main() {
     });
 
     test('no name and no address still saves', () {
-      expect(KidsRemoteDataSourceImpl.schoolName(_place('')), 'School');
+      expect(KidsRemoteDataSourceImpl.schoolName(_place('')), 'Place');
     });
   });
 

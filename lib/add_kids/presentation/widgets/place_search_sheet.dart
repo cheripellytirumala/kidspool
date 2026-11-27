@@ -84,10 +84,7 @@ class _PlaceSearchSheetState extends State<PlaceSearchSheet> {
         Row(
           children: [
             Expanded(
-              child: Text(
-                'Add school & activity',
-                style: KidsTextStyles.headingH2,
-              ),
+              child: Text('Add a place', style: KidsTextStyles.headingH2),
             ),
             const KidsSheetCloseButton(),
           ],
@@ -160,7 +157,7 @@ class _KindSwitch extends StatelessWidget {
         spacing: 4,
         children: [
           for (final (kind, icon, label) in const [
-            (PlaceKind.school, KidsAssets.grad16, 'School'),
+            (PlaceKind.school, KidsAssets.grad16, 'Place'),
             (PlaceKind.activity, KidsAssets.ball16, 'Activity'),
           ])
             Expanded(

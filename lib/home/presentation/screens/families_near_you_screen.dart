@@ -183,7 +183,7 @@ class _FamiliesView extends StatelessWidget {
                               actionLabel:
                                   provider.emptyState ==
                                       FamiliesEmptyState.noSchool
-                                  ? 'Add your members’ school'
+                                  ? 'Add your members’ place'
                                   : null,
                               onAction: () => Navigator.pushNamed(
                                 context,

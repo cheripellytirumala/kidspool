@@ -168,7 +168,7 @@ class RideGroupInfoProvider extends ChangeNotifier {
   String get subtitle {
     final r = _ride;
     if (r == null) return '';
-    final madeBy = iAmDriver ? (r.parent?.firstName ?? 'the parent') : 'you';
+    final madeBy = iAmDriver ? (r.parent?.firstName ?? 'the member') : 'you';
     final parts = [
       '${members.length} members',
       'made by $madeBy',
@@ -183,6 +183,9 @@ class RideGroupInfoProvider extends ChangeNotifier {
   String? get leaveLabel {
     final r = _ride;
     if (r == null || _left || r.status.isOver) return null;
+    // Once the driver has started, cancelling (until pickup) is on the
+    // live ride screen; after pickup the ride can't be cancelled.
+    if (r.status == RideRequestStatus.inProgress) return null;
     if (!iAmDriver) return r.isOpen ? 'Cancel this request' : 'Cancel ride';
     if (r.status.isBooked) return 'Stop driving this ride';
     if (r.offered) return 'Withdraw my offer';

@@ -45,7 +45,7 @@ abstract final class RideRequestModel {
     if (id == null || pickupAt == null) return null;
     final address = _map(json['pickupAddress']);
     final parent = _map(json['parent']);
-    final first = _text(parent['firstName']) ?? 'A parent';
+    final first = _text(parent['firstName']) ?? 'A member';
     final last = _text(parent['lastName']);
     final myOffer = _map(json['myOffer']);
     final offerStatus = _text(myOffer['status']);
@@ -157,7 +157,7 @@ abstract final class RideRequestModel {
     return _text(dropoff['label']) ??
         _text(dropoff['addressLine1']) ??
         _text(school['name']) ??
-        'School';
+        'Place';
   }
 
   static bool _anyCarSeat(Map<String, dynamic> json) =>

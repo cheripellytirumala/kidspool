@@ -120,7 +120,7 @@ class _NotificationsView extends StatelessWidget {
                             title: 'You’re all caught up',
                             body:
                                 'Ride updates and requests from other '
-                                'parents will show up here.',
+                                'members will show up here.',
                           ),
                         for (final n in provider.items) ...[
                           const SizedBox(height: 12),

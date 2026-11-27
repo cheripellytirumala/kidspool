@@ -171,7 +171,7 @@ Future<List<SavedPlace>> _savedDropOffs(
         name: p.name,
         address: p.details,
         kind: PlaceKind.custom,
-        detail: p.kind == kids_place.PlaceKind.school ? 'School' : 'Activity',
+        detail: p.kind == kids_place.PlaceKind.school ? 'Place' : 'Activity',
         latitude: p.latitude,
         longitude: p.longitude,
         addressLine1: p.addressLine.isNotEmpty ? p.addressLine : p.name,

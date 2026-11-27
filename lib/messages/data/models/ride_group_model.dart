@@ -59,7 +59,7 @@ abstract final class RideGroupModel {
   static RideGroupMember? memberFromJson(Map<String, dynamic> json) {
     final id = _text(json['id']);
     if (id == null) return null;
-    final first = _text(json['firstName']) ?? 'Parent';
+    final first = _text(json['firstName']) ?? 'Member';
     final kids = json['kids'];
     return RideGroupMember(
       id: id,
@@ -91,7 +91,7 @@ abstract final class RideGroupModel {
       final s = Map<String, dynamic>.from(sender);
       final senderId = _text(s['id']);
       if (senderId != null) {
-        final first = _text(s['firstName']) ?? 'Parent';
+        final first = _text(s['firstName']) ?? 'Member';
         from = GroupSender(
           id: senderId,
           firstName: first,

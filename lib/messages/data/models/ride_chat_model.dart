@@ -22,7 +22,7 @@ abstract final class RideChatModel {
     final other = json['other'] is Map
         ? Map<String, dynamic>.from(json['other'] as Map)
         : const <String, dynamic>{};
-    final first = _text(other['firstName']) ?? 'Parent';
+    final first = _text(other['firstName']) ?? 'Member';
     final last = _text(other['lastName']);
     return RideChat(
       requestId: requestId,

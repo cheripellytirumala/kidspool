@@ -52,8 +52,15 @@ class _ScanBodyState extends State<_ScanBody> {
   @override
   void initState() {
     super.initState();
+    final flow = context.read<AuthFlowProvider>();
     // Restore the saved name (lost after an app restart) for the ID check.
-    context.read<AuthFlowProvider>().restoreFromProfile();
+    flow.restoreFromProfile();
+    // Opened fresh (Profile, a new try): start with no photos, not the
+    // last ones. (Coming Back from the confirm screen keeps this screen,
+    // so its photos stay.)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) flow.clearIdPhotos();
+    });
   }
 
   /// Front / Back chip: selects that side; the shutter or "Choose from
@@ -93,6 +100,8 @@ class _ScanBodyState extends State<_ScanBody> {
     final backDone = !flow.idNeedsBack || flow.idBackPath != null;
     scan.advance(frontDone: frontDone, backDone: backDone);
     if (flow.hasIdPhotos) {
+      // Both sides are fine: no earlier error left at the bottom.
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
       Navigator.pushNamed(context, AppRoutes.idVerified);
     }
   }
@@ -116,9 +125,9 @@ class _ScanBodyState extends State<_ScanBody> {
               Text('Your license photos', style: AppTextStyles.headingH3),
               const SizedBox(height: 12),
               for (final line in const [
-                'Why: we confirm every parent who drives has a valid '
+                'Why: we confirm every member who drives has a valid '
                     'license, and that the name matches your profile.',
-                'Who sees it: only the KidsPool review team. Other parents '
+                'Who sees it: only the KidsPool review team. Other members '
                     'only see that you’re verified, never the photos.',
                 'How it’s stored: in private, access-controlled storage, '
                     'never shared or sold.',
@@ -204,7 +213,7 @@ class _ScanBodyState extends State<_ScanBody> {
                                     idTypes.length > 1
                                         ? 'We check your ID so families know who '
                                               'they’re riding with.'
-                                        : 'Every parent who drives is checked, so '
+                                        : 'Every member who drives is checked, so '
                                               'families know their driver is licensed.',
                                     style: AppTextStyles.label.copyWith(
                                       color: AppColors.textOnDark,

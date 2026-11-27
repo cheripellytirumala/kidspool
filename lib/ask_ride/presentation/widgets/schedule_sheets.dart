@@ -36,7 +36,7 @@ class _SelectDaySheetState extends State<SelectDaySheet> {
   late DateTime _week = RideCalendar.weekOf(_date ?? _today(), _today());
   late RideTime? _time = widget.initialTime;
 
-  /// "Ask at least 2 hours ahead" while the pick-up is too soon.
+  /// "That time has already passed" while the pick-up is in the past.
   String? get _tooSoon => _date == null || _time == null
       ? null
       : RideLeadTime.tooSoonMessage([_date!], _time!);
@@ -160,7 +160,7 @@ class _WhichDaysSheetState extends State<WhichDaysSheet> {
     for (var i = 0; i < chipWeeks * RideCalendar.days; i++)
       if (DateTime(_week.year, _week.month, _week.day + i) case final d
           when d.weekday == weekday &&
-              // Skip a day whose pick-up is already under 2 hours away.
+              // Skip today when its pick-up time has already passed.
               (_time == null || !RideLeadTime.isTooSoon(d, _time!)))
         d,
   ];
@@ -263,7 +263,7 @@ class _PickedDays extends StatelessWidget {
   }
 }
 
-/// Red line under the time: the pick-up is less than 2 hours away.
+/// Red line under the time: the pick-up has already passed.
 class _TooSoonHint extends StatelessWidget {
   const _TooSoonHint(this.message);
 

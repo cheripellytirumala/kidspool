@@ -2,12 +2,12 @@
 // Required: firstName, dateOfBirth (YYYY-MM-DD)
 // Optional: lastName, grade, schoolId (can be set later with update-kid), schoolIdCard (file),
 //           needsBooster (true/false, default false), needsCarSeat (true/false, default false),
-//           healthNotes, emergencyContactName + emergencyContactPhone, photo (file)
+//           gender (male/female/other), healthNotes, emergencyContactName + emergencyContactPhone, photo (file)
 import { adminClient, corsHeaders, json } from "../_shared/otp.ts";
 import { getAuthUser } from "../_shared/auth.ts";
 import { readImage } from "../_shared/images.ts";
 import {
-  checkBool, checkContactName, checkDob, checkGrade, checkName, checkNotes, checkPhone, clean, isUuid,
+  checkBool, checkContactName, checkDob, checkGender, checkGrade, checkName, checkNotes, checkPhone, clean, isUuid,
   KID_PHOTO_BUCKET, MAX_KIDS,
 } from "../_shared/kids.ts";
 
@@ -60,6 +60,8 @@ Deno.serve(async (req) => {
   if (lastName) { const r = checkName(lastName, "lastName"); if (r.error) return r.error; }
   const grade = clean(form.get("grade")) || null;
   if (grade) { const r = checkGrade(grade); if (r.error) return r.error; }
+  const g = checkGender(clean(form.get("gender"))); if (g.error) return g.error;
+  const gender = g.value ?? null;
   const healthNotes = clean(form.get("healthNotes")) || null;
   if (healthNotes) { const r = checkNotes(healthNotes); if (r.error) return r.error; }
   const nb = checkBool(clean(form.get("needsBooster")), "needsBooster"); if (nb.error) return nb.error;
@@ -87,6 +89,7 @@ Deno.serve(async (req) => {
     last_name: lastName,
     date_of_birth: dob,
     grade,
+    gender,
     school_id: schoolId,
     health_notes: healthNotes,
     needs_booster: needsBooster,

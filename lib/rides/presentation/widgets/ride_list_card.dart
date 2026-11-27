@@ -44,8 +44,8 @@ class RideListCard extends StatelessWidget {
     final who = ride.isMine
         ? (ride.driver != null
               ? '${ride.driver!.shortName} drives'
-              : (ride.isOpen ? 'Asking parents' : null))
-        : (ride.parent?.shortName ?? 'A parent');
+              : (ride.isOpen ? 'Asking members' : null))
+        : (ride.parent?.shortName ?? 'A member');
     return who == null ? when : '$who · $when';
   }
 
