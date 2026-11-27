@@ -45,7 +45,7 @@ class _PrivacyNote extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'Your number is never shown to other parents.',
+              'Your number is never shown to other members.',
               style: AppTextStyles.caption,
             ),
           ),

@@ -492,7 +492,7 @@ class _VehicleDetailsScreenState extends State<VehicleDetailsScreen> {
               if (_showErrors && yearError != null) _FieldError(yearError),
               if (_showErrors && _colorMissing)
                 const _FieldError(
-                  'Pick your car’s colour so parents can spot it',
+                  'Pick your car’s colour so members can spot it',
                 ),
               AppPillInput(
                 controller: _plate,
